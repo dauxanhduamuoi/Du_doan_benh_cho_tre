@@ -1,0 +1,85 @@
+# =====================================================================
+# Hệ thống ML/data
+# =====================================================================
+# Database SQLite (>100MB không push được, và chứa dữ liệu thật).
+*.db
+*.sqlite
+*.sqlite3
+
+# Model artifacts (>100MB).
+*.pkl
+*.joblib
+*.h5
+*.onnx
+
+# Dữ liệu Excel/CSV bệnh nhân (PII).
+data/
+seasonal_disease_backend/uploads/
+
+# =====================================================================
+# Python
+# =====================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =====================================================================
+# Node / Frontend
+# =====================================================================
+node_modules/
+.parcel-cache/
+.next/
+out/
+dist/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =====================================================================
+# IDE / OS
+# =====================================================================
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+
+# .vscode chung thì giữ, chỉ ignore settings cá nhân
+.vscode/settings.json
+
+# =====================================================================
+# Secrets / config local
+# =====================================================================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets.json
+
+# =====================================================================
+# Files tạm trong process
+# =====================================================================
+agent-tools/
+terminals/
+seasonal_disease_backend/Tool/
