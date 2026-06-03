@@ -1,4 +1,7 @@
 # app/services/import_service.py
+import json
+from pathlib import Path
+
 from sqlalchemy.orm import Session
 import pandas as pd
 
@@ -136,6 +139,11 @@ PARENT_GUIDE_REQUIRED_COLUMNS = [
     "CACHPHONGBENH",
 ]
 
+PROVINCE_REGION_SHEET_CANDIDATES = ["DS-TinhThanh-Mien", "DS_TinhThanh_Mien", "ProvinceRegions", "Sheet1"]
+PROVINCE_REGION_REQUIRED_COLUMNS = ["province_code", "province_name", "mien_code", "mien"]
+PROVINCE_REGION_OPTIONAL_COLUMNS = ["aliases"]
+PROVINCE_REGION_CODES = {"north", "central", "south"}
+
 
 def _load_parent_guide_dataframe(file_path: str) -> tuple[pd.DataFrame, str, list[str]]:
     xls = pd.ExcelFile(file_path)
@@ -253,6 +261,128 @@ def import_parent_guide_file(db: Session, file_path: str, source_file: str, impo
         "total_rows": len(df),
         "saved_rows": len(rows),
         "invalid_rows": max(0, len(df) - len(rows)),
+    }
+
+
+def _load_province_region_dataframe(file_path: str) -> tuple[pd.DataFrame, str, list[str]]:
+    xls = pd.ExcelFile(file_path)
+    sheet_name = next((name for name in PROVINCE_REGION_SHEET_CANDIDATES if name in xls.sheet_names), None)
+    if sheet_name is None:
+        sheet_name = xls.sheet_names[0] if xls.sheet_names else None
+    if not sheet_name:
+        raise ValueError("File Excel không có sheet dữ liệu.")
+
+    df = pd.read_excel(xls, sheet_name=sheet_name, dtype=str)
+    df.columns = [str(c).strip() for c in df.columns]
+    missing = [c for c in PROVINCE_REGION_REQUIRED_COLUMNS if c not in df.columns]
+    return df, sheet_name, missing
+
+
+def _province_region_rows_from_dataframe(df: pd.DataFrame) -> tuple[list[dict], int]:
+    rows: list[dict] = []
+    invalid_rows = 0
+    if df.empty:
+        return rows, invalid_rows
+
+    work = df.copy().replace(r"^\s*$", pd.NA, regex=True)
+    seen_names: set[str] = set()
+
+    for _, row in work.iterrows():
+        province_name = safe_text(row.get("province_name"))
+        region_code = safe_text(row.get("mien_code"))
+        region_name = safe_text(row.get("mien"))
+        if not province_name or not region_code or not region_name or region_code not in PROVINCE_REGION_CODES:
+            invalid_rows += 1
+            continue
+
+        key = province_name.strip().lower()
+        if key in seen_names:
+            invalid_rows += 1
+            continue
+        seen_names.add(key)
+
+        aliases_raw = safe_text(row.get("aliases")) or ""
+        aliases = [item.strip() for item in aliases_raw.split("|") if item.strip()]
+        rows.append({
+            "province_code": safe_text(row.get("province_code")) or "",
+            "province_name": province_name,
+            "mien_code": region_code,
+            "mien": region_name,
+            "aliases": aliases,
+        })
+
+    return rows, invalid_rows
+
+
+def preview_province_regions_file(file_path: str) -> dict:
+    df, sheet_name, missing = _load_province_region_dataframe(file_path)
+    sample_cols = PROVINCE_REGION_REQUIRED_COLUMNS + PROVINCE_REGION_OPTIONAL_COLUMNS
+    existing_sample_cols = [c for c in sample_cols if c in df.columns]
+    rows: list[dict] = []
+    invalid_rows = len(df)
+    if not missing:
+        rows, invalid_rows = _province_region_rows_from_dataframe(df)
+
+    return {
+        "sheet": sheet_name,
+        "columns": list(df.columns),
+        "required_columns": PROVINCE_REGION_REQUIRED_COLUMNS,
+        "missing_columns": missing,
+        "total_rows": int(len(df)),
+        "valid_rows": int(len(rows)),
+        "invalid_rows": int(invalid_rows),
+        "sample_rows": df.head(10)[existing_sample_cols].fillna("").astype(str).to_dict(orient="records"),
+    }
+
+
+def import_province_regions_file(
+    db: Session,
+    file_path: str,
+    source_file: str,
+    output_json_path: str,
+    imported_by: str | None = None,
+) -> dict:
+    df, sheet_name, missing = _load_province_region_dataframe(file_path)
+    if missing:
+        raise ValueError(f"File thiếu các cột bắt buộc: {missing}. Cột trong file: {list(df.columns)}")
+
+    rows, invalid_rows = _province_region_rows_from_dataframe(df)
+    if not rows:
+        raise ValueError("File không có dòng phân miền tỉnh/thành hợp lệ.")
+
+    output_path = Path(output_json_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_output_path = output_path.with_name(f".{output_path.name}.tmp")
+    temp_output_path.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    try:
+        log = ImportLog(
+            file_name=source_file,
+            data_type="province_regions",
+            total_rows=len(df),
+            valid_rows=len(rows),
+            invalid_rows=invalid_rows,
+            imported_by=imported_by,
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        db.rollback()
+        try:
+            temp_output_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise
+
+    temp_output_path.replace(output_path)
+
+    return {
+        "sheet": sheet_name,
+        "source_file": source_file,
+        "total_rows": len(df),
+        "saved_rows": len(rows),
+        "invalid_rows": invalid_rows,
+        "json_file": str(output_path),
     }
 
 

@@ -233,6 +233,38 @@ export function importDiseaseCodes(file: File) {
   return uploadFile<{ message: string; total_codes: number; file: string }>('/api/import/disease-codes', file);
 }
 
+export interface ProvinceRegionsPreview {
+  sheet: string;
+  columns: string[];
+  required_columns: string[];
+  missing_columns: string[];
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  sample_rows: Array<Record<string, string>>;
+}
+
+export interface ProvinceRegionsStatus {
+  has_province_regions: boolean;
+  total_rows: number;
+  uploaded_file: string | null;
+}
+
+export function previewProvinceRegions(file: File) {
+  return uploadFile<ProvinceRegionsPreview>('/api/import/province-regions/preview', file);
+}
+
+export function importProvinceRegions(file: File) {
+  return uploadFile<{ message: string; result: { total_rows: number; saved_rows: number; invalid_rows: number } }>(
+    '/api/import/province-regions',
+    file,
+  );
+}
+
+export function getProvinceRegionsStatus(): Promise<ProvinceRegionsStatus> {
+  return request<ProvinceRegionsStatus>('/api/import/province-regions/status');
+}
+
 export interface ParentGuidePreview {
   sheet: string;
   columns: string[];
@@ -602,6 +634,14 @@ export interface WeatherAIRiskItem {
   risk_level: string;
 }
 
+export interface WeatherAIDailySeriesPoint {
+  date: string | null;
+  temp_mean_today?: number | null;
+  humidity_mean_today?: number | null;
+  rain_sum_today?: number | null;
+  precipitation_sum_today?: number | null;
+}
+
 export interface WeatherAIPredictResponse {
   message: string;
   input: {
@@ -610,7 +650,9 @@ export interface WeatherAIPredictResponse {
     top_k: number;
   };
   weather: {
-    meta?: Record<string, unknown>;
+    meta?: Record<string, unknown> & {
+      daily_series?: WeatherAIDailySeriesPoint[];
+    };
     features: Record<string, number>;
     month: number;
     season: string;

@@ -58,13 +58,17 @@ def mode_or_nan(series: pd.Series):
     return values.mode().iloc[0]
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=2)
+def _load_weather_ai_artifact_cached(model_path: str, model_mtime: float) -> dict[str, Any]:
+    return joblib.load(model_path)
+
+
 def load_weather_ai_artifact() -> dict[str, Any]:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(
             "Chưa có model AI thời tiết. Hãy chạy: python scripts/train_weather_ai_model.py"
         )
-    return joblib.load(MODEL_PATH)
+    return _load_weather_ai_artifact_cached(str(MODEL_PATH), MODEL_PATH.stat().st_mtime)
 
 
 def get_model_status() -> dict[str, Any]:
@@ -156,6 +160,21 @@ def _hourly_to_daily_features(hourly_df: pd.DataFrame) -> pd.DataFrame:
     return daily
 
 
+def _daily_weather_series(daily: pd.DataFrame) -> list[dict[str, Any]]:
+    """Chuỗi ngày để frontend vẽ tương quan thời tiết, không dùng làm input model."""
+    rows: list[dict[str, Any]] = []
+    for _, row in daily.iterrows():
+        date_value = row.get("date")
+        rows.append({
+            "date": str(pd.Timestamp(date_value).date()) if pd.notna(date_value) else None,
+            "temp_mean_today": None if pd.isna(row.get("temp_mean_today")) else float(row.get("temp_mean_today")),
+            "humidity_mean_today": None if pd.isna(row.get("humidity_mean_today")) else float(row.get("humidity_mean_today")),
+            "rain_sum_today": None if pd.isna(row.get("rain_sum_today")) else float(row.get("rain_sum_today")),
+            "precipitation_sum_today": None if pd.isna(row.get("precipitation_sum_today")) else float(row.get("precipitation_sum_today")),
+        })
+    return rows
+
+
 def fetch_current_weather_features(
     latitude: float | None = DEFAULT_LATITUDE,
     longitude: float | None = DEFAULT_LONGITUDE,
@@ -209,6 +228,7 @@ def fetch_current_weather_features(
         "timezone": timezone,
         "date": str(target_ts.date()),
         "url": url,
+        "daily_series": _daily_weather_series(daily),
     }
     return features, meta
 
@@ -277,7 +297,17 @@ def complete_manual_weather_features(weather: dict[str, Any] | None, target_date
                 d[col] = float(d[col]) if col != "month" else int(d[col])
             except Exception:
                 pass
-    meta = {"source": "manual", "date": str(today)}
+    meta = {
+        "source": "manual",
+        "date": str(today),
+        "daily_series": [{
+            "date": str(today),
+            "temp_mean_today": float(d.get("temp_mean_today", 0)),
+            "humidity_mean_today": float(d.get("humidity_mean_today", 0)),
+            "rain_sum_today": float(d.get("rain_sum_today", 0)),
+            "precipitation_sum_today": float(d.get("precipitation_sum_today", d.get("rain_sum_today", 0))),
+        }],
+    }
     return d, meta
 
 

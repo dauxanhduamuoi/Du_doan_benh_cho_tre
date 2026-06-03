@@ -1,4 +1,6 @@
 from pathlib import Path
+import shutil
+import uuid
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -11,7 +13,9 @@ from app.services.import_service import (
     import_disease_codes,
     import_parent_guide_file,
     import_patient_file,
+    import_province_regions_file,
     preview_parent_guide_file,
+    preview_province_regions_file,
 )
 
 router = APIRouter(
@@ -25,13 +29,20 @@ UPLOAD_DIR = Path("uploads")
 PREDICT_CURRENT_DIR = UPLOAD_DIR / "predict_current"
 DISEASE_CODES_DIR = UPLOAD_DIR / "disease_codes"
 PARENT_GUIDE_DIR = UPLOAD_DIR / "parent_guide"
+PROVINCE_REGIONS_DIR = UPLOAD_DIR / "province_regions"
+PROVINCE_REGIONS_EXCEL_DIR = PROVINCE_REGIONS_DIR / "excel"
 PREPROCESS_DIR = UPLOAD_DIR / "preprocessed"
+TEMP_UPLOAD_DIR = UPLOAD_DIR / "_tmp"
+PROVINCE_REGIONS_JSON = PROVINCE_REGIONS_DIR / "province_regions.json"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 PREDICT_CURRENT_DIR.mkdir(exist_ok=True)
 DISEASE_CODES_DIR.mkdir(exist_ok=True)
 PARENT_GUIDE_DIR.mkdir(exist_ok=True)
+PROVINCE_REGIONS_DIR.mkdir(exist_ok=True)
+PROVINCE_REGIONS_EXCEL_DIR.mkdir(exist_ok=True)
 PREPROCESS_DIR.mkdir(exist_ok=True)
+TEMP_UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 def _safe_upload_name(upload_file: UploadFile) -> str:
@@ -42,32 +53,67 @@ def _is_excel_upload(upload_file: UploadFile) -> bool:
     return _safe_upload_name(upload_file).lower().endswith(".xlsx")
 
 
-def save_file_to_dir(upload_file: UploadFile, target_dir: Path) -> str:
-    """Lưu file vào thư mục chỉ định."""
-    file_path = target_dir / _safe_upload_name(upload_file)
+def save_file_temp(upload_file: UploadFile) -> Path:
+    """Luu file upload vao thu muc tam; chi thay file chinh sau khi import hop le."""
+    safe_name = _safe_upload_name(upload_file)
+    suffix = Path(safe_name).suffix or ".upload"
+    temp_path = TEMP_UPLOAD_DIR / f"{uuid.uuid4().hex}{suffix}"
+    upload_file.file.seek(0)
+    with open(temp_path, "wb") as f:
+        shutil.copyfileobj(upload_file.file, f)
+    return temp_path
 
-    with open(file_path, "wb") as f:
-        f.write(upload_file.file.read())
 
-    return str(file_path)
+def replace_single_file_from_path(source_path: Path, target_dir: Path, filename: str) -> str:
+    """Thay file dang luu bang file da duoc validate/import thanh cong."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / Path(filename).name
+    staged_path = target_dir / f".{target_path.name}.{uuid.uuid4().hex}.tmp"
+    try:
+        shutil.copy2(source_path, staged_path)
+        staged_path.replace(target_path)
+    finally:
+        if staged_path.exists():
+            staged_path.unlink(missing_ok=True)
 
-
-def save_file_single(upload_file: UploadFile, target_dir: Path) -> str:
-    """
-    Lưu file vào thư mục chỉ định, xoá tất cả file cũ trong thư mục đó.
-    Chỉ giữ 1 file mới nhất.
-    """
-    # Xoá file cũ
     for old_file in target_dir.iterdir():
-        if old_file.is_file():
+        if old_file.is_file() and old_file != target_path:
             old_file.unlink()
+    return str(target_path)
 
-    file_path = target_dir / _safe_upload_name(upload_file)
 
-    with open(file_path, "wb") as f:
-        f.write(upload_file.file.read())
+def cleanup_temp_file(file_path: Path | None) -> None:
+    if not file_path:
+        return
+    try:
+        file_path.unlink(missing_ok=True)
+    except Exception:
+        pass
 
-    return str(file_path)
+
+def snapshot_disease_codes(db: Session) -> list[dict]:
+    return [
+        {
+            "icd_code": row.icd_code,
+            "disease_name": row.disease_name,
+            "group_id": row.group_id,
+            "group_name": row.group_name,
+            "report_group_code": row.report_group_code,
+            "english_name": row.english_name,
+        }
+        for row in db.query(DiseaseCode).all()
+    ]
+
+
+def restore_disease_codes(db: Session, rows: list[dict]) -> None:
+    try:
+        db.query(DiseaseCode).delete(synchronize_session=False)
+        if rows:
+            db.bulk_insert_mappings(DiseaseCode, rows)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/predict-current")
@@ -95,19 +141,21 @@ def import_predict_current(
                    "Hãy import DS-MaBenh trước, sau đó mới import DS-BenhNhan."
         )
 
-    file_path = save_file_single(file, PREDICT_CURRENT_DIR)
-
+    temp_path = save_file_temp(file)
     try:
         result = import_patient_file(
             db=db,
-            file_path=file_path,
+            file_path=str(temp_path),
             data_type="predict_current",
             source_file=_safe_upload_name(file),
             imported_by=current_user.username,
             import_codes=False,
         )
-    except (ValueError, Exception) as e:
+        replace_single_file_from_path(temp_path, PREDICT_CURRENT_DIR, _safe_upload_name(file))
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
 
     return {
         "message": "Import dữ liệu predict_current thành công.",
@@ -129,12 +177,14 @@ def import_disease_codes_endpoint(
     if not _is_excel_upload(file):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
 
-    file_path = save_file_single(file, DISEASE_CODES_DIR)
-
+    temp_path = save_file_temp(file)
     try:
-        disease_codes = import_disease_codes(db, file_path)
+        disease_codes = import_disease_codes(db, str(temp_path))
+        replace_single_file_from_path(temp_path, DISEASE_CODES_DIR, _safe_upload_name(file))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
 
     return {
         "message": "Import bảng mã bệnh (DS-MaBenh) thành công.",
@@ -152,11 +202,13 @@ def preview_parent_guide_endpoint(
     if not _is_excel_upload(file):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
 
-    file_path = save_file_to_dir(file, PARENT_GUIDE_DIR)
+    temp_path = save_file_temp(file)
     try:
-        return preview_parent_guide_file(file_path)
+        return preview_parent_guide_file(str(temp_path))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
 
 
 @router.post("/parent-guide")
@@ -169,11 +221,14 @@ def import_parent_guide_endpoint(
     if not _is_excel_upload(file):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
 
-    file_path = save_file_single(file, PARENT_GUIDE_DIR)
+    temp_path = save_file_temp(file)
     try:
-        result = import_parent_guide_file(db, file_path, _safe_upload_name(file), current_user.username)
+        result = import_parent_guide_file(db, str(temp_path), _safe_upload_name(file), current_user.username)
+        replace_single_file_from_path(temp_path, PARENT_GUIDE_DIR, _safe_upload_name(file))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
 
     return {
         "message": "Import hướng dẫn phụ huynh thành công.",
@@ -233,6 +288,79 @@ def list_parent_guide(
             }
             for r in rows
         ],
+    }
+
+
+@router.post("/province-regions/preview")
+def preview_province_regions_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Preview Excel file for province/city to region mapping before importing."""
+    if not _is_excel_upload(file):
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
+
+    temp_path = save_file_temp(file)
+    try:
+        return preview_province_regions_file(str(temp_path))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
+
+
+@router.post("/province-regions")
+def import_province_regions_endpoint(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Import province/city to north/central/south mapping used by Area insights."""
+    if not _is_excel_upload(file):
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
+
+    temp_path = save_file_temp(file)
+    try:
+        result = import_province_regions_file(
+            db=db,
+            file_path=str(temp_path),
+            source_file=_safe_upload_name(file),
+            output_json_path=str(PROVINCE_REGIONS_JSON),
+            imported_by=current_user.username,
+        )
+        replace_single_file_from_path(temp_path, PROVINCE_REGIONS_EXCEL_DIR, _safe_upload_name(file))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
+
+    return {
+        "message": "Import phân miền tỉnh/thành thành công.",
+        "result": result,
+    }
+
+
+@router.get("/province-regions/status")
+def get_province_regions_status(
+    current_user: User = Depends(get_current_user),
+):
+    uploaded_files = [
+        f.name
+        for f in PROVINCE_REGIONS_EXCEL_DIR.iterdir()
+        if f.is_file() and f.suffix.lower() == ".xlsx"
+    ]
+    total_rows = 0
+    if PROVINCE_REGIONS_JSON.exists():
+        try:
+            import json
+            total_rows = len(json.loads(PROVINCE_REGIONS_JSON.read_text(encoding="utf-8")))
+        except Exception:
+            total_rows = 0
+
+    return {
+        "has_province_regions": PROVINCE_REGIONS_JSON.exists(),
+        "total_rows": total_rows,
+        "uploaded_file": uploaded_files[0] if uploaded_files else None,
     }
 
 
@@ -390,13 +518,14 @@ def import_data_for_frontend(
     if not _is_excel_upload(file):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
 
-    file_path = save_file_single(file, PREDICT_CURRENT_DIR)
+    temp_path = save_file_temp(file)
 
     # Nếu file có DS-MaBenh thì import bảng mã bệnh người dùng. Nếu không có,
     # bỏ qua để import_patient_file dùng DS-MaBenh đã có trong DB.
+    disease_codes_before_import = snapshot_disease_codes(db)
     disease_codes_updated = False
     try:
-        import_disease_codes(db, file_path)
+        import_disease_codes(db, str(temp_path))
         disease_codes_updated = True
     except Exception:
         disease_codes_updated = False
@@ -404,14 +533,19 @@ def import_data_for_frontend(
     try:
         result = import_patient_file(
             db=db,
-            file_path=file_path,
+            file_path=str(temp_path),
             data_type="predict_current",
             source_file=_safe_upload_name(file),
             imported_by=current_user.username,
             import_codes=False,
         )
+        replace_single_file_from_path(temp_path, PREDICT_CURRENT_DIR, _safe_upload_name(file))
     except Exception as e:
+        if disease_codes_updated:
+            restore_disease_codes(db, disease_codes_before_import)
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        cleanup_temp_file(temp_path)
 
     return {
         "message": "Import dữ liệu thành công.",
@@ -438,7 +572,7 @@ def import_weather_for_frontend(
 
     weather_dir = UPLOAD_DIR / "weather"
     weather_dir.mkdir(exist_ok=True)
-    file_path = save_file_single(file, weather_dir)
+    temp_path = save_file_temp(file)
 
     rows = 0
     from_date = None
@@ -446,9 +580,9 @@ def import_weather_for_frontend(
     try:
         import pandas as pd
         if name.endswith(".csv"):
-            df = pd.read_csv(file_path, comment="#")
+            df = pd.read_csv(temp_path, comment="#")
         else:
-            df = pd.read_excel(file_path)
+            df = pd.read_excel(temp_path)
         rows = len(df)
         date_col = "time" if "time" in df.columns else ("date" if "date" in df.columns else None)
         if date_col:
@@ -457,9 +591,11 @@ def import_weather_for_frontend(
             if not dates.empty:
                 from_date = dates.min().strftime("%Y-%m-%d")
                 to_date = dates.max().strftime("%Y-%m-%d")
-    except Exception:
-        # Vẫn coi upload thành công vì weather AI realtime không phụ thuộc file này.
-        pass
+        replace_single_file_from_path(temp_path, weather_dir, _safe_upload_name(file))
+    except Exception as e:
+        cleanup_temp_file(temp_path)
+        raise HTTPException(status_code=400, detail=f"Khong doc duoc file thoi tiet: {e}")
+    cleanup_temp_file(temp_path)
 
     return {
         "message": "Upload file thời tiết thành công. Weather AI realtime vẫn tự lấy Open-Meteo khi dự đoán.",
@@ -486,7 +622,6 @@ def preprocess_patient_file(
     - Trả về file .xlsx đã xử lý, sẵn sàng import vào hệ thống.
     """
     import pandas as pd
-    import tempfile
 
     if not _is_excel_upload(file):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file .xlsx.")
@@ -554,15 +689,15 @@ def preprocess_patient_file(
     df = df.dropna(axis=1, how="all")
     removed_cols = [c for c in cols_before if c not in df.columns]
 
-    # Xoá file preprocessed cũ, chỉ giữ file mới nhất
-    for old_file in PREPROCESS_DIR.iterdir():
-        if old_file.is_file():
-            old_file.unlink()
-
     output_filename = f"preprocessed_{Path(_safe_upload_name(file)).stem}.xlsx"
     output_path = PREPROCESS_DIR / output_filename
+    temp_output_path = PREPROCESS_DIR / f".{output_filename}.{uuid.uuid4().hex}.tmp.xlsx"
 
-    df.to_excel(str(output_path), index=False, sheet_name="DS-BenhNhan")
+    df.to_excel(str(temp_output_path), index=False, sheet_name="DS-BenhNhan")
+    for old_file in PREPROCESS_DIR.iterdir():
+        if old_file.is_file() and old_file != temp_output_path:
+            old_file.unlink()
+    temp_output_path.replace(output_path)
 
     return {
         "message": "Tiền xử lý thành công.",

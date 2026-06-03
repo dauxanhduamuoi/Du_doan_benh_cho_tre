@@ -374,6 +374,15 @@ def write_csv_file(df: pd.DataFrame, path: Path) -> None:
             writer.writerow(row)
 
 
+def write_gzip_csv_file(df: pd.DataFrame, path: Path) -> None:
+    """Ghi thêm bản nén để lưu trữ/chia sẻ dataset train nhẹ hơn."""
+    with gzip.open(path, "wt", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(list(df.columns))
+        for row in df.itertuples(index=False, name=None):
+            writer.writerow(row)
+
+
 def build_dataset(
     weather_csv: Path,
     train_history: Path,
@@ -414,6 +423,8 @@ def build_dataset(
 
     train_path = out_dir / "weather_ai_train_dataset.csv"
     write_csv_file(dataset, train_path)
+    compressed_train_path = out_dir / "weather_ai_train_dataset.csv.gz"
+    write_gzip_csv_file(dataset, compressed_train_path)
 
     duplicate_keys = int(dataset.duplicated(["date", "age_group", "gender", "disease_group_id", "has_case"]).sum())
     bad_month = int((pd.to_datetime(dataset["date"]).dt.month != dataset["month"]).sum())
@@ -424,6 +435,7 @@ def build_dataset(
         "weather_file": weather_csv.name,
         "train_history_file": train_history.name,
         "train_file": train_path.name,
+        "train_file_gzip": compressed_train_path.name,
         "negative_ratio": negative_ratio,
         "weather_date_from": str(weather["date"].min().date()),
         "weather_date_to": str(weather["date"].max().date()),
@@ -472,7 +484,8 @@ def main() -> None:
     print("Tạo dataset thành công.")
     print(f"Số dòng: {len(dataset):,}")
     print(f"Tổng case_count: {int(dataset['case_count'].sum()):,}")
-    print(f"File train: {Path(args.out_dir) / 'weather_ai_train_dataset.csv.gz'}")
+    print(f"File train: {Path(args.out_dir) / 'weather_ai_train_dataset.csv'}")
+    print(f"File train gzip: {Path(args.out_dir) / 'weather_ai_train_dataset.csv.gz'}")
 
 
 if __name__ == "__main__":

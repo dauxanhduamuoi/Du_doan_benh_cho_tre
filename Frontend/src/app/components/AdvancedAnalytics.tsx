@@ -153,6 +153,7 @@ function TrendPointDot({
   value,
   dataKey,
   color,
+  dimmed = false,
   setHoverPoint,
 }: {
   cx?: number | string;
@@ -161,6 +162,7 @@ function TrendPointDot({
   value?: number | string | null;
   dataKey: string;
   color: string;
+  dimmed?: boolean;
   setHoverPoint: (point: TrendHoverPoint | null) => void;
 }) {
   const x = Number(cx);
@@ -184,7 +186,15 @@ function TrendPointDot({
       onMouseLeave={() => setHoverPoint(null)}
     >
       <circle cx={x} cy={y} r={7} fill="transparent" />
-      <circle cx={x} cy={y} r={4} fill={color} stroke="#fff" strokeWidth={1.5} />
+      <circle
+        cx={x}
+        cy={y}
+        r={dimmed ? 3 : 4}
+        fill={dimmed ? '#cbd5e1' : color}
+        opacity={dimmed ? 0.55 : 1}
+        stroke="#fff"
+        strokeWidth={1.5}
+      />
     </g>
   );
 }
@@ -229,6 +239,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
   const [initLoading, setInitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredTrendPoint, setHoveredTrendPoint] = useState<TrendHoverPoint | null>(null);
+  const [highlightedTrendDiseases, setHighlightedTrendDiseases] = useState<string[]>([]);
 
   const copy = MODE_COPY[mode];
 
@@ -380,6 +391,10 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
     if (selectedPeriod) loadAnalysis();
   }, [selectedPeriod, selectedDisease, limit, loadAnalysis]);
 
+  useEffect(() => {
+    setHighlightedTrendDiseases((prev) => prev.filter((disease) => selectedDiseases.includes(disease)));
+  }, [selectedDiseases]);
+
   const topByMonthChart = useMemo(
     () =>
       topByMonth.map((row, idx) => ({
@@ -422,6 +437,16 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
       })),
     [selectedDiseases, bilingualMap],
   );
+  const highlightedTrendSet = useMemo(() => new Set(highlightedTrendDiseases), [highlightedTrendDiseases]);
+  const hasTrendHighlight = highlightedTrendDiseases.length > 0;
+
+  const toggleTrendHighlight = useCallback((diseaseGroup: string) => {
+    setHighlightedTrendDiseases((prev) =>
+      prev.includes(diseaseGroup)
+        ? prev.filter((item) => item !== diseaseGroup)
+        : [...prev, diseaseGroup],
+    );
+  }, []);
 
   // Pivot trend rows (1 dòng / period, mỗi nhóm bệnh là 1 cột case_count).
   const trendChart = useMemo(() => {
@@ -794,32 +819,43 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
           <ChartPanel title="Xu hướng nhóm bệnh đã chọn" subtitle={`${trendSeries.length} nhóm bệnh`}>
             {trendSeries.length === 0 || trendChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
               <>
+                <TrendSeriesFocusPanel
+                  series={trendSeries}
+                  highlightedKeys={highlightedTrendDiseases}
+                  onToggle={toggleTrendHighlight}
+                  onOnly={(key) => setHighlightedTrendDiseases([key])}
+                  onClear={() => setHighlightedTrendDiseases([])}
+                />
                 <ResponsiveContainer width="100%" height={320}>
                 <LineChart data={trendChart} margin={{ left: 12, right: 24, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="period" tick={{ fontSize: 12 }} padding={{ left: 24, right: 24 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Legend />
-                  {trendSeries.map((s) => (
-                    <Line
-                      key={s.key}
-                      type="monotone"
-                      dataKey={s.key}
-                      name={s.label}
-                      stroke={s.color}
-                      strokeWidth={2.5}
-                      dot={(props) => (
-                        <TrendPointDot
-                          {...props}
-                          dataKey={s.key}
-                          color={s.color}
-                          setHoverPoint={setHoveredTrendPoint}
-                        />
-                      )}
-                      activeDot={false}
-                      connectNulls
-                    />
-                  ))}
+                  {trendSeries.map((s) => {
+                    const dimmed = hasTrendHighlight && !highlightedTrendSet.has(s.key);
+                    return (
+                      <Line
+                        key={s.key}
+                        type="monotone"
+                        dataKey={s.key}
+                        name={s.label}
+                        stroke={dimmed ? '#cbd5e1' : s.color}
+                        strokeOpacity={dimmed ? 0.42 : 1}
+                        strokeWidth={dimmed ? 1.6 : 3}
+                        dot={(props) => (
+                          <TrendPointDot
+                            {...props}
+                            dataKey={s.key}
+                            color={s.color}
+                            dimmed={dimmed}
+                            setHoverPoint={setHoveredTrendPoint}
+                          />
+                        )}
+                        activeDot={false}
+                        connectNulls
+                      />
+                    );
+                  })}
                 </LineChart>
               </ResponsiveContainer>
                 <TrendLineTooltip hoverPoint={hoveredTrendPoint} series={trendSeries} chartData={trendChart} />
@@ -845,6 +881,101 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
           </ChartPanel>
         </div>
       )}
+    </div>
+  );
+}
+
+function TrendSeriesFocusPanel({
+  series,
+  highlightedKeys,
+  onToggle,
+  onOnly,
+  onClear,
+}: {
+  series: Array<{ key: string; label: string; color: string }>;
+  highlightedKeys: string[];
+  onToggle: (key: string) => void;
+  onOnly: (key: string) => void;
+  onClear: () => void;
+}) {
+  const highlightedSet = new Set(highlightedKeys);
+  const hasHighlight = highlightedKeys.length > 0;
+
+  return (
+    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">Làm rõ đường biểu đồ</div>
+          <div className="mt-0.5 text-xs text-slate-500">
+            {hasHighlight
+              ? `${highlightedKeys.length} nhóm bệnh đang giữ màu, các nhóm còn lại được làm mờ.`
+              : 'Chưa chọn nhóm nào, tất cả đường đang hiển thị bình thường.'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={!hasHighlight}
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          Hiện tất cả
+        </button>
+      </div>
+
+      <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
+        {series.map((item) => {
+          const active = highlightedSet.has(item.key);
+          const dimmed = hasHighlight && !active;
+          return (
+            <div
+              key={item.key}
+              className={`flex items-start gap-2 rounded-lg border bg-white px-2.5 py-2 transition ${
+                active
+                  ? 'border-blue-300 ring-2 ring-blue-100'
+                  : dimmed
+                    ? 'border-slate-200 opacity-65'
+                    : 'border-slate-200 hover:border-blue-200'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => onToggle(item.key)}
+                aria-pressed={active}
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                  active
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-slate-300 bg-white text-transparent hover:border-blue-400'
+                }`}
+                title={active ? 'Bỏ làm nổi bật' : 'Làm nổi bật nhóm bệnh này'}
+              >
+                <Check size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggle(item.key)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: dimmed ? '#cbd5e1' : item.color }}
+                  />
+                  <span className={`line-clamp-2 text-xs font-medium leading-5 ${dimmed ? 'text-slate-400' : 'text-slate-700'}`}>
+                    {item.label}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onOnly(item.key)}
+                className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50"
+              >
+                Chỉ xem
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

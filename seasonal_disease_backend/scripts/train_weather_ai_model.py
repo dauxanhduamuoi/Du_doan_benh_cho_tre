@@ -1,7 +1,11 @@
 """
-Train model AI thời tiết và lưu vào app/ml/weather_ai_risk_model.joblib.
+Train Weather AI and save the artifact to app/ml/weather_ai_risk_model.joblib.
 
-Chạy từ thư mục backend:
+Recommended flow:
+    python scripts/build_weather_ai_dataset.py
+    python scripts/train_weather_ai_model.py --train-dataset Tool/weather/output_weather_ai/weather_ai_train_dataset.csv
+
+Fallback flow, still supported:
     python scripts/train_weather_ai_model.py
 """
 from __future__ import annotations
@@ -36,11 +40,17 @@ CATEGORICAL_FEATURES = [
     "season",
     "weather_code",
 ]
-NUMERIC_FEATURES = ["month", *[c for c in WEATHER_FEATURE_COLS if c != "weather_code"]]
+NUMERIC_FEATURES = ["month", *[col for col in WEATHER_FEATURE_COLS if col != "weather_code"]]
 FEATURE_COLUMNS = CATEGORICAL_FEATURES + NUMERIC_FEATURES
+TARGET_COLUMNS = ["has_case", "case_count"]
 
 
-def build_dataset_in_memory(weather_csv: Path, train_history: Path, negative_ratio: int, random_seed: int):
+def build_dataset_in_memory(
+    weather_csv: Path,
+    train_history: Path,
+    negative_ratio: int,
+    random_seed: int,
+) -> tuple[pd.DataFrame, dict]:
     weather = build_daily_weather(weather_csv)
     disease_codes = build_disease_codes(train_history)
     positive, stats = load_patient_cases(train_history, disease_codes)
@@ -49,27 +59,94 @@ def build_dataset_in_memory(weather_csv: Path, train_history: Path, negative_rat
     positive = positive.merge(weather[["date"]], on="date", how="inner")
     stats["dropped_positive_rows_outside_weather_range"] = int(before - len(positive))
     if positive.empty:
-        raise ValueError("Không có dòng bệnh nào khớp ngày với weather.")
+        raise ValueError("No patient rows match the weather date range.")
 
     negative = create_negative_samples(positive, weather, negative_ratio, random_seed)
     dataset = pd.concat([positive, negative], ignore_index=True)
     dataset = dataset.merge(weather, on="date", how="left")
-    if dataset[WEATHER_FEATURE_COLS].isna().any().any():
-        missing = int(dataset[WEATHER_FEATURE_COLS].isna().any(axis=1).sum())
-        raise ValueError(f"Có {missing} dòng thiếu weather.")
+
+    missing_weather = dataset[WEATHER_FEATURE_COLS].isna().any(axis=1)
+    if missing_weather.any():
+        raise ValueError(f"{int(missing_weather.sum())} rows are missing weather features.")
 
     dataset = dataset.sample(frac=1, random_state=random_seed).reset_index(drop=True)
     dataset["date"] = dataset["date"].dt.strftime("%Y-%m-%d")
     dataset = dataset[OUTPUT_COLUMNS]
-    return dataset, weather, stats
+
+    summary_extra = {
+        "weather_file": weather_csv.name,
+        "train_history_file": train_history.name,
+        "negative_ratio": int(negative_ratio),
+        "weather_date_from": str(weather["date"].min().date()),
+        "weather_date_to": str(weather["date"].max().date()),
+        "positive_rows_after_weather_filter": int(len(positive)),
+        **stats,
+    }
+    return dataset, summary_extra
 
 
-def train(weather_csv: Path, train_history: Path, output_model: Path, negative_ratio: int, random_seed: int):
-    print("[1/4] Build dataset...", flush=True)
-    dataset, weather, stats = build_dataset_in_memory(weather_csv, train_history, negative_ratio, random_seed)
+def validate_training_dataset(dataset: pd.DataFrame, source: str) -> pd.DataFrame:
+    required = list(dict.fromkeys([*FEATURE_COLUMNS, *TARGET_COLUMNS, "date", "disease_group_name"]))
+    missing = [column for column in required if column not in dataset.columns]
+    if missing:
+        raise ValueError(f"Training dataset {source} is missing required columns: {missing}")
+    if dataset.empty:
+        raise ValueError(f"Training dataset {source} has no rows.")
+
+    dataset = dataset.copy()
+    dataset["date"] = pd.to_datetime(dataset["date"], errors="coerce")
+    if dataset["date"].isna().any():
+        raise ValueError(f"Training dataset {source} has invalid date values.")
+
+    for column in CATEGORICAL_FEATURES:
+        dataset[column] = dataset[column].astype(str)
+
+    for column in NUMERIC_FEATURES + TARGET_COLUMNS:
+        dataset[column] = pd.to_numeric(dataset[column], errors="coerce")
+
+    invalid_numeric = [column for column in NUMERIC_FEATURES + TARGET_COLUMNS if dataset[column].isna().any()]
+    if invalid_numeric:
+        raise ValueError(f"Training dataset {source} has invalid numeric values in: {invalid_numeric}")
+
+    dataset["has_case"] = dataset["has_case"].astype(int)
+    dataset["case_count"] = dataset["case_count"].astype(float)
+
+    if not set(dataset["has_case"].unique()).issubset({0, 1}):
+        raise ValueError("Column has_case must contain only 0 or 1.")
+    if (dataset["case_count"] < 0).any():
+        raise ValueError("Column case_count cannot be negative.")
+
+    return dataset
+
+
+def load_training_dataset(dataset_path: Path) -> tuple[pd.DataFrame, dict]:
+    if not dataset_path.exists():
+        raise FileNotFoundError(f"Training dataset not found: {dataset_path}")
+
+    dataset = pd.read_csv(dataset_path)
+    dataset = validate_training_dataset(dataset, str(dataset_path))
+
+    summary_path = dataset_path.parent / "dataset_summary.json"
+    summary_extra: dict = {}
+    if summary_path.exists():
+        try:
+            summary_extra = json.loads(summary_path.read_text(encoding="utf-8"))
+        except Exception:
+            summary_extra = {}
+
+    summary_extra["train_dataset_file"] = str(dataset_path)
+    return dataset, summary_extra
+
+
+def train_from_dataset(
+    dataset: pd.DataFrame,
+    output_model: Path,
+    random_seed: int,
+    summary_extra: dict | None = None,
+) -> dict:
+    dataset = validate_training_dataset(dataset, "in-memory")
     print(f"  rows={len(dataset):,}, cases={int(dataset['case_count'].sum()):,}", flush=True)
 
-    # Import sklearn sau khi build dataset để tránh lỗi môi trường/đọc Excel không cần thiết.
     import sklearn
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
@@ -79,18 +156,20 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-    for col in CATEGORICAL_FEATURES:
-        dataset[col] = dataset[col].astype(str)
-
     X = dataset[FEATURE_COLUMNS].copy()
     y_cls = dataset["has_case"].astype(int)
     y_reg = np.log1p(dataset["case_count"].astype(float))
 
     X_train, X_test, y_cls_train, y_cls_test, y_reg_train, y_reg_test = train_test_split(
-        X, y_cls, y_reg, test_size=0.2, random_state=random_seed, stratify=y_cls
+        X,
+        y_cls,
+        y_reg,
+        test_size=0.2,
+        random_state=random_seed,
+        stratify=y_cls,
     )
 
-    def build_preprocessor():
+    def build_preprocessor() -> ColumnTransformer:
         categorical_pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="most_frequent")),
             ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
@@ -109,8 +188,9 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
         ("model", SGDClassifier(
             loss="log_loss",
             alpha=0.0001,
-            max_iter=20,
-            tol=1e-3,
+            max_iter=1000,
+            tol=1e-4,
+            n_iter_no_change=10,
             class_weight="balanced",
             random_state=random_seed,
         )),
@@ -131,7 +211,7 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
     true_cases = np.expm1(y_reg_test)
     mae = float(mean_absolute_error(true_cases, pred_cases))
 
-    train_sample = X.sample(n=min(50000, len(X)), random_state=random_seed)
+    train_sample = X.sample(n=min(50_000, len(X)), random_state=random_seed)
     sample_prob = classifier.predict_proba(train_sample)[:, 1]
     sample_cases = np.clip(np.expm1(regressor.predict(train_sample)), 0, 1_000_000)
     sample_score = sample_prob * np.log1p(sample_cases)
@@ -147,10 +227,11 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
         .sort_values(["disease_group_id", "report_group_code", "disease_group_name"])
         .to_dict("records")
     )
+    summary_extra = summary_extra or {}
 
     artifact = {
         "model_type": "weather_ai_risk_v1",
-        "description": "Dự đoán top nhóm bệnh có nguy cơ ghi nhận ca cao theo thời tiết + nhóm tuổi + giới tính.",
+        "description": "Predict top disease groups with higher recorded-case risk from weather, age group and gender.",
         "sklearn_version": sklearn.__version__,
         "classifier": classifier,
         "regressor": regressor,
@@ -169,14 +250,11 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
             "negative_rows": int((dataset["has_case"] == 0).sum()),
             "total_case_count": int(dataset["case_count"].sum()),
             "disease_groups": int(dataset["disease_group_id"].nunique()),
-            "weather_date_from": str(weather["date"].min().date()),
-            "weather_date_to": str(weather["date"].max().date()),
-            "patient_date_from": str(pd.to_datetime(dataset["date"]).min().date()),
-            "patient_date_to": str(pd.to_datetime(dataset["date"]).max().date()),
-            "negative_ratio": int(negative_ratio),
+            "patient_date_from": str(dataset["date"].min().date()),
+            "patient_date_to": str(dataset["date"].max().date()),
             "classifier_auc": cls_auc,
             "regressor_mae_cases": mae,
-            **stats,
+            **summary_extra,
         },
     }
 
@@ -190,25 +268,52 @@ def train(weather_csv: Path, train_history: Path, output_model: Path, negative_r
     return artifact["training_summary"]
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train weather AI model")
+def train(
+    weather_csv: Path,
+    train_history: Path,
+    output_model: Path,
+    negative_ratio: int,
+    random_seed: int,
+) -> dict:
+    print("[1/4] Build dataset in memory...", flush=True)
+    dataset, summary_extra = build_dataset_in_memory(weather_csv, train_history, negative_ratio, random_seed)
+    return train_from_dataset(dataset, output_model, random_seed, summary_extra)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train Weather AI model")
     parser.add_argument("--weather-csv", default="Tool/weather/open-meteo-10.79N106.63E6m.csv")
     parser.add_argument("--train-history", default="Tool/weather/train_history.xlsx")
+    parser.add_argument(
+        "--train-dataset",
+        default=None,
+        help="Prebuilt dataset from scripts/build_weather_ai_dataset.py. If provided, train directly from this file.",
+    )
     parser.add_argument("--output-model", default="app/ml/weather_ai_risk_model.joblib")
     parser.add_argument("--negative-ratio", type=int, default=1)
     parser.add_argument("--random-seed", type=int, default=42)
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
-    summary = train(
-        weather_csv=Path(args.weather_csv),
-        train_history=Path(args.train_history),
-        output_model=Path(args.output_model),
-        negative_ratio=args.negative_ratio,
-        random_seed=args.random_seed,
-    )
+    if args.train_dataset:
+        print("[1/4] Load built dataset...", flush=True)
+        dataset, summary_extra = load_training_dataset(Path(args.train_dataset))
+        summary = train_from_dataset(
+            dataset=dataset,
+            output_model=Path(args.output_model),
+            random_seed=args.random_seed,
+            summary_extra=summary_extra,
+        )
+    else:
+        summary = train(
+            weather_csv=Path(args.weather_csv),
+            train_history=Path(args.train_history),
+            output_model=Path(args.output_model),
+            negative_ratio=args.negative_ratio,
+            random_seed=args.random_seed,
+        )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
 

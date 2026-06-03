@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from datetime import datetime
 import re
 import unicodedata
@@ -24,6 +26,8 @@ from app.services.area_service import (
 from app.services.weather_ai_service import predict_weather_risk
 
 router = APIRouter(prefix="/api/areas", tags=["Areas"])
+
+PROVINCE_REGIONS_JSON = Path("uploads") / "province_regions" / "province_regions.json"
 
 
 class AreaUpsert(BaseModel):
@@ -134,6 +138,16 @@ def list_provinces(
         .all()
     )
     return [_serialize_area(r) for r in rows]
+
+
+@router.get("/province-regions")
+def list_province_regions():
+    if not PROVINCE_REGIONS_JSON.exists():
+        raise HTTPException(status_code=404, detail="Chưa import file phân miền tỉnh/thành.")
+    try:
+        return json.loads(PROVINCE_REGIONS_JSON.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Không đọc được file phân miền tỉnh/thành: {e}")
 
 
 @router.get("/districts")

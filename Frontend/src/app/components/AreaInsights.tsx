@@ -23,6 +23,7 @@ import {
   YAxis,
 } from 'recharts';
 import * as api from '@/lib/api';
+import { loadProvinceRegions, type ProvinceRegionRecord } from '@/lib/provinceRegions';
 import { useAuth } from '../contexts/AuthContext';
 
 const PROVINCE_COLORS = [
@@ -46,7 +47,7 @@ const PROVINCE_COLORS = [
   '#581c87',
 ];
 
-type RegionFilter = 'all' | 'north' | 'central' | 'south';
+type RegionFilter = 'all' | ProvinceRegionRecord['mien_code'];
 
 const REGION_OPTIONS: Array<{ value: RegionFilter; label: string; description: string }> = [
   { value: 'all', label: 'Tất cả miền', description: 'Không giới hạn khu vực' },
@@ -54,79 +55,6 @@ const REGION_OPTIONS: Array<{ value: RegionFilter; label: string; description: s
   { value: 'central', label: 'Miền Trung', description: 'Bắc Trung Bộ, duyên hải và Tây Nguyên' },
   { value: 'south', label: 'Miền Nam', description: 'Đông Nam Bộ và Tây Nam Bộ' },
 ];
-
-const REGION_PROVINCES: Record<Exclude<RegionFilter, 'all'>, string[]> = {
-  north: [
-    'Hà Nội',
-    'Hải Phòng',
-    'Quảng Ninh',
-    'Bắc Giang',
-    'Bắc Kạn',
-    'Bắc Ninh',
-    'Cao Bằng',
-    'Điện Biên',
-    'Hà Giang',
-    'Hà Nam',
-    'Hải Dương',
-    'Hòa Bình',
-    'Hưng Yên',
-    'Lai Châu',
-    'Lạng Sơn',
-    'Lào Cai',
-    'Nam Định',
-    'Ninh Bình',
-    'Phú Thọ',
-    'Sơn La',
-    'Thái Bình',
-    'Thái Nguyên',
-    'Tuyên Quang',
-    'Vĩnh Phúc',
-    'Yên Bái',
-  ],
-  central: [
-    'Đà Nẵng',
-    'Huế',
-    'Thừa Thiên Huế',
-    'Thanh Hóa',
-    'Nghệ An',
-    'Hà Tĩnh',
-    'Quảng Bình',
-    'Quảng Trị',
-    'Quảng Nam',
-    'Quảng Ngãi',
-    'Bình Định',
-    'Phú Yên',
-    'Khánh Hòa',
-    'Ninh Thuận',
-    'Bình Thuận',
-    'Kon Tum',
-    'Gia Lai',
-    'Đắk Lắk',
-    'Đắk Nông',
-    'Lâm Đồng',
-  ],
-  south: [
-    'Hồ Chí Minh',
-    'Bình Phước',
-    'Bình Dương',
-    'Đồng Nai',
-    'Tây Ninh',
-    'Bà Rịa - Vũng Tàu',
-    'Long An',
-    'Tiền Giang',
-    'Bến Tre',
-    'Trà Vinh',
-    'Vĩnh Long',
-    'Đồng Tháp',
-    'An Giang',
-    'Kiên Giang',
-    'Cần Thơ',
-    'Hậu Giang',
-    'Sóc Trăng',
-    'Bạc Liêu',
-    'Cà Mau',
-  ],
-};
 
 const RISK_BADGE: Record<string, string> = {
   Cao: 'bg-red-100 text-red-700 border-red-200',
@@ -152,25 +80,33 @@ function normalizeProvinceName(value: string): string {
     .trim();
 }
 
-const REGION_LOOKUP = Object.fromEntries(
-  Object.entries(REGION_PROVINCES).map(([region, names]) => [
-    region,
-    new Set(names.map((name) => normalizeProvinceName(name))),
-  ]),
-) as Record<Exclude<RegionFilter, 'all'>, Set<string>>;
-
-function getProvinceRegion(provinceName: string): Exclude<RegionFilter, 'all'> | null {
-  const normalized = normalizeProvinceName(provinceName);
-  for (const option of REGION_OPTIONS) {
-    if (option.value === 'all') continue;
-    if (REGION_LOOKUP[option.value].has(normalized)) return option.value;
-  }
-  return null;
+function buildProvinceRegionLookup(rows: ProvinceRegionRecord[]): Map<string, Exclude<RegionFilter, 'all'>> {
+  const lookup = new Map<string, Exclude<RegionFilter, 'all'>>();
+  rows.forEach((row) => {
+    const names = [row.province_name, ...(row.aliases ?? [])];
+    names.forEach((name) => {
+      const normalized = normalizeProvinceName(name);
+      if (normalized) lookup.set(normalized, row.mien_code);
+    });
+  });
+  return lookup;
 }
 
-function isProvinceInRegion(province: api.AreaOption, region: RegionFilter): boolean {
+function getProvinceRegion(
+  provinceName: string,
+  lookup: Map<string, Exclude<RegionFilter, 'all'>>,
+): Exclude<RegionFilter, 'all'> | null {
+  const normalized = normalizeProvinceName(provinceName);
+  return lookup.get(normalized) ?? null;
+}
+
+function isProvinceInRegion(
+  province: api.AreaOption,
+  region: RegionFilter,
+  lookup: Map<string, Exclude<RegionFilter, 'all'>>,
+): boolean {
   if (region === 'all') return true;
-  return getProvinceRegion(province.name) === region;
+  return getProvinceRegion(province.name, lookup) === region;
 }
 
 function provinceColor(code: string | null | undefined, index: number): string {
@@ -284,6 +220,7 @@ export default function AreaInsights() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [provinces, setProvinces] = useState<api.AreaOption[]>([]);
+  const [provinceRegions, setProvinceRegions] = useState<ProvinceRegionRecord[]>([]);
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
   const [provinceCode, setProvinceCode] = useState('');
   const [provinceSearch, setProvinceSearch] = useState('');
@@ -310,6 +247,8 @@ export default function AreaInsights() {
     () => REGION_OPTIONS.find((option) => option.value === regionFilter) ?? REGION_OPTIONS[0],
     [regionFilter],
   );
+  const provinceRegionLookup = useMemo(() => buildProvinceRegionLookup(provinceRegions), [provinceRegions]);
+  const hasProvinceRegions = provinceRegions.length > 0;
 
   const activeAreaLabel = selectedProvince
     ? selectedProvince.name
@@ -319,11 +258,13 @@ export default function AreaInsights() {
 
   const filteredProvinces = useMemo(() => {
     const regionProvinces =
-      regionFilter === 'all' ? provinces : provinces.filter((province) => isProvinceInRegion(province, regionFilter));
+      regionFilter === 'all'
+        ? provinces
+        : provinces.filter((province) => isProvinceInRegion(province, regionFilter, provinceRegionLookup));
     const q = normalizeText(provinceSearch);
     if (!q) return regionProvinces;
     return regionProvinces.filter((p) => normalizeText(`${p.name} ${p.code}`).includes(q));
-  }, [provinces, provinceSearch, regionFilter]);
+  }, [provinces, provinceSearch, provinceRegionLookup, regionFilter]);
 
   const coloredCases = useMemo(
     () =>
@@ -355,11 +296,13 @@ export default function AreaInsights() {
     setLoading(true);
     setError(null);
     try {
-      const prov = await api.listAreaProvinces();
+      const [prov, regionRows] = await Promise.all([api.listAreaProvinces(), loadProvinceRegions()]);
       setProvinces(prov);
+      setProvinceRegions(regionRows);
+      const regionLookup = buildProvinceRegionLookup(regionRows);
 
       if (!provinceCode && regionFilter !== 'all') {
-        const regionProvinces = prov.filter((province) => isProvinceInRegion(province, regionFilter));
+        const regionProvinces = prov.filter((province) => isProvinceInRegion(province, regionFilter, regionLookup));
         const regionCodes = new Set(regionProvinces.map((province) => province.code));
         const regionNames = new Set(regionProvinces.map((province) => normalizeProvinceName(province.name)));
         const [allCases, diseaseLists, riskLists] = await Promise.all([
@@ -451,7 +394,8 @@ export default function AreaInsights() {
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
                 Dữ liệu khu vực được lấy từ phần sau dấu phẩy cuối cùng của cột{' '}
                 <span className="font-mono text-slate-700">full_address</span>. Các tỉnh/thành phố được tô màu riêng
-                để dễ so sánh khi số lượng khu vực tăng.
+                để dễ so sánh khi số lượng khu vực tăng. Bộ lọc Bắc/Trung/Nam chỉ hoạt động sau khi import file
+                phân miền tỉnh/thành trong mục Import dữ liệu.
               </p>
             </div>
           </div>
@@ -465,11 +409,14 @@ export default function AreaInsights() {
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
                   {REGION_OPTIONS.map((option) => {
                     const active = option.value === regionFilter && !selectedProvince;
+                    const disabled = option.value !== 'all' && !hasProvinceRegions;
                     return (
                       <button
                         key={option.value}
                         type="button"
+                        disabled={disabled}
                         onClick={() => {
+                          if (disabled) return;
                           setRegionFilter(option.value);
                           setProvinceCode('');
                           setProvinceSearch('');
@@ -478,6 +425,8 @@ export default function AreaInsights() {
                         className={`rounded-lg border px-3 py-2 text-left transition ${
                           active
                             ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                            : disabled
+                              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50/60'
                         }`}
                       >
@@ -487,6 +436,11 @@ export default function AreaInsights() {
                     );
                   })}
                 </div>
+                {!hasProvinceRegions && (
+                  <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
+                    Chưa import file phân miền tỉnh/thành. Các bộ lọc Miền Bắc, Miền Trung, Miền Nam tạm thời không hoạt động.
+                  </p>
+                )}
               </div>
 
               <div className="mb-2 flex items-center justify-between gap-2">

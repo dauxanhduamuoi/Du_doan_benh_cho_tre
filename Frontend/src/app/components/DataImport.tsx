@@ -4,6 +4,7 @@ import * as api from '@/lib/api';
 import { addNotification } from '@/lib/notifications';
 import DiseaseCodesManager from './DiseaseCodesManager';
 import ParentGuideManager from './ParentGuideManager';
+import ProvinceRegionsManager from './ProvinceRegionsManager';
 
 interface Toast {
   id: number;
@@ -94,7 +95,7 @@ export default function DataImport() {
             <div>
               <h2 className="text-xl font-semibold text-slate-800">Import dữ liệu</h2>
               <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                Tập trung các thao tác nạp dữ liệu: danh sách bệnh nhân, mã bệnh và hướng dẫn phụ huynh.
+                Tập trung các thao tác nạp dữ liệu: danh sách bệnh nhân, mã bệnh, phân miền khu vực và hướng dẫn phụ huynh.
                 Hãy kiểm tra đúng file trước khi import để tránh ghi đè dữ liệu hiện tại.
               </p>
             </div>
@@ -143,6 +144,7 @@ export default function DataImport() {
       </section>
 
       <DiseaseCodesManager />
+      <ProvinceRegionsManager />
       <ParentGuideManager />
     </div>
   );

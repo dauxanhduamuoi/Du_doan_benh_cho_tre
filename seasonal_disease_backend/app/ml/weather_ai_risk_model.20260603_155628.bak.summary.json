@@ -6,7 +6,7 @@
   "disease_groups": 235,
   "patient_date_from": "2021-01-01",
   "patient_date_to": "2025-04-26",
-  "classifier_auc": 0.9312601150919263,
+  "classifier_auc": 0.9311423901087268,
   "regressor_mae_cases": 0.5490113075358296,
   "weather_file": "open-meteo-10.79N106.63E6m.csv",
   "train_history_file": "train_history.xlsx",
