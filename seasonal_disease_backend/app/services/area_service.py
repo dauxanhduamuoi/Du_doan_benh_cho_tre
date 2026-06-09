@@ -5,6 +5,8 @@ import re
 import unicodedata
 import urllib.request
 from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -23,6 +25,10 @@ PATIENT_AREA_COLUMNS = {
     "ward_code": "TEXT",
     "ward_name": "TEXT",
 }
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROVINCE_REGIONS_JSON = PROJECT_ROOT / "uploads" / "province_regions" / "province_regions.json"
+PROVINCE_COORDS_JSON = Path(__file__).resolve().parents[1] / "resources" / "vietnam_province_coords.json"
 
 
 DEFAULT_AREA_DATA = [
@@ -151,22 +157,176 @@ KNOWN_PROVINCES = {
 }
 
 
+def _load_province_region_rows() -> list[dict[str, Any]]:
+    if not PROVINCE_REGIONS_JSON.exists():
+        return []
+    try:
+        return json.loads(PROVINCE_REGIONS_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+@lru_cache(maxsize=1)
+def _load_province_coord_rows() -> list[dict[str, Any]]:
+    if not PROVINCE_COORDS_JSON.exists():
+        return []
+    try:
+        return json.loads(PROVINCE_COORDS_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _province_region_lookup() -> dict[str, dict[str, Any]]:
+    lookup: dict[str, dict[str, Any]] = {}
+    for row in _load_province_region_rows():
+        name = str(row.get("province_name") or "").strip()
+        if not name:
+            continue
+        record = {
+            "code": _normalize_code(row.get("province_code")) or "",
+            "name": name,
+            "aliases": [str(alias).strip() for alias in (row.get("aliases") or []) if str(alias).strip()],
+        }
+        lookup[_key(name)] = record
+        for alias in record["aliases"]:
+            lookup[_key(alias)] = record
+
+    for key, (code, name, _lat, _lon) in KNOWN_PROVINCES.items():
+        lookup.setdefault(key, {"code": code, "name": name, "aliases": []})
+    return lookup
+
+
+@lru_cache(maxsize=1)
+def _province_coord_lookup() -> dict[str, tuple[float, float]]:
+    lookup: dict[str, tuple[float, float]] = {}
+    for row in _load_province_coord_rows():
+        name = str(row.get("name") or "").strip()
+        lat = row.get("latitude")
+        lon = row.get("longitude")
+        if not name or not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+            continue
+        lookup[_key(name)] = (float(lat), float(lon))
+
+    for key, (_code, _name, lat, lon) in KNOWN_PROVINCES.items():
+        lookup.setdefault(key, (lat, lon))
+    return lookup
+
+
+def _resolve_catalog_province(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    key = _key(str(value))
+    if not key:
+        return None
+
+    region = _province_region_lookup().get(key)
+    if region:
+        lat_lon = _province_coord_lookup().get(_key(region["name"]))
+        return {
+            "code": region.get("code") or _province_code_from_name(region["name"]),
+            "name": region["name"],
+            "latitude": lat_lon[0] if lat_lon else None,
+            "longitude": lat_lon[1] if lat_lon else None,
+        }
+
+    known = KNOWN_PROVINCES.get(key)
+    if known:
+        return {
+            "code": known[0],
+            "name": known[1],
+            "latitude": known[2],
+            "longitude": known[3],
+        }
+
+    return None
+
+
 def fill_known_province_coordinates(db: Session) -> int:
-    """Backfill province coordinates from the local known-province table."""
+    """Backfill province coordinates from the local catalog."""
     updated = 0
     rows = db.query(AreaProvince).filter(AreaProvince.is_active.is_(True)).all()
     for province in rows:
-        known = KNOWN_PROVINCES.get(_key(province.name))
-        if not known:
+        catalog = _resolve_catalog_province(province.name)
+        if not catalog:
             continue
-        if province.latitude is None or province.longitude is None:
-            province.latitude = known[2]
-            province.longitude = known[3]
+        changed = False
+        if province.latitude is None and catalog.get("latitude") is not None:
+            province.latitude = catalog["latitude"]
+            changed = True
+        if province.longitude is None and catalog.get("longitude") is not None:
+            province.longitude = catalog["longitude"]
+            changed = True
+        if changed:
             province.updated_at = datetime.utcnow()
             updated += 1
     if updated:
         db.commit()
     return updated
+
+
+def get_province_options(db: Session) -> list[dict[str, Any]]:
+    fill_known_province_coordinates(db)
+    merged: dict[str, dict[str, Any]] = {}
+
+    for row in db.query(AreaProvince).filter(AreaProvince.is_active.is_(True)).all():
+        key = _province_match_key(row.name)
+        merged[key] = {
+            "code": row.code,
+            "name": row.name,
+            "latitude": row.latitude,
+            "longitude": row.longitude,
+            "is_active": row.is_active,
+        }
+
+    for region in _load_province_region_rows():
+        name = str(region.get("province_name") or "").strip()
+        if not name:
+            continue
+        catalog = _resolve_catalog_province(name)
+        if not catalog:
+            continue
+        key = _province_match_key(catalog["name"])
+        existing = merged.get(key)
+        if existing:
+            if existing.get("latitude") is None and catalog.get("latitude") is not None:
+                existing["latitude"] = catalog["latitude"]
+            if existing.get("longitude") is None and catalog.get("longitude") is not None:
+                existing["longitude"] = catalog["longitude"]
+            if not existing.get("code") and catalog.get("code"):
+                existing["code"] = catalog["code"]
+            existing["is_active"] = True
+        else:
+            merged[key] = {
+                "code": catalog.get("code") or _province_code_from_name(catalog["name"]),
+                "name": catalog["name"],
+                "latitude": catalog.get("latitude"),
+                "longitude": catalog.get("longitude"),
+                "is_active": True,
+            }
+
+    for coord in _load_province_coord_rows():
+        name = str(coord.get("name") or "").strip()
+        latitude = coord.get("latitude")
+        longitude = coord.get("longitude")
+        if not name or not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
+            continue
+        key = _province_match_key(name)
+        existing = merged.get(key)
+        if existing:
+            if existing.get("latitude") is None:
+                existing["latitude"] = float(latitude)
+            if existing.get("longitude") is None:
+                existing["longitude"] = float(longitude)
+        else:
+            merged[key] = {
+                "code": _province_code_from_name(name),
+                "name": name,
+                "latitude": float(latitude),
+                "longitude": float(longitude),
+                "is_active": True,
+            }
+
+    return sorted(merged.values(), key=lambda item: item["name"])
 
 
 def ensure_area_schema(engine: Engine) -> None:
@@ -219,6 +379,9 @@ def _key(value: str) -> str:
 def _province_code_from_name(name: str) -> str:
     name_key = _key(name)
     stripped_key = re.sub(r"^(t|tp|tinh|thanh pho)\s+", "", name_key).strip()
+    catalog = _province_region_lookup().get(name_key) or _province_region_lookup().get(stripped_key)
+    if catalog and catalog.get("code"):
+        return str(catalog["code"])
     known = KNOWN_PROVINCES.get(name_key) or KNOWN_PROVINCES.get(stripped_key)
     if known:
         return known[0]
@@ -237,6 +400,10 @@ def normalize_province_name(value: Any) -> str | None:
     compact_key = compact_key.replace("tp hcm", "ho chi minh").replace("tphcm", "ho chi minh")
     stripped_key = re.sub(r"^(t|tp|tinh|thanh pho)\s+", "", compact_key).strip()
 
+    catalog = _province_region_lookup().get(compact_key) or _province_region_lookup().get(stripped_key)
+    if catalog:
+        return catalog["name"]
+
     known = KNOWN_PROVINCES.get(stripped_key) or KNOWN_PROVINCES.get(compact_key)
     if known:
         return known[1]
@@ -247,6 +414,11 @@ def normalize_province_name(value: Any) -> str | None:
         raw,
     ).strip(" .")
     return cleaned or raw
+
+
+def _province_match_key(value: Any) -> str:
+    normalized = normalize_province_name(value)
+    return _key(normalized or str(value or ""))
 
 
 def extract_province_from_full_address(value: Any) -> str | None:
@@ -464,33 +636,48 @@ def attach_patient_areas(db: Session, df: pd.DataFrame) -> pd.DataFrame:
     """
     fill_known_province_coordinates(db)
     provinces, _, _ = get_area_maps(db)
-    province_by_name = {_key(p.name): p for p in provinces.values()}
+    province_by_name = {_province_match_key(p.name): p for p in provinces.values()}
     assigned: list[dict[str, str | None]] = []
 
     for idx, row in df.reset_index(drop=True).iterrows():
         province_code = _find_value(row, PROVINCE_CODE_COLUMNS)
         province_name = _find_province_name(row)
         province = provinces.get(province_code or "") if province_code else None
+        catalog = _resolve_catalog_province(province_name) if province_name else None
 
         if not province and province_name:
-            province = province_by_name.get(_key(province_name))
+            province = province_by_name.get(_province_match_key(province_name))
+
+        if not province and catalog:
+            province = provinces.get(str(catalog.get("code") or ""))
 
         if not province and province_name:
-            code = province_code or _province_code_from_name(province_name)
+            code = province_code or (str(catalog.get("code")) if catalog and catalog.get("code") else _province_code_from_name(province_name))
             province = provinces.get(code)
 
-        if province and province_name and province.name != province_name:
-            province.name = province_name
+        if province and province_name:
+            canonical_name = str(catalog.get("name")) if catalog and catalog.get("name") else province_name
+            if province.name != canonical_name:
+                province.name = canonical_name
+                province.updated_at = datetime.utcnow()
+        if province and catalog:
+            if province.latitude is None and catalog.get("latitude") is not None:
+                province.latitude = catalog["latitude"]
+            if province.longitude is None and catalog.get("longitude") is not None:
+                province.longitude = catalog["longitude"]
             province.updated_at = datetime.utcnow()
 
         if not province and province_name:
-            code = province_code or _province_code_from_name(province_name)
-            known = KNOWN_PROVINCES.get(_key(province_name))
-            latitude = known[2] if known else None
-            longitude = known[3] if known else None
+            code = province_code or (str(catalog.get("code")) if catalog and catalog.get("code") else _province_code_from_name(province_name))
+            latitude = catalog.get("latitude") if catalog else None
+            longitude = catalog.get("longitude") if catalog else None
+            if latitude is None or longitude is None:
+                known = KNOWN_PROVINCES.get(_key(province_name))
+                latitude = known[2] if known else latitude
+                longitude = known[3] if known else longitude
             province = AreaProvince(
                 code=code,
-                name=province_name,
+                name=str(catalog.get("name")) if catalog and catalog.get("name") else province_name,
                 latitude=latitude,
                 longitude=longitude,
                 is_active=True,
@@ -498,7 +685,7 @@ def attach_patient_areas(db: Session, df: pd.DataFrame) -> pd.DataFrame:
             )
             db.add(province)
             provinces[code] = province
-            province_by_name[_key(province_name)] = province
+            province_by_name[_province_match_key(province_name)] = province
 
         assigned.append({
             "province_code": province.code if province else None,

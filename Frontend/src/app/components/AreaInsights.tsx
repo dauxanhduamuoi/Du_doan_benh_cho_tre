@@ -383,7 +383,11 @@ export default function AreaInsights() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section
+        className={`relative rounded-xl border border-slate-200 bg-white p-5 shadow-sm ${
+          provincePickerOpen ? 'z-50' : 'z-0'
+        }`}
+      >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <div className="rounded-lg bg-blue-50 p-2 text-blue-600 ring-1 ring-blue-100">
@@ -478,7 +482,7 @@ export default function AreaInsights() {
                   className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {provincePickerOpen && (
-                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[100] max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                     <button
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}

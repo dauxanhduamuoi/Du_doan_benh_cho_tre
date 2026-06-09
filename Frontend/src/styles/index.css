@@ -102,7 +102,6 @@ html[data-theme='multicolor'] .bg-white {
     linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(248, 250, 252, 0.92) 100%) !important;
   border-color: rgba(125, 211, 252, 0.62) !important;
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.72) inset !important;
-  backdrop-filter: blur(16px);
 }
 
 html[data-theme='multicolor'] aside.bg-white {
@@ -302,7 +301,13 @@ html[data-theme='multicolor'] aside button.text-slate-500:hover {
 
 html[data-theme='multicolor'] header.bg-white {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+}
+
+html[data-theme='multicolor'] aside.bg-white {
+  backdrop-filter: blur(16px);
 }
 
 html[data-theme='multicolor'] header.bg-white::after {
@@ -313,6 +318,7 @@ html[data-theme='multicolor'] header.bg-white::after {
   border-radius: 999px 999px 0 0;
   background: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #e11d48);
   opacity: 0.78;
+  pointer-events: none;
 }
 
 html[data-theme='multicolor'] header.bg-white h2 {

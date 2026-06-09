@@ -17,7 +17,7 @@ from app.models import AreaDistrict, AreaProvince, AreaWard, DiseaseKnowledge, F
 from app.security import require_admin_permission, require_permission
 from app.services.area_service import (
     apply_area_filters,
-    fill_known_province_coordinates,
+    get_province_options,
     resolve_area,
     seed_default_areas,
     sync_areas_from_payload,
@@ -130,14 +130,7 @@ def _find_disease_knowledge(disease_group: str, rows: list[DiseaseKnowledge]) ->
 def list_provinces(
     db: Session = Depends(get_db),
 ):
-    fill_known_province_coordinates(db)
-    rows = (
-        db.query(AreaProvince)
-        .filter(AreaProvince.is_active.is_(True))
-        .order_by(AreaProvince.name.asc())
-        .all()
-    )
-    return [_serialize_area(r) for r in rows]
+    return get_province_options(db)
 
 
 @router.get("/province-regions")

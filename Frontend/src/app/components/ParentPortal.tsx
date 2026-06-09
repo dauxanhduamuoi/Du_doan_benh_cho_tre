@@ -17,7 +17,12 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { DecorativeBackground, HospitalBrandBadge } from './ParentPortalDecor';
+import {
+  DecorativeBackground,
+  HospitalBrandBadge,
+  ParentBrandFooter,
+  PersonalBrandBadge,
+} from './ParentPortalDecor';
 import * as api from '@/lib/api';
 import { fuzzyMatch, splitDiseaseLabel } from '@/lib/disease';
 
@@ -356,8 +361,9 @@ export default function ParentPortal() {
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fff3c9] via-[#e8fbff] to-[#ffe8f3] text-slate-800">
       <DecorativeBackground />
       <main className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <HospitalBrandBadge />
+          <PersonalBrandBadge />
         </div>
         <section className="overflow-hidden rounded-[34px] border border-white/90 bg-white/90 shadow-xl shadow-sky-100/70 backdrop-blur">
           <div className="relative bg-gradient-to-br from-sky-100/90 via-white to-amber-100/90 px-5 pb-6 pt-5 sm:px-7 sm:pt-7">
@@ -386,10 +392,9 @@ export default function ParentPortal() {
                 </div>
               </div>
 
-              <div className="relative overflow-hidden rounded-[28px] border border-white bg-white/90 p-4 shadow-lg shadow-teal-100/70">
+              <div className="relative min-h-[390px] overflow-hidden rounded-[28px] border border-white bg-white/90 p-4 shadow-lg shadow-teal-100/70">
                 <div className="pointer-events-none absolute -right-5 -top-4 text-7xl opacity-25">🐳</div>
-                <div className="pointer-events-none absolute -bottom-4 right-10 text-5xl opacity-25">🐥</div>
-                <div className="flex items-center gap-3">
+                <div className="relative z-10 flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-100 to-sky-100 text-teal-700 shadow-sm">
                     <HeartPulse size={24} />
                   </div>
@@ -398,9 +403,24 @@ export default function ParentPortal() {
                     <p className="text-xs font-semibold text-slate-500">{t('parent.weather.subtitle')}</p>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="relative z-10 mt-4 grid grid-cols-2 gap-3">
                   <WeatherTile icon={Thermometer} label={t('parent.weather.temperature')} value={`${formatNum(aiResult?.weather?.features?.temp_mean_today)}°C`} />
                   <WeatherTile icon={Droplets} label={t('parent.weather.humidity')} value={`${formatNum(aiResult?.weather?.features?.humidity_mean_today)}%`} />
+                </div>
+                <div className="pointer-events-none absolute bottom-24 left-5 h-4 w-4 rounded-full bg-sky-200/80 shadow-sm" />
+                <div className="pointer-events-none absolute bottom-14 left-10 h-2.5 w-2.5 rounded-full bg-rose-200/90" />
+                <div className="pointer-events-none absolute bottom-32 left-12 text-xl font-black text-amber-300/80">✦</div>
+                <div className="pointer-events-none absolute bottom-16 right-5 h-4 w-4 rounded-full bg-amber-200/90 shadow-sm" />
+                <div className="pointer-events-none absolute bottom-28 right-10 h-2.5 w-2.5 rounded-full bg-teal-200/90" />
+                <div className="pointer-events-none absolute bottom-40 right-5 text-lg font-black text-rose-300/80">✦</div>
+                <div className="pointer-events-none absolute bottom-3 left-1/2 h-12 w-52 -translate-x-1/2 rounded-[50%] bg-gradient-to-r from-sky-100/30 via-amber-100/70 to-rose-100/30 blur-sm" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-[-18px] z-[1] flex justify-center">
+                  <img
+                    src="/parent-weather-fox.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-[220px] w-auto max-w-[86%] object-contain drop-shadow-[0_18px_18px_rgba(14,116,144,0.14)]"
+                  />
                 </div>
               </div>
             </div>
@@ -617,6 +637,7 @@ export default function ParentPortal() {
             </section>
           </aside>
         </section>
+        <ParentBrandFooter />
       </main>
     </div>
   );

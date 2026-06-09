@@ -1,0 +1,114 @@
+Environment: seasonal_backend
+Python: 3.11.15
+
+=== conda list ===
+annotated-types 0.7.0 pypi_0 pypi
+anyio 4.13.0 pypi_0 pypi
+bcrypt 4.0.1 pypi_0 pypi
+bzip2 1.0.8 h2bbff1b_6
+ca-certificates 2026.3.19 haa95532_0
+certifi 2026.5.20 pypi_0 pypi
+cffi 2.0.0 pypi_0 pypi
+click 8.3.3 pypi_0 pypi
+colorama 0.4.6 pypi_0 pypi
+cryptography 48.0.0 pypi_0 pypi
+ecdsa 0.19.2 pypi_0 pypi
+et-xmlfile 2.0.0 pypi_0 pypi
+fastapi 0.115.6 pypi_0 pypi
+greenlet 3.5.0 pypi_0 pypi
+h11 0.16.0 pypi_0 pypi
+httpcore 1.0.9 pypi_0 pypi
+httptools 0.7.1 pypi_0 pypi
+httpx 0.28.1 pypi_0 pypi
+idna 3.14 pypi_0 pypi
+joblib 1.4.2 pypi_0 pypi
+libexpat 2.8.0 hd7fb8db_0
+libffi 3.4.8 h2b21627_2
+libzlib 1.3.1 h1c6eee0_1
+numpy 2.1.3 pypi_0 pypi
+openpyxl 3.1.5 pypi_0 pypi
+openssl 3.5.6 hbb43b14_0
+packaging 26.0 py311haa95532_0
+pandas 2.2.3 pypi_0 pypi
+passlib 1.7.4 pypi_0 pypi
+pip 26.0.1 pyhc872135_1
+pyasn1 0.6.3 pypi_0 pypi
+pycparser 3.0 pypi_0 pypi
+pydantic 2.10.3 pypi_0 pypi
+pydantic-core 2.27.1 pypi_0 pypi
+python 3.11.15 h1044e36_0
+python-dateutil 2.9.0.post0 pypi_0 pypi
+python-dotenv 1.2.2 pypi_0 pypi
+python-jose 3.3.0 pypi_0 pypi
+python-multipart 0.0.19 pypi_0 pypi
+pytz 2026.2 pypi_0 pypi
+pyyaml 6.0.3 pypi_0 pypi
+rsa 4.9.1 pypi_0 pypi
+scikit-learn 1.5.2 pypi_0 pypi
+scipy 1.17.1 pypi_0 pypi
+setuptools 82.0.1 py311haa95532_0
+six 1.17.0 pypi_0 pypi
+sqlalchemy 2.0.36 pypi_0 pypi
+sqlite 3.51.2 hee5a0db_0
+starlette 0.41.3 pypi_0 pypi
+threadpoolctl 3.6.0 pypi_0 pypi
+tk 8.6.15 hf199647_0
+typing-extensions 4.15.0 pypi_0 pypi
+tzdata 2026.2 pypi_0 pypi
+ucrt 10.0.22621.0 haa95532_0
+uvicorn 0.32.1 pypi_0 pypi
+vc 14.3 h2df5915_10
+vc14_runtime 14.44.35208 h4927774_10
+vs2015_runtime 14.44.35208 ha6b5a95_10
+watchfiles 1.1.1 pypi_0 pypi
+websockets 16.0 pypi_0 pypi
+wheel 0.46.3 py311haa95532_0
+xz 5.8.2 h53af0af_0
+zlib 1.3.1 h1c6eee0_1
+
+=== pip freeze ===
+annotated-types==0.7.0
+anyio==4.13.0
+bcrypt==4.0.1
+certifi==2026.5.20
+cffi==2.0.0
+click==8.3.3
+colorama==0.4.6
+cryptography==48.0.0
+ecdsa==0.19.2
+et_xmlfile==2.0.0
+fastapi==0.115.6
+greenlet==3.5.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.7.1
+httpx==0.28.1
+idna==3.14
+joblib==1.4.2
+numpy==2.1.3
+openpyxl==3.1.5
+packaging==26.0
+pandas==2.2.3
+passlib==1.7.4
+pyasn1==0.6.3
+pycparser==3.0
+pydantic==2.10.3
+pydantic_core==2.27.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
+python-jose==3.3.0
+python-multipart==0.0.19
+pytz==2026.2
+PyYAML==6.0.3
+rsa==4.9.1
+scikit-learn==1.5.2
+scipy==1.17.1
+six==1.17.0
+SQLAlchemy==2.0.36
+starlette==0.41.3
+threadpoolctl==3.6.0
+typing_extensions==4.15.0
+tzdata==2026.2
+uvicorn==0.32.1
+watchfiles==1.1.1
+websockets==16.0

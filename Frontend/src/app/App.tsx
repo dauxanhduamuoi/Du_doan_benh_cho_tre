@@ -184,7 +184,7 @@ function AppShell() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3 shrink-0">
+        <header className="relative z-50 bg-white border-b border-slate-200 px-6 py-3 shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-800">{pageTitle}</h2>
@@ -210,7 +210,7 @@ function AppShell() {
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen((v) => !v)}
-                  className="flex items-center gap-3 pr-2 pl-1 py-1 rounded-xl hover:bg-slate-100 transition-colors"
+                  className="relative z-50 flex items-center gap-3 rounded-xl px-1 py-1 pr-2 hover:bg-slate-100 transition-colors"
                 >
                   <div className="text-right hidden md:block">
                     <p className="text-sm font-medium text-slate-700">{displayName}</p>
@@ -221,7 +221,7 @@ function AppShell() {
                   </div>
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-30">
+                  <div className="absolute right-0 z-[100] mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
                     <div className="px-4 py-3 border-b border-slate-100">
                       <p className="text-sm font-semibold text-slate-800 truncate">{displayName}</p>
                       <p className="text-xs text-slate-500 truncate">@{user?.username}</p>

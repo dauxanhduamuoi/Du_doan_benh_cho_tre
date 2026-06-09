@@ -133,9 +133,9 @@ export function HospitalBrandBadge() {
   const t = useVietnameseT();
 
   return (
-    <div className="inline-flex items-center gap-3 rounded-full border border-white bg-white/90 px-4 py-2 shadow-md shadow-sky-100 backdrop-blur">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 via-cyan-300 to-amber-300 text-lg shadow-sm">
-        🏥
+    <div className="inline-flex items-center gap-3 rounded-full border border-white bg-white/90 py-2 pl-2 pr-4 shadow-md shadow-sky-100 backdrop-blur">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 via-cyan-400 to-teal-400 text-xl shadow-sm ring-2 ring-white">
+        <span aria-hidden="true">🏥</span>
       </div>
       <div>
         <p className="text-xs font-black uppercase tracking-wide text-sky-600">{t('parent.brand.portal')}</p>
@@ -144,6 +144,77 @@ export function HospitalBrandBadge() {
         </p>
       </div>
     </div>
+  );
+}
+
+export function PersonalBrandBadge() {
+  return (
+    <div className="inline-flex items-center gap-3 rounded-full border border-white bg-white/90 py-2 pl-2 pr-4 shadow-md shadow-fuchsia-100 backdrop-blur">
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-fuchsia-100 via-white to-sky-100 text-xl shadow-sm ring-2 ring-white">
+        <span aria-hidden="true">🦊</span>
+        <img
+          src="/parent-brand-logo-round.png"
+          alt="Lightning Fox SD"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+      </div>
+      <div>
+        <p className="text-xs font-black uppercase tracking-wide text-fuchsia-600">Phát triển bởi</p>
+        <p className="bg-gradient-to-r from-fuchsia-700 via-sky-600 to-teal-500 bg-clip-text text-base font-black text-transparent">
+          Lightning Fox SD
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function ParentBrandFooter() {
+  return (
+    <footer className="mt-6 overflow-hidden rounded-[28px] border border-white/90 bg-white/88 shadow-lg shadow-sky-100/60 backdrop-blur">
+      <div className="grid items-center gap-6 px-5 py-5 md:grid-cols-[96px_1fr_460px] lg:px-7">
+        <div className="relative flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-sky-50 via-white to-amber-50 shadow-md ring-1 ring-sky-100">
+          <span className="text-2xl" aria-hidden="true">🦊</span>
+          <img
+            src="/parent-brand-logo-round.png"
+            alt="Logo Lightning Fox SD"
+            className="absolute inset-0 h-full w-full object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-xl font-black text-sky-950">Lightning Fox SD</p>
+          <p className="mt-1 text-sm font-black text-orange-500">
+            Theo dõi sớm · Chăm sóc nhẹ nhàng · Đồng hành cùng bé
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+            Dự án thực tập tốt nghiệp tại <strong className="text-sky-800">Bệnh viện Nhi Đồng 2</strong>
+          </p>
+        </div>
+
+        <div className="relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-sky-100 bg-white/80 px-2 py-2">
+          <span className="text-center text-xs font-bold text-slate-400">
+            Lightning Fox SD
+          </span>
+          <img
+            src="/parent-brand-logo-wide.png"
+            alt="Lightning Fox SD - Fast, Optimized, eXcellence"
+            className="absolute inset-0 h-full w-full object-contain p-1"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      </div>
+      <div className="border-t border-sky-100 bg-gradient-to-r from-sky-50 via-white to-amber-50 px-5 py-2.5 text-center text-xs font-semibold text-slate-500">
+        Theo dõi sớm · Chăm sóc nhẹ nhàng · Đồng hành cùng bé
+      </div>
+    </footer>
   );
 }
 
