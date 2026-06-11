@@ -12,7 +12,6 @@ import {
   Search,
   Download,
   CheckCircle2,
-  ChevronDown,
   ChevronRight,
 } from 'lucide-react';
 import {
@@ -34,6 +33,7 @@ import { useT } from '@/lib/i18n';
 import { ensureBilingualMap, splitDiseaseLabel, fuzzyMatch } from '@/lib/disease';
 import { sortAgeGroups } from '@/lib/age';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 const RISK_COLORS: Record<string, string> = {
   Cao: 'bg-red-100 text-red-700 border-red-200',
@@ -68,13 +68,8 @@ function riskLabel(level: string, t: (k: string) => string): string {
   return level;
 }
 
-function pickWorstRisk(levels: string[]): string {
-  if (levels.includes('Cao')) return 'Cao';
-  if (levels.includes('Trung bình')) return 'Trung bình';
-  return 'Thấp';
-}
-
 export default function Forecast() {
+  const isMinimalTheme = useMinimalTheme();
   const t = useT();
   const [summary, setSummary] = useState<api.ForecastGroupSummary[]>([]);
   const [details, setDetails] = useState<api.ForecastResult[]>([]);
@@ -85,21 +80,25 @@ export default function Forecast() {
 
   // Chỉ chạy dự báo 1 tháng — đã bỏ tuỳ chọn 2/3 tháng theo yêu cầu.
   const horizon = 1 as const;
-  const [modelKind, setModelKind] = useState<'seasonal' | 'weather'>('seasonal');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [summarySearchTerm, setSummarySearchTerm] = useState('');
+  const [debouncedSummarySearch, setDebouncedSummarySearch] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
   // Map VN→EN từ BE để search có thể match cả 2 ngôn ngữ.
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
-  // Group bệnh đang mở rộng trong bảng "Chi tiết theo nhóm tuổi".
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Debounce search 200ms để tránh re-render mỗi keystroke khi data lớn.
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 200);
     return () => clearTimeout(id);
   }, [searchTerm]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSummarySearch(summarySearchTerm.trim()), 200);
+    return () => clearTimeout(id);
+  }, [summarySearchTerm]);
 
   useEffect(() => {
     ensureBilingualMap().then(setBilingualMap).catch(() => undefined);
@@ -134,11 +133,7 @@ export default function Forecast() {
   const handleRun = async () => {
     setRunning(true);
     try {
-      if (modelKind === 'weather') {
-        await api.runWeatherForecast('auto', horizon);
-      } else {
-        await api.runForecast('auto', horizon);
-      }
+      await api.runForecast('auto', horizon);
       // Lấy dữ liệu mới trực tiếp từ API thay vì đọc state `summary` cũ
       // (setSummary trong load() là async nên closure này thấy giá trị trước đó).
       const [s, d] = await Promise.all([
@@ -152,7 +147,7 @@ export default function Forecast() {
         type: 'forecast',
         severity: high > 0 ? 'warning' : 'info',
         title: t('forecast.done'),
-        description: `${modelKind === 'weather' ? t('forecast.modelWeather') : t('forecast.modelSeasonal')} · ${t('forecast.horizon')}: ${horizon} ${t('forecast.monthUnit')} · ${t('forecast.highRisk')}: ${high}`,
+        description: `${t('forecast.horizon')}: ${horizon} ${t('forecast.monthUnit')} · ${t('forecast.highRisk')}: ${high}`,
       });
       showToast('success', t('forecast.done'));
     } catch (e) {
@@ -196,58 +191,6 @@ export default function Forecast() {
       return true;
     });
   }, [summary, selectedPeriod, riskFilter, debouncedSearch, bilingualMap]);
-
-  const filteredDetails = useMemo(() => {
-    return details.filter((r) => {
-      if (selectedPeriod !== 'all' && r.forecast_period !== selectedPeriod) return false;
-      if (riskFilter !== 'all' && r.risk_level !== riskFilter) return false;
-      if (debouncedSearch) {
-        const lbl = splitDiseaseLabel(r.disease_group, bilingualMap);
-        const haystack = `${lbl.vi} ${lbl.en ?? ''} ${r.age_group}`;
-        if (!fuzzyMatch(haystack, debouncedSearch)) return false;
-      }
-      return true;
-    });
-  }, [details, selectedPeriod, riskFilter, debouncedSearch, bilingualMap]);
-
-  // Group filteredDetails theo (period × disease_group) để render dropdown.
-  const detailGroups = useMemo(() => {
-    const map = new Map<string, { period: string; disease: string; rows: api.ForecastResult[] }>();
-    for (const r of filteredDetails) {
-      const key = `${r.forecast_period}__${r.disease_group}`;
-      const cur = map.get(key);
-      if (cur) {
-        cur.rows.push(r);
-      } else {
-        map.set(key, {
-          period: r.forecast_period,
-          disease: r.disease_group,
-          rows: [r],
-        });
-      }
-    }
-    // Sort: period desc, total predicted desc.
-    return Array.from(map.values())
-      .map((g) => ({
-        ...g,
-        totalPredicted: g.rows.reduce((a, b) => a + b.predicted_cases, 0),
-        totalPrevious: g.rows.reduce((a, b) => a + b.previous_cases, 0),
-        topRisk: pickWorstRisk(g.rows.map((r) => r.risk_level)),
-      }))
-      .sort((a, b) => {
-        if (a.period !== b.period) return a.period < b.period ? 1 : -1;
-        return b.totalPredicted - a.totalPredicted;
-      });
-  }, [filteredDetails]);
-
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((cur) => {
-      const next = new Set(cur);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   const riskCounts = useMemo(() => {
     const base: Record<'Cao' | 'Trung bình' | 'Thấp', number> = { Cao: 0, 'Trung bình': 0, Thấp: 0 };
@@ -317,9 +260,18 @@ export default function Forecast() {
   // (giống bảng "Kết quả dự báo mới nhất" ở Tổng quan).
   const [summaryExpandedKeys, setSummaryExpandedKeys] = useState<Set<string>>(new Set());
 
+  const summaryTableFiltered = useMemo(() => {
+    if (!debouncedSummarySearch) return filteredSummary;
+    return filteredSummary.filter((r) => {
+      const lbl = splitDiseaseLabel(r.disease_group, bilingualMap);
+      const haystack = `${r.forecast_period} ${lbl.vi} ${lbl.en ?? ''}`;
+      return fuzzyMatch(haystack, debouncedSummarySearch);
+    });
+  }, [filteredSummary, debouncedSummarySearch, bilingualMap]);
+
   useEffect(() => {
     setSummaryPage(1);
-  }, [filteredSummary.length, summaryPageSize]);
+  }, [summaryTableFiltered.length, summaryPageSize]);
 
   const summaryEffectiveSize = useMemo(() => {
     if (summaryPageSize === 'custom') {
@@ -329,14 +281,29 @@ export default function Forecast() {
     return summaryPageSize;
   }, [summaryPageSize, summaryCustomSize]);
 
-  const summaryTotalPages = Math.max(1, Math.ceil(filteredSummary.length / summaryEffectiveSize));
+  const summaryTotalPages = Math.max(1, Math.ceil(summaryTableFiltered.length / summaryEffectiveSize));
   const summaryPageRows = useMemo(() => {
     const start = (summaryPage - 1) * summaryEffectiveSize;
-    return filteredSummary.slice(start, start + summaryEffectiveSize);
-  }, [filteredSummary, summaryPage, summaryEffectiveSize]);
+    return summaryTableFiltered.slice(start, start + summaryEffectiveSize);
+  }, [summaryTableFiltered, summaryPage, summaryEffectiveSize]);
+
+  const summaryAllExpanded = useMemo(
+    () =>
+      summaryTableFiltered.length > 0 &&
+      summaryTableFiltered.every((row) => summaryExpandedKeys.has(`${row.forecast_period}__${row.disease_group}`)),
+    [summaryTableFiltered, summaryExpandedKeys],
+  );
+
+  const toggleAllSummary = () => {
+    if (summaryAllExpanded) {
+      setSummaryExpandedKeys(new Set());
+      return;
+    }
+    setSummaryExpandedKeys(new Set(summaryTableFiltered.map((row) => `${row.forecast_period}__${row.disease_group}`)));
+  };
 
   const handleExport = () => {
-    const rows = filteredSummary.map((r) => ({
+    const rows = summaryTableFiltered.map((r) => ({
       forecast_period: r.forecast_period,
       disease_group: r.disease_group,
       previous_cases: r.previous_cases,
@@ -394,28 +361,6 @@ export default function Forecast() {
 
       {/* Action bar */}
       <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-500">{t('forecast.model')}</span>
-          <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
-            <button
-              onClick={() => setModelKind('seasonal')}
-              className={`px-3 py-1.5 text-sm ${
-                modelKind === 'seasonal' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {t('forecast.modelSeasonal')}
-            </button>
-            <button
-              onClick={() => setModelKind('weather')}
-              className={`px-3 py-1.5 text-sm ${
-                modelKind === 'weather' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {t('forecast.modelWeather')}
-            </button>
-          </div>
-        </div>
-
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">{t('forecast.horizon')}</span>
           <span className="px-3 py-1.5 text-sm rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-medium">
@@ -625,6 +570,7 @@ export default function Forecast() {
                 strokeWidth={1}
                 radius={[0, 4, 4, 0]}
                 barSize={14}
+                isAnimationActive={!isMinimalTheme}
               >
                 <LabelList dataKey="previous" position="right" style={{ fontSize: 10, fill: '#94a3b8' }} />
               </Bar>
@@ -634,6 +580,7 @@ export default function Forecast() {
                 strokeWidth={1}
                 radius={[0, 4, 4, 0]}
                 barSize={14}
+                isAnimationActive={!isMinimalTheme}
               >
                 {chartData.map((entry, index) => (
                   <Cell
@@ -654,6 +601,16 @@ export default function Forecast() {
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h3 className="text-lg font-semibold text-slate-800">{t('forecast.summaryTable')}</h3>
           <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={summarySearchTerm}
+                onChange={(e) => setSummarySearchTerm(e.target.value)}
+                placeholder={t('forecast.searchGroup')}
+                className="w-60 pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
+            </div>
             <div className="flex items-center gap-2 text-slate-500 text-sm">
               <span>{t('common.pageSize')}:</span>
               <select
@@ -682,12 +639,19 @@ export default function Forecast() {
                 />
               )}
             </div>
+            <button
+              onClick={toggleAllSummary}
+              disabled={summaryTableFiltered.length === 0}
+              className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              {summaryAllExpanded ? 'Thu gọn tất cả' : 'Mở rộng tất cả'}
+            </button>
             <span className="text-xs text-slate-400">
-              {filteredSummary.length} {t('common.rows')}
+              {summaryTableFiltered.length} {t('common.rows')}
             </span>
           </div>
         </div>
-        {filteredSummary.length === 0 ? (
+        {summaryTableFiltered.length === 0 ? (
           <p className="text-sm text-slate-500">{t('forecast.noMatch')}</p>
         ) : (
           <>
@@ -808,7 +772,7 @@ export default function Forecast() {
             <div className="flex items-center justify-between mt-4 text-sm gap-3 flex-wrap">
               <span className="text-xs text-slate-500">
                 {t('common.showing')} {(summaryPage - 1) * summaryEffectiveSize + 1}–
-                {Math.min(summaryPage * summaryEffectiveSize, filteredSummary.length)} / {filteredSummary.length}
+                {Math.min(summaryPage * summaryEffectiveSize, summaryTableFiltered.length)} / {summaryTableFiltered.length}
               </span>
               {summaryTotalPages > 1 && (
                 <div className="flex items-center gap-1">
@@ -851,133 +815,6 @@ export default function Forecast() {
         )}
       </div>
 
-      {/* Details by age group — group theo nhóm bệnh, mỗi nhóm là 1 dropdown */}
-      <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h3 className="text-lg font-semibold text-slate-800">{t('forecast.detailsTable')}</h3>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400">
-              {detailGroups.length} {t('forecast.diseaseGroupsCount')} · {filteredDetails.length} {t('common.rows')}
-            </span>
-            {detailGroups.length > 0 && (
-              <button
-                onClick={() => {
-                  if (expandedGroups.size === detailGroups.length) {
-                    setExpandedGroups(new Set());
-                  } else {
-                    setExpandedGroups(new Set(detailGroups.map((g) => `${g.period}__${g.disease}`)));
-                  }
-                }}
-                className="text-xs text-blue-600 hover:underline"
-              >
-                {expandedGroups.size === detailGroups.length
-                  ? t('forecast.collapseAll')
-                  : t('forecast.expandAll')}
-              </button>
-            )}
-          </div>
-        </div>
-        {detailGroups.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('forecast.noDetails')}</p>
-        ) : (
-          <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-            {detailGroups.map((g) => {
-              const key = `${g.period}__${g.disease}`;
-              const open = expandedGroups.has(key);
-              const change =
-                g.totalPrevious > 0
-                  ? ((g.totalPredicted - g.totalPrevious) / g.totalPrevious) * 100
-                  : null;
-              return (
-                <div key={key} className="border border-slate-200 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => toggleGroup(key)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 text-left"
-                  >
-                    {open ? (
-                      <ChevronDown size={16} className="text-slate-500 shrink-0" />
-                    ) : (
-                      <ChevronRight size={16} className="text-slate-500 shrink-0" />
-                    )}
-                    <span className="text-xs font-medium text-slate-500 shrink-0">{g.period}</span>
-                    <div className="flex-1 min-w-0">
-                      <DiseaseLabelCell raw={g.disease} map={bilingualMap} truncate />
-                    </div>
-                    <span className="text-xs text-slate-500 shrink-0">
-                      {t('col.previous')}: <b className="text-slate-700">{g.totalPrevious}</b>
-                    </span>
-                    <span className="text-xs text-slate-500 shrink-0">
-                      {t('col.predicted')}: <b className="text-slate-800">{g.totalPredicted}</b>
-                    </span>
-                    {change !== null && (
-                      <span
-                        className={`text-xs shrink-0 ${
-                          change >= 10
-                            ? 'text-red-600'
-                            : change <= -10
-                              ? 'text-emerald-600'
-                              : 'text-slate-500'
-                        }`}
-                      >
-                        {change >= 0 ? '+' : ''}
-                        {change.toFixed(1)}%
-                      </span>
-                    )}
-                    <span
-                      className={`shrink-0 inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${
-                        RISK_COLORS[g.topRisk] ?? 'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      {riskLabel(g.topRisk, t)}
-                    </span>
-                    <span className="text-xs text-slate-400 shrink-0">
-                      {g.rows.length} {t('col.ageGroup')}
-                    </span>
-                  </button>
-                  {open && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-left text-slate-500 border-b border-slate-100 bg-white">
-                            <th className="py-2 px-3">{t('col.ageGroup')}</th>
-                            <th className="py-2 px-3 text-right">{t('col.previous')}</th>
-                            <th className="py-2 px-3 text-right">{t('col.predicted')}</th>
-                            <th className="py-2 px-3 text-right">{t('col.changePercent')}</th>
-                            <th className="py-2 px-3">{t('col.trend')}</th>
-                            <th className="py-2 px-3">{t('col.risk')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortAgeGroups(g.rows, (r) => r.age_group).map((row) => (
-                            <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                              <td className="py-2 px-3 text-slate-700 font-medium">{row.age_group}</td>
-                              <td className="py-2 px-3 text-right">{row.previous_cases}</td>
-                              <td className="py-2 px-3 text-right font-semibold">{row.predicted_cases}</td>
-                              <td className="py-2 px-3 text-right">
-                                {row.change_percent === null ? '—' : `${row.change_percent.toFixed(1)}%`}
-                              </td>
-                              <td className="py-2 px-3 text-slate-600">{row.trend}</td>
-                              <td className="py-2 px-3">
-                                <span
-                                  className={`inline-block px-2 py-0.5 rounded-full border text-xs font-medium ${
-                                    RISK_COLORS[row.risk_level] ?? 'bg-slate-100 text-slate-700 border-slate-200'
-                                  }`}
-                                >
-                                  {riskLabel(row.risk_level, t)}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

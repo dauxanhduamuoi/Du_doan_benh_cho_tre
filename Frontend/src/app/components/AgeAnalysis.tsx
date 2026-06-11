@@ -5,6 +5,7 @@ import {
   Calendar,
   Loader2,
   RefreshCcw,
+  Search,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import {
 import * as api from '@/lib/api';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { ensureBilingualMap, splitDiseaseLabel } from '@/lib/disease';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 const COLORS = [
   '#2563eb',
@@ -44,6 +46,21 @@ function toNumberOrUndefined(value: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi')
+    .trim();
+}
+
+function matchesDiseaseSearch(raw: string, query: string, bilingualMap: Record<string, string>): boolean {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return true;
+  const label = splitDiseaseLabel(raw, bilingualMap);
+  return normalizeSearchText(`${raw} ${label.vi} ${label.en ?? ''}`).includes(normalizedQuery);
+}
+
 function EmptyBox({ loading, label }: { loading: boolean; label: string }) {
   return (
     <div className="flex h-[280px] items-center justify-center text-sm text-slate-400">
@@ -59,6 +76,7 @@ function EmptyBox({ loading, label }: { loading: boolean; label: string }) {
 }
 
 export default function AgeAnalysis() {
+  const isMinimalTheme = useMinimalTheme();
   const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>([]);
   const [period, setPeriod] = useState('');
   const [minAge, setMinAge] = useState('');
@@ -67,6 +85,7 @@ export default function AgeAnalysis() {
   const [total, setTotal] = useState<api.CasesByAgeRangeResult | null>(null);
   const [rows, setRows] = useState<api.DiseaseByAgeRangeRow[]>([]);
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
+  const [diseaseSearch, setDiseaseSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,13 +116,23 @@ export default function AgeAnalysis() {
 
   const chartRows = useMemo(
     () =>
-      rows.slice(0, 10).map((row, index) => ({
-        ...row,
-        label: splitDiseaseLabel(row.disease_group, bilingualMap).vi,
-        color: COLORS[index % COLORS.length],
-      })),
+      rows
+        .slice(0, 10)
+        .map((row, index) => ({
+          ...row,
+          label: splitDiseaseLabel(row.disease_group, bilingualMap).vi,
+          color: COLORS[index % COLORS.length],
+        })),
     [rows, bilingualMap],
   );
+
+  const filteredRows = useMemo(
+    () => rows.filter((row) => matchesDiseaseSearch(row.disease_group, diseaseSearch, bilingualMap)),
+    [rows, diseaseSearch, bilingualMap],
+  );
+
+  const noAgeRowsLabel = diseaseSearch ? 'Không tìm thấy nhóm bệnh phù hợp.' : 'Chưa có dữ liệu trong khoảng tuổi này.';
+  const noAgeChartLabel = 'Chưa có dữ liệu trong khoảng tuổi này.';
 
   const load = useCallback(async () => {
     const minMonthAge = toNumberOrUndefined(minAge);
@@ -246,7 +275,7 @@ export default function AgeAnalysis() {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 font-semibold text-slate-800">Top nhóm bệnh theo khoảng tháng tuổi</h3>
         {chartRows.length === 0 ? (
-          <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu trong khoảng tuổi này." />
+          <EmptyBox loading={loading || initLoading} label={noAgeChartLabel} />
         ) : (
           <ResponsiveContainer width="100%" height={360}>
             <BarChart data={chartRows} layout="vertical" margin={{ left: 24, right: 40 }}>
@@ -254,7 +283,7 @@ export default function AgeAnalysis() {
               <XAxis type="number" tick={{ fontSize: 12 }} />
               <YAxis type="category" dataKey="label" width={180} tick={{ fontSize: 11 }} />
               <Tooltip formatter={(value: number) => [`${value.toLocaleString()} ca`, 'Số ca']} />
-              <Bar dataKey="case_count" radius={[0, 7, 7, 0]}>
+              <Bar dataKey="case_count" radius={[0, 7, 7, 0]} isAnimationActive={!isMinimalTheme}>
                 {chartRows.map((entry) => (
                   <Cell key={entry.disease_group} fill={entry.color} />
                 ))}
@@ -273,8 +302,19 @@ export default function AgeAnalysis() {
           </p>
         </div>
 
-        {rows.length === 0 ? (
-          <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu trong khoảng tuổi này." />
+        <label className="relative mb-4 block max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={diseaseSearch}
+            onChange={(e) => setDiseaseSearch(e.target.value)}
+            placeholder="Tìm nhóm bệnh..."
+            aria-label="Tìm kiếm nhóm bệnh theo độ tuổi"
+            className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </label>
+
+        {filteredRows.length === 0 ? (
+          <EmptyBox loading={loading || initLoading} label={noAgeRowsLabel} />
         ) : (
           <div className="max-h-[520px] overflow-auto">
             <table className="w-full min-w-[900px] text-sm">
@@ -287,7 +327,7 @@ export default function AgeAnalysis() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr key={row.disease_group} className="border-b border-slate-100 align-top last:border-0">
                     <td className="py-3 pr-4">
                       <DiseaseLabelCell raw={row.disease_group} map={bilingualMap} />

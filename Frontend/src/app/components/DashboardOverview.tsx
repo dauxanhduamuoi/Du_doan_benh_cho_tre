@@ -34,6 +34,7 @@ import { useT } from '@/lib/i18n';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { ensureBilingualMap, splitDiseaseLabel, fuzzyMatch } from '@/lib/disease';
 import { sortAgeGroups } from '@/lib/age';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 type DataType = 'train_history' | 'predict_current';
 
@@ -102,6 +103,7 @@ function BilingualLegend({
 }
 
 export default function DashboardOverview() {
+  const isMinimalTheme = useMinimalTheme();
   const t = useT();
   // Dashboard phân tích dữ liệu người dùng import hiện tại (predict_current).
   // train_history chỉ dùng cho model AI/forecast, không dùng để vẽ dashboard phân tích.
@@ -480,7 +482,12 @@ export default function DashboardOverview() {
                     return `${t('dashboard.yearLabel')} ${label} - ${status}`;
                   }}
                 />
-                <Bar dataKey="cases" name={t('dashboard.totalCases')} radius={[7, 7, 0, 0]}>
+                <Bar
+                  dataKey="cases"
+                  name={t('dashboard.totalCases')}
+                  radius={[7, 7, 0, 0]}
+                  isAnimationActive={!isMinimalTheme}
+                >
                   {yearlyChartData.map((entry) => (
                     <Cell
                       key={entry.year}
@@ -540,7 +547,15 @@ export default function DashboardOverview() {
                     />
                   )}
                 />
-                <Line type="monotone" dataKey="cases" name={t('dashboard.cases')} stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line
+                  type="monotone"
+                  dataKey="cases"
+                  name={t('dashboard.cases')}
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                  isAnimationActive={!isMinimalTheme}
+                />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -577,6 +592,7 @@ export default function DashboardOverview() {
                     innerRadius={55}
                     dataKey="value"
                     paddingAngle={2}
+                    isAnimationActive={!isMinimalTheme}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -645,7 +661,14 @@ export default function DashboardOverview() {
                 )}
               />
               {stackedTopChartData.groups.map((g, i) => (
-                <Bar key={g} dataKey={g} stackId="a" fill={PIE_COLORS[i % PIE_COLORS.length]} radius={[2, 2, 0, 0]} />
+                <Bar
+                  key={g}
+                  dataKey={g}
+                  stackId="a"
+                  fill={PIE_COLORS[i % PIE_COLORS.length]}
+                  radius={[2, 2, 0, 0]}
+                  isAnimationActive={!isMinimalTheme}
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>

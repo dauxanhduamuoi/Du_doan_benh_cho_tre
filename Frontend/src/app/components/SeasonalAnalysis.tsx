@@ -11,11 +11,12 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Calendar, TrendingUp, AlertTriangle, Loader2, RefreshCcw } from 'lucide-react';
+import { Calendar, TrendingUp, AlertTriangle, Loader2, RefreshCcw, Search } from 'lucide-react';
 import * as api from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import { ensureBilingualMap, splitDiseaseLabel } from '@/lib/disease';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 type Season = 'dry' | 'rainy';
 
@@ -89,6 +90,21 @@ function chunkText(text: string, maxChars: number): string[] {
   return lines;
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi')
+    .trim();
+}
+
+function matchesDiseaseGroup(raw: string, query: string, bilingualMap: Record<string, string>): boolean {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return true;
+  const label = splitDiseaseLabel(raw, bilingualMap);
+  return normalizeSearchText(`${raw} ${label.vi} ${label.en ?? ''}`).includes(normalizedQuery);
+}
+
 function SeasonalBilingualLegend({
   payload,
   bilingualMap,
@@ -123,6 +139,7 @@ function SeasonalBilingualLegend({
 }
 
 export default function SeasonalAnalysis() {
+  const isMinimalTheme = useMinimalTheme();
   const t = useT();
   const [data, setData] = useState<api.MonthlyStat[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,6 +151,9 @@ export default function SeasonalAnalysis() {
   const [seasonCompare, setSeasonCompare] = useState<api.DiseaseSeasonComparisonRow[]>([]);
   const [seasonPeak, setSeasonPeak] = useState<api.SeasonalPeakRow[]>([]);
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
+  const [seasonSummarySearch, setSeasonSummarySearch] = useState('');
+  const [seasonCompareSearch, setSeasonCompareSearch] = useState('');
+  const [seasonPeakSearch, setSeasonPeakSearch] = useState('');
 
   const seasonLabel = useCallback((s: Season) => t(`season.${s}`), [t]);
 
@@ -307,6 +327,21 @@ export default function SeasonalAnalysis() {
       .slice(0, 3);
   }, [data, selectedSeason]);
 
+  const filteredSeasonalSummary = useMemo(
+    () => seasonalSummary.filter((row) => matchesDiseaseGroup(row.disease_group, seasonSummarySearch, bilingualMap)),
+    [seasonalSummary, seasonSummarySearch, bilingualMap],
+  );
+
+  const filteredSeasonCompare = useMemo(
+    () => seasonCompare.filter((row) => matchesDiseaseGroup(row.disease_group, seasonCompareSearch, bilingualMap)),
+    [seasonCompare, seasonCompareSearch, bilingualMap],
+  );
+
+  const filteredSeasonPeak = useMemo(
+    () => seasonPeak.filter((row) => matchesDiseaseGroup(row.disease_group, seasonPeakSearch, bilingualMap)),
+    [seasonPeak, seasonPeakSearch, bilingualMap],
+  );
+
   const empty = data.length === 0;
 
   return (
@@ -383,39 +418,39 @@ export default function SeasonalAnalysis() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-md">
+        <div className="seasonal-highlight-card seasonal-highlight-peak bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-md">
           <div className="flex items-start justify-between mb-4">
-            <TrendingUp size={24} />
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.peak')}</span>
+            <TrendingUp size={24} className="seasonal-highlight-icon" />
+            <span className="seasonal-highlight-badge text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.peak')}</span>
           </div>
           <h3 className="text-2xl font-bold mb-1">
             {insights
               ? `${t('seasonal.peakMonth')} ${insights.peakMonth} · ${t('seasonal.peakSeason')} ${seasonLabel(insights.peakSeason)}`
               : '—'}
           </h3>
-          <p className="text-blue-100 text-sm">
+          <p className="seasonal-highlight-muted text-blue-100 text-sm">
             {insights ? `${insights.peakCases.toLocaleString()} ${t('seasonal.casesHighest')} ${selectedYear}` : t('seasonal.noDataYet')}
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-md">
+        <div className="seasonal-highlight-card seasonal-highlight-compare bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-md">
           <div className="flex items-start justify-between mb-4">
-            <AlertTriangle size={24} />
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.compare')}</span>
+            <AlertTriangle size={24} className="seasonal-highlight-icon" />
+            <span className="seasonal-highlight-badge text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.compare')}</span>
           </div>
           <h3 className="text-2xl font-bold mb-1">{insights?.deltaLabel ?? '—'}</h3>
-          <p className="text-orange-100 text-sm">
+          <p className="seasonal-highlight-muted text-orange-100 text-sm">
             {seasonLabel(selectedSeason)} {selectedYear} {t('seasonal.versus')} {selectedYear ? selectedYear - 1 : ''}
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-md">
+        <div className="seasonal-highlight-card seasonal-highlight-total bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-md">
           <div className="flex items-start justify-between mb-4">
-            <Calendar size={24} />
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.sumLabel')}</span>
+            <Calendar size={24} className="seasonal-highlight-icon" />
+            <span className="seasonal-highlight-badge text-xs bg-white/20 px-2 py-1 rounded">{t('seasonal.sumLabel')}</span>
           </div>
           <h3 className="text-2xl font-bold mb-1">{insights ? insights.currSeasonCases.toLocaleString() : '—'}</h3>
-          <p className="text-purple-100 text-sm">
+          <p className="seasonal-highlight-muted text-purple-100 text-sm">
             {t('seasonal.inSeason')} {seasonLabel(selectedSeason)} {selectedYear ?? ''}
           </p>
         </div>
@@ -463,6 +498,7 @@ export default function SeasonalAnalysis() {
                     stroke={DISEASE_COLORS[i % DISEASE_COLORS.length]}
                     fill={DISEASE_COLORS[i % DISEASE_COLORS.length]}
                     name={d}
+                    isAnimationActive={!isMinimalTheme}
                   />
                 ))}
               </AreaChart>
@@ -500,8 +536,8 @@ export default function SeasonalAnalysis() {
                 />
                 <Tooltip formatter={(value: number) => Number(value).toLocaleString()} />
                 <Legend />
-                <Bar dataKey={seasonLabel('dry')} name={seasonLabel('dry')} fill={SEASON_COLORS.dry} />
-                <Bar dataKey={seasonLabel('rainy')} name={seasonLabel('rainy')} fill={SEASON_COLORS.rainy} />
+                <Bar dataKey={seasonLabel('dry')} name={seasonLabel('dry')} fill={SEASON_COLORS.dry} isAnimationActive={!isMinimalTheme} />
+                <Bar dataKey={seasonLabel('rainy')} name={seasonLabel('rainy')} fill={SEASON_COLORS.rainy} isAnimationActive={!isMinimalTheme} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -521,7 +557,13 @@ export default function SeasonalAnalysis() {
               <Tooltip formatter={(value: number) => Number(value).toLocaleString()} />
               <Legend />
               {years.map((y, i) => (
-                <Bar key={y} dataKey={String(y)} fill={DISEASE_COLORS[i % DISEASE_COLORS.length]} name={String(y)} />
+                <Bar
+                  key={y}
+                  dataKey={String(y)}
+                  fill={DISEASE_COLORS[i % DISEASE_COLORS.length]}
+                  name={String(y)}
+                  isAnimationActive={!isMinimalTheme}
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>
@@ -575,11 +617,12 @@ export default function SeasonalAnalysis() {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <SeasonPanel title={`Nhóm bệnh nổi bật trong ${seasonLabel(selectedSeason)}`}>
+            <SeasonSearchInput value={seasonSummarySearch} onChange={setSeasonSummarySearch} />
             <SeasonDataTable
-              empty={seasonalSummary.length === 0}
+              empty={filteredSeasonalSummary.length === 0}
               loading={loading}
               headers={['Nhóm bệnh', 'Số ca']}
-              rows={seasonalSummary.map((row) => [
+              rows={filteredSeasonalSummary.map((row) => [
                 <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,
                 row.case_count.toLocaleString(),
               ])}
@@ -587,11 +630,12 @@ export default function SeasonalAnalysis() {
           </SeasonPanel>
 
           <SeasonPanel title="Mùa chiếm ưu thế theo nhóm bệnh">
+            <SeasonSearchInput value={seasonCompareSearch} onChange={setSeasonCompareSearch} />
             <SeasonDataTable
-              empty={seasonCompare.length === 0}
+              empty={filteredSeasonCompare.length === 0}
               loading={loading}
               headers={['Nhóm bệnh', 'Mùa trội', 'Mùa khô', 'Mùa mưa', 'Tổng']}
-              rows={seasonCompare.map((row) => [
+              rows={filteredSeasonCompare.map((row) => [
                 <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,
                 row.dominant_season,
                 row.dry_season_cases.toLocaleString(),
@@ -603,11 +647,12 @@ export default function SeasonalAnalysis() {
         </div>
 
         <SeasonPanel title="Tháng đỉnh theo nhóm bệnh">
+          <SeasonSearchInput value={seasonPeakSearch} onChange={setSeasonPeakSearch} />
           <SeasonDataTable
-            empty={seasonPeak.length === 0}
+            empty={filteredSeasonPeak.length === 0}
             loading={loading}
             headers={['Nhóm bệnh', 'Tháng đỉnh', 'Mùa', 'Trung bình ca']}
-            rows={seasonPeak.map((row) => [
+            rows={filteredSeasonPeak.map((row) => [
               <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,
               row.peak_month,
               row.season,
@@ -626,6 +671,21 @@ function SeasonPanel({ title, children }: { title: string; children: ReactNode }
       <h4 className="mb-3 font-semibold text-slate-800">{title}</h4>
       {children}
     </div>
+  );
+}
+
+function SeasonSearchInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="relative mb-3 block max-w-md">
+      <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Tìm nhóm bệnh..."
+        aria-label="Tìm kiếm nhóm bệnh"
+        className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+      />
+    </label>
   );
 }
 

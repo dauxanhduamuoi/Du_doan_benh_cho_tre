@@ -27,6 +27,7 @@ import {
   YAxis,
 } from 'recharts';
 import * as api from '@/lib/api';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 type LocationMode = 'geo' | 'manual';
 type ProvinceOption = api.AreaOption & {
@@ -193,6 +194,7 @@ function pageCount(total: number, pageSize: number): number {
 }
 
 export default function WeatherRisk() {
+  const isMinimalTheme = useMinimalTheme();
   const [status, setStatus] = useState<api.WeatherAIStatus | null>(null);
   const [options, setOptions] = useState<api.WeatherAIOptions | null>(null);
   const [provinces, setProvinces] = useState<ProvinceOption[]>(VIETNAM_PROVINCES);
@@ -727,7 +729,12 @@ export default function WeatherRisk() {
                         return row?.disease_group_name ?? '';
                       }}
                     />
-                    <Bar dataKey="predicted_cases" name="Số ca ước tính" radius={[0, 10, 10, 0]}>
+                    <Bar
+                      dataKey="predicted_cases"
+                      name="Số ca ước tính"
+                      radius={[0, 10, 10, 0]}
+                      isAnimationActive={!isMinimalTheme}
+                    >
                       {riskChartData.map((row) => (
                         <Cell key={row.disease_group_id} fill={RISK_BAR_COLOR[row.risk_level] ?? '#3b82f6'} />
                       ))}

@@ -56,6 +56,11 @@ html.dark code {
 }
 
 /* Tô lại các biến shadcn theo dark */
+html.dark .settings-theme-option-multicolor,
+html.dark .settings-theme-option-multicolor > span {
+  color: #334155 !important;
+}
+
 html.dark {
   color-scheme: dark;
 }
@@ -69,13 +74,20 @@ html.dark {
 
 html[data-theme='multicolor'] {
   color-scheme: light;
-  --mc-blue: #2563eb;
-  --mc-sky: #0284c7;
-  --mc-cyan: #0891b2;
-  --mc-teal: #0f766e;
-  --mc-emerald: #059669;
-  --mc-amber: #d97706;
-  --mc-rose: #e11d48;
+  --mc-hue: 215;
+  --mc-blue: hsl(var(--mc-hue) 82% 55%);
+  --mc-sky: hsl(calc(var(--mc-hue) + 28) 78% 46%);
+  --mc-cyan: hsl(calc(var(--mc-hue) + 58) 78% 43%);
+  --mc-teal: hsl(calc(var(--mc-hue) + 86) 72% 35%);
+  --mc-emerald: hsl(calc(var(--mc-hue) + 116) 70% 40%);
+  --mc-amber: hsl(calc(var(--mc-hue) + 184) 88% 50%);
+  --mc-rose: hsl(calc(var(--mc-hue) + 252) 76% 52%);
+  --mc-blue-soft: hsl(var(--mc-hue) 90% 95%);
+  --mc-sky-soft: hsl(calc(var(--mc-hue) + 28) 90% 94%);
+  --mc-cyan-soft: hsl(calc(var(--mc-hue) + 58) 88% 92%);
+  --mc-emerald-soft: hsl(calc(var(--mc-hue) + 116) 80% 92%);
+  --mc-amber-soft: hsl(calc(var(--mc-hue) + 184) 90% 92%);
+  --mc-rose-soft: hsl(calc(var(--mc-hue) + 252) 86% 94%);
   --mc-ink: #172033;
 }
 
@@ -385,4 +397,375 @@ html[data-theme='multicolor'] .border-red-200 {
 html[data-theme='multicolor'] .border-amber-200,
 html[data-theme='multicolor'] .border-yellow-200 {
   border-color: rgba(251, 191, 36, 0.62) !important;
+}
+
+html[data-theme='multicolor'] body {
+  background:
+    radial-gradient(circle at 7% 8%, hsl(var(--mc-hue) 82% 55% / 0.22), transparent 28%),
+    radial-gradient(circle at 92% 10%, hsl(calc(var(--mc-hue) + 252) 76% 52% / 0.18), transparent 30%),
+    radial-gradient(circle at 14% 88%, hsl(calc(var(--mc-hue) + 116) 70% 40% / 0.18), transparent 33%),
+    radial-gradient(circle at 86% 86%, hsl(calc(var(--mc-hue) + 184) 88% 50% / 0.16), transparent 30%),
+    linear-gradient(135deg, var(--mc-amber-soft) 0%, var(--mc-sky-soft) 36%, var(--mc-emerald-soft) 66%, var(--mc-rose-soft) 100%);
+}
+
+html[data-theme='multicolor'] .bg-slate-100 {
+  background:
+    radial-gradient(circle at 0% 4%, hsl(calc(var(--mc-hue) + 28) 78% 46% / 0.24), transparent 30%),
+    radial-gradient(circle at 100% 0%, hsl(calc(var(--mc-hue) + 252) 76% 52% / 0.18), transparent 28%),
+    radial-gradient(circle at 32% 100%, hsl(calc(var(--mc-hue) + 116) 70% 40% / 0.2), transparent 34%),
+    linear-gradient(135deg, var(--mc-amber-soft) 0%, var(--mc-sky-soft) 43%, var(--mc-emerald-soft) 70%, var(--mc-rose-soft) 100%) !important;
+}
+
+html[data-theme='multicolor'] .bg-white {
+  border-color: hsl(calc(var(--mc-hue) + 28) 86% 70% / 0.62) !important;
+}
+
+html[data-theme='multicolor'] aside.bg-white {
+  background:
+    radial-gradient(circle at 0% 0%, hsl(calc(var(--mc-hue) + 28) 78% 46% / 0.25), transparent 33%),
+    radial-gradient(circle at 100% 14%, hsl(calc(var(--mc-hue) + 252) 76% 52% / 0.2), transparent 32%),
+    linear-gradient(180deg, var(--mc-blue-soft) 0%, var(--mc-emerald-soft) 44%, var(--mc-amber-soft) 100%) !important;
+}
+
+html[data-theme='multicolor'] header.bg-white {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.98) 0%, var(--mc-sky-soft) 34%, var(--mc-emerald-soft) 68%, var(--mc-amber-soft) 100%) !important;
+}
+
+html[data-theme='multicolor'] .bg-blue-50,
+html[data-theme='multicolor'] .rounded-full.bg-blue-50,
+html[data-theme='multicolor'] .rounded-lg.bg-blue-50 {
+  background: linear-gradient(135deg, var(--mc-blue-soft) 0%, var(--mc-cyan-soft) 100%) !important;
+}
+
+html[data-theme='multicolor'] .bg-blue-600 {
+  background: linear-gradient(135deg, var(--mc-blue) 0%, var(--mc-cyan) 45%, var(--mc-emerald) 100%) !important;
+  box-shadow: 0 12px 24px hsl(var(--mc-hue) 82% 45% / 0.24) !important;
+}
+
+html[data-theme='multicolor'] .hover\:bg-blue-700:hover {
+  background: linear-gradient(135deg, var(--mc-blue) 0%, var(--mc-cyan) 48%, var(--mc-emerald) 100%) !important;
+  box-shadow: 0 14px 28px hsl(calc(var(--mc-hue) + 58) 78% 43% / 0.26) !important;
+}
+
+html[data-theme='multicolor'] table thead tr {
+  background:
+    linear-gradient(90deg, var(--mc-blue-soft), var(--mc-emerald-soft), var(--mc-amber-soft)) !important;
+}
+
+html[data-theme='multicolor'] aside nav a:hover,
+html[data-theme='multicolor'] aside button:hover {
+  background: linear-gradient(135deg, var(--mc-blue-soft), var(--mc-emerald-soft)) !important;
+}
+
+html[data-theme='multicolor'] aside .from-blue-500.to-blue-700,
+html[data-theme='multicolor'] .from-blue-400.to-blue-600 {
+  background-image: linear-gradient(135deg, var(--mc-blue) 0%, var(--mc-cyan) 34%, var(--mc-emerald) 68%, var(--mc-amber) 100%) !important;
+}
+
+html[data-theme='multicolor'] aside button.bg-blue-600 {
+  background:
+    linear-gradient(135deg, var(--mc-blue) 0%, var(--mc-cyan) 42%, var(--mc-emerald) 100%) !important;
+}
+
+html[data-theme='multicolor'] aside button.bg-blue-50 {
+  background:
+    linear-gradient(135deg, var(--mc-blue-soft), var(--mc-emerald-soft), var(--mc-amber-soft)) !important;
+}
+
+html[data-theme='multicolor'] header.bg-white::after {
+  background: linear-gradient(90deg, var(--mc-blue), var(--mc-cyan), var(--mc-emerald), var(--mc-amber), var(--mc-rose));
+}
+
+html[data-theme='multicolor'] header.bg-white h2 {
+  background: linear-gradient(90deg, var(--mc-blue), var(--mc-cyan), var(--mc-teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+html[data-theme='multicolor'] .bg-red-500 {
+  background: linear-gradient(135deg, var(--mc-rose), hsl(calc(var(--mc-hue) + 270) 78% 48%)) !important;
+}
+
+/* =====================
+ * Minimal theme overrides
+ * -------------------------
+ * A restrained operations-dashboard theme with neutral surfaces, explicit
+ * borders, compact radii, and a single blue action color.
+ * ===================== */
+
+html[data-theme='developer'] {
+  color-scheme: light;
+  --dev-bg: #f3f4f6;
+  --dev-surface: #ffffff;
+  --dev-surface-muted: #f8fafc;
+  --dev-border: #cbd5e1;
+  --dev-border-soft: #e2e8f0;
+  --dev-ink: #111827;
+  --dev-muted: #475569;
+  --dev-accent: #1d4ed8;
+  --dev-accent-soft: #dbeafe;
+  --dev-success: #047857;
+  --dev-danger: #b91c1c;
+  --dev-warning: #b45309;
+}
+
+html[data-theme='developer'] body {
+  background: var(--dev-bg);
+  color: var(--dev-ink);
+}
+
+html[data-theme='developer'] .bg-slate-100 {
+  background: var(--dev-bg) !important;
+}
+
+html[data-theme='developer'] .bg-slate-50 {
+  background: var(--dev-surface-muted) !important;
+}
+
+html[data-theme='developer'] .bg-white {
+  background: var(--dev-surface) !important;
+  border-color: var(--dev-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] aside.bg-white,
+html[data-theme='developer'] header.bg-white {
+  background: #f8fafc !important;
+  border-color: var(--dev-border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] header.bg-white {
+  position: relative;
+  overflow: visible;
+  z-index: 50;
+}
+
+html[data-theme='developer'] .border-slate-200 {
+  border-color: var(--dev-border) !important;
+}
+
+html[data-theme='developer'] .border-slate-100 {
+  border-color: var(--dev-border-soft) !important;
+}
+
+html[data-theme='developer'] .text-slate-800,
+html[data-theme='developer'] .text-slate-900 {
+  color: var(--dev-ink) !important;
+}
+
+html[data-theme='developer'] .text-slate-500,
+html[data-theme='developer'] .text-slate-600,
+html[data-theme='developer'] .text-slate-700 {
+  color: var(--dev-muted) !important;
+}
+
+html[data-theme='developer'] .text-blue-600,
+html[data-theme='developer'] .text-blue-700 {
+  color: var(--dev-accent) !important;
+}
+
+html[data-theme='developer'] .bg-blue-50 {
+  background: #eff6ff !important;
+}
+
+html[data-theme='developer'] .bg-blue-600 {
+  background: #334155 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] .hover\:bg-blue-700:hover {
+  background: #1f2937 !important;
+}
+
+html[data-theme='developer'] input,
+html[data-theme='developer'] select,
+html[data-theme='developer'] textarea {
+  background-color: #ffffff !important;
+  border-color: var(--dev-border) !important;
+  color: var(--dev-ink) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] input:focus,
+html[data-theme='developer'] select:focus,
+html[data-theme='developer'] textarea:focus {
+  border-color: var(--dev-accent) !important;
+  box-shadow: 0 0 0 1px rgba(29, 78, 216, 0.4) !important;
+}
+
+html[data-theme='developer'] .shadow-sm,
+html[data-theme='developer'] .shadow-md,
+html[data-theme='developer'] .shadow-lg,
+html[data-theme='developer'] .shadow-xl,
+html[data-theme='developer'] .shadow-2xl,
+html[data-theme='developer'] .shadow-inner,
+html[data-theme='developer'] [class*='shadow-'] {
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] .rounded-xl,
+html[data-theme='developer'] .rounded-2xl {
+  border-radius: 2px !important;
+}
+
+html[data-theme='developer'] .rounded-lg {
+  border-radius: 2px !important;
+}
+
+html[data-theme='developer'] .rounded-md {
+  border-radius: 2px !important;
+}
+
+html[data-theme='developer'] .rounded {
+  border-radius: 2px !important;
+}
+
+html[data-theme='developer'] .border-l-4,
+html[data-theme='developer'] [style*='border-left'] {
+  border-left-width: 1px !important;
+  border-left-color: var(--dev-border) !important;
+}
+
+html[data-theme='developer'] table thead tr {
+  background: #f1f5f9 !important;
+}
+
+html[data-theme='developer'] table tbody tr:hover {
+  background-color: #f8fbff !important;
+}
+
+html[data-theme='developer'] aside nav a,
+html[data-theme='developer'] aside button {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+html[data-theme='developer'] aside nav a:hover,
+html[data-theme='developer'] aside button:hover {
+  background: #e2e8f0 !important;
+}
+
+html[data-theme='developer'] aside button.bg-blue-600,
+html[data-theme='developer'] aside button.bg-blue-50 {
+  background: #111827 !important;
+  color: #f8fafc !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+html[data-theme='developer'] .bg-emerald-50 {
+  background: #f8fafc !important;
+}
+
+html[data-theme='developer'] .bg-red-50 {
+  background: #f8fafc !important;
+}
+
+html[data-theme='developer'] .bg-yellow-50,
+html[data-theme='developer'] .bg-amber-50 {
+  background: #f8fafc !important;
+}
+
+html[data-theme='developer'] .text-emerald-700 {
+  color: #0f766e !important;
+}
+
+html[data-theme='developer'] .text-red-600,
+html[data-theme='developer'] .text-red-700 {
+  color: #b91c1c !important;
+}
+
+html[data-theme='developer'] .text-amber-700,
+html[data-theme='developer'] .text-yellow-700 {
+  color: #a16207 !important;
+}
+
+html[data-theme='developer'] .recharts-cartesian-grid line {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-dasharray: 2 4;
+}
+
+html[data-theme='developer'] .recharts-text {
+  fill: #475569;
+}
+
+html[data-theme='developer'] .recharts-tooltip-wrapper .recharts-default-tooltip,
+html[data-theme='developer'] .recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(203, 213, 225, 0.95) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] .recharts-active-dot {
+  filter: none !important;
+}
+
+html[data-theme='developer'] .recharts-dot {
+  stroke-width: 1 !important;
+}
+
+html[data-theme='developer'] .recharts-tooltip-cursor {
+  stroke: rgba(148, 163, 184, 0.18) !important;
+}
+
+html[data-theme='developer'] .recharts-wrapper,
+html[data-theme='developer'] .recharts-wrapper *,
+html[data-theme='developer'] .recharts-surface,
+html[data-theme='developer'] .recharts-surface * {
+  animation: none !important;
+  transition: none !important;
+}
+
+html[data-theme='developer'] .recharts-tooltip-wrapper {
+  transition: none !important;
+}
+
+html[data-theme='developer'] .transition,
+html[data-theme='developer'] .transition-all,
+html[data-theme='developer'] .transition-colors,
+html[data-theme='developer'] .transition-opacity,
+html[data-theme='developer'] .transition-shadow,
+html[data-theme='developer'] .transition-transform {
+  transition-duration: 60ms !important;
+  transition-timing-function: linear !important;
+}
+
+html[data-theme='developer'] .animate-pulse,
+html[data-theme='developer'] .animate-bounce,
+html[data-theme='developer'] .animate-ping {
+  animation: none !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-card {
+  background: #ffffff !important;
+  border: 1px solid var(--dev-border) !important;
+  color: var(--dev-ink) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-peak {
+  border-top: 1px solid var(--dev-border) !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-compare {
+  border-top: 1px solid var(--dev-border) !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-total {
+  border-top: 1px solid var(--dev-border) !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-card .seasonal-highlight-icon {
+  color: #475569 !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-card .seasonal-highlight-badge {
+  background: #f1f5f9 !important;
+  border: 1px solid var(--dev-border-soft) !important;
+  color: #475569 !important;
+}
+
+html[data-theme='developer'] .seasonal-highlight-card .seasonal-highlight-muted {
+  color: #64748b !important;
 }

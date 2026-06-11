@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Settings as SettingsIcon,
   Monitor,
@@ -11,6 +11,7 @@ import {
   Save,
   RotateCcw,
   CheckCircle2,
+  Code2,
   Users,
   Plus,
   Loader2,
@@ -18,6 +19,9 @@ import {
   ShieldCheck,
   KeyRound,
   Download,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import * as api from '@/lib/api';
 import {
@@ -31,16 +35,35 @@ import { useI18n } from '@/lib/i18n';
 import { languageOptions } from '@/i18n/resources';
 import { useAuth } from '../contexts/AuthContext';
 
+function multicolorGradient(hue: number) {
+  const base = Number.isFinite(hue) ? hue : defaultPreferences.multicolorHue;
+  const stops = [0, 52, 116, 184, 252]
+    .map((shift, index) => {
+      const nextHue = (base + shift) % 360;
+      const saturation = index === 3 ? 88 : 78;
+      const lightness = index === 0 ? 55 : index === 2 ? 42 : 50;
+      return `hsl(${nextHue} ${saturation}% ${lightness}%)`;
+    })
+    .join(', ');
+  return `linear-gradient(90deg, ${stops})`;
+}
+
 export default function Settings() {
   const { user } = useAuth();
   const { t, setLang } = useI18n();
   const [prefs, setPrefs] = useState<UserPreferences>(() => loadPreferences());
+  const [multicolorEditorOpen, setMulticolorEditorOpen] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Admin state
   const [users, setUsers] = useState<api.AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [userPage, setUserPage] = useState(1);
+  const [userPageSize, setUserPageSize] = useState(10);
 
   const [availableRoles, setAvailableRoles] = useState<string[]>(['admin', 'staff']);
   const [permissionDefs, setPermissionDefs] = useState<api.PermissionDef[]>([]);
@@ -92,6 +115,35 @@ export default function Settings() {
     roleLabels[r] = r === 'admin' ? 'Admin' : 'Người dùng hệ thống';
   }
 
+  const filteredUsers = useMemo(() => {
+    const query = userSearch.trim().toLocaleLowerCase('vi');
+    return users.filter((account) => {
+      const matchesSearch =
+        !query ||
+        account.username.toLocaleLowerCase('vi').includes(query) ||
+        (account.full_name ?? '').toLocaleLowerCase('vi').includes(query);
+      const matchesRole = userRoleFilter === 'all' || account.role === userRoleFilter;
+      const matchesStatus =
+        userStatusFilter === 'all' ||
+        (userStatusFilter === 'active' ? account.is_active : !account.is_active);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, userSearch, userRoleFilter, userStatusFilter]);
+
+  const userTotalPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize));
+  const pagedUsers = useMemo(() => {
+    const start = (userPage - 1) * userPageSize;
+    return filteredUsers.slice(start, start + userPageSize);
+  }, [filteredUsers, userPage, userPageSize]);
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearch, userRoleFilter, userStatusFilter, userPageSize]);
+
+  useEffect(() => {
+    if (userPage > userTotalPages) setUserPage(userTotalPages);
+  }, [userPage, userTotalPages]);
+
   useEffect(() => {
     if (!isAdmin) return;
     loadUsers();
@@ -128,8 +180,8 @@ export default function Settings() {
     setPrefs((p) => {
       const next = { ...p, [key]: value };
       // Áp dụng ngay với theme/language để user thấy hiệu ứng tức thì.
-      if (key === 'theme') {
-        applyTheme(next.theme);
+      if (key === 'theme' || key === 'multicolorHue') {
+        applyTheme(next.theme, next.multicolorHue);
       }
       if (key === 'language') {
         setLang(next.language);
@@ -143,7 +195,7 @@ export default function Settings() {
 
   function handleSave() {
     savePreferences(prefs);
-    applyTheme(prefs.theme);
+    applyTheme(prefs.theme, prefs.multicolorHue);
     setLang(prefs.language);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -152,8 +204,9 @@ export default function Settings() {
   function handleReset() {
     const next = { ...defaultPreferences };
     setPrefs(next);
+    setMulticolorEditorOpen(false);
     savePreferences(next);
-    applyTheme(next.theme);
+    applyTheme(next.theme, next.multicolorHue);
     setLang(next.language);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -276,33 +329,93 @@ export default function Settings() {
     <div className="space-y-6">
       <Section icon={SettingsIcon} title={t('settings.theme.title')} subtitle={t('settings.theme.subtitle')}>
         <FieldGroup label={t('settings.theme.label')}>
-          <div className="grid grid-cols-2 gap-2 max-w-xl sm:grid-cols-4">
+          <div className="grid max-w-3xl grid-cols-2 gap-2 sm:grid-cols-5">
             <ThemeOption
               active={prefs.theme === 'light'}
               icon={Sun}
               label={t('settings.theme.light')}
-              onClick={() => updatePref('theme', 'light')}
+              onClick={() => {
+                setMulticolorEditorOpen(false);
+                updatePref('theme', 'light');
+              }}
             />
             <ThemeOption
               active={prefs.theme === 'dark'}
               icon={Moon}
               label={t('settings.theme.dark')}
-              onClick={() => updatePref('theme', 'dark')}
+              onClick={() => {
+                setMulticolorEditorOpen(false);
+                updatePref('theme', 'dark');
+              }}
             />
             <ThemeOption
               active={prefs.theme === 'system'}
               icon={Monitor}
               label={t('settings.theme.system')}
-              onClick={() => updatePref('theme', 'system')}
+              onClick={() => {
+                setMulticolorEditorOpen(false);
+                updatePref('theme', 'system');
+              }}
             />
             <ThemeOption
               active={prefs.theme === 'multicolor'}
               icon={Palette}
               label={t('settings.theme.multicolor')}
-              onClick={() => updatePref('theme', 'multicolor')}
+              onClick={() => {
+                setMulticolorEditorOpen(true);
+                updatePref('theme', 'multicolor');
+              }}
               tone="multicolor"
+              previewHue={prefs.multicolorHue}
+            />
+            <ThemeOption
+              active={prefs.theme === 'developer'}
+              icon={Code2}
+              label={t('settings.theme.developer')}
+              onClick={() => {
+                setMulticolorEditorOpen(false);
+                updatePref('theme', 'developer');
+              }}
+              tone="developer"
             />
           </div>
+          {prefs.theme === 'multicolor' && multicolorEditorOpen && (
+            <div className="mt-3 max-w-3xl rounded-xl border border-sky-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">{t('settings.theme.multicolorPalette')}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{t('settings.theme.multicolorPalette.desc')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                    {t('settings.theme.multicolorPalette.value').replace('{value}', String(prefs.multicolorHue))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updatePref('multicolorHue', defaultPreferences.multicolorHue)}
+                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    {t('settings.theme.multicolorPalette.reset')}
+                  </button>
+                </div>
+              </div>
+              <div
+                className="mb-3 h-8 rounded-xl border border-white shadow-sm ring-1 ring-slate-200"
+                style={{ background: multicolorGradient(prefs.multicolorHue) }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={359}
+                step={1}
+                value={prefs.multicolorHue}
+                onChange={(e) => updatePref('multicolorHue', Number(e.target.value))}
+                className="w-full cursor-pointer"
+                style={{ accentColor: `hsl(${prefs.multicolorHue} 78% 48%)` }}
+                aria-label={t('settings.theme.multicolorPalette')}
+              />
+            </div>
+          )}
           <p className="text-[11px] text-slate-400 mt-2">{t('settings.theme.note')}</p>
         </FieldGroup>
 
@@ -383,9 +496,9 @@ export default function Settings() {
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="xl:col-span-2 border border-slate-200 rounded-lg overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-slate-50 border-b border-slate-200">
                 <span className="text-sm font-medium text-slate-700">
-                  {users.length} {t('settings.users.count')}
+                  {filteredUsers.length} / {users.length} {t('settings.users.count')}
                 </span>
                 <button
                   onClick={loadUsers}
@@ -396,30 +509,79 @@ export default function Settings() {
                   {t('common.refresh')}
                 </button>
               </div>
+              <div className="grid grid-cols-1 gap-2 border-b border-slate-200 bg-white p-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_180px_150px]">
+                <label className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={userSearch}
+                    onChange={(event) => setUserSearch(event.target.value)}
+                    placeholder="Tìm theo username hoặc họ tên..."
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </label>
+                <select
+                  value={userRoleFilter}
+                  onChange={(event) => setUserRoleFilter(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Lọc theo vai trò"
+                >
+                  <option value="all">Tất cả vai trò</option>
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {roleLabels[role] ?? role}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={userStatusFilter}
+                  onChange={(event) => setUserStatusFilter(event.target.value as 'all' | 'active' | 'inactive')}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Lọc theo trạng thái"
+                >
+                  <option value="all">Tất cả trạng thái</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Đã khóa</option>
+                </select>
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-500">
+                  <span className="shrink-0">Hiển thị</span>
+                  <select
+                    value={userPageSize}
+                    onChange={(event) => setUserPageSize(Number(event.target.value))}
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2 text-sm text-slate-700 focus:outline-none"
+                    aria-label="Số tài khoản mỗi trang"
+                  >
+                    {[5, 10, 20, 50].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-slate-500 border-b border-slate-200">
                       <th className="py-2 px-3">{t('settings.users.colUsername')}</th>
                       <th className="py-2 px-3">{t('settings.users.colFullName')}</th>
-                      <th className="py-2 px-3">{t('settings.users.colRole')}</th>
+                      <th className="py-2 px-3 min-w-[240px]">{t('settings.users.colRole')}</th>
                       <th className="py-2 px-3">{t('settings.users.colStatus')}</th>
                       <th className="py-2 px-3 text-right">{t('settings.users.colAction')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.length === 0 && !usersLoading && (
+                    {filteredUsers.length === 0 && !usersLoading && (
                       <tr>
                         <td colSpan={5} className="py-6 text-center text-slate-400">
-                          {t('common.noData')}
+                          {users.length === 0 ? t('common.noData') : 'Không tìm thấy tài khoản phù hợp.'}
                         </td>
                       </tr>
                     )}
-                    {users.map((u) => (
+                    {pagedUsers.map((u) => (
                       <tr key={u.id} className="border-b border-slate-100 last:border-0">
                         <td className="py-2 px-3 font-medium text-slate-700">{u.username}</td>
                         <td className="py-2 px-3 text-slate-600">{u.full_name ?? '—'}</td>
-                        <td className="py-2 px-3 w-44">
+                        <td className="py-2 px-3 min-w-[240px]">
                           <RoleSelect
                             value={u.role}
                             options={availableRoles}
@@ -501,6 +663,35 @@ export default function Settings() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                <span>
+                  Hiển thị {filteredUsers.length === 0 ? 0 : (userPage - 1) * userPageSize + 1}–
+                  {Math.min(userPage * userPageSize, filteredUsers.length)} / {filteredUsers.length} tài khoản
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setUserPage((page) => Math.max(1, page - 1))}
+                    disabled={userPage <= 1}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft size={15} />
+                  </button>
+                  <span className="min-w-[72px] text-center font-medium text-slate-600">
+                    Trang {userPage} / {userTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setUserPage((page) => Math.min(userTotalPages, page + 1))}
+                    disabled={userPage >= userTotalPages}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -784,20 +975,26 @@ function ThemeOption({
   label,
   onClick,
   tone = 'default',
+  previewHue = defaultPreferences.multicolorHue,
 }: {
   active: boolean;
   icon: typeof SettingsIcon;
   label: string;
   onClick: () => void;
-  tone?: 'default' | 'multicolor';
+  tone?: 'default' | 'multicolor' | 'developer';
+  previewHue?: number;
 }) {
   const activeClass =
     tone === 'multicolor'
-      ? 'border-sky-300 bg-gradient-to-br from-sky-100 via-emerald-50 to-amber-100 text-sky-800 shadow-md shadow-sky-100'
+      ? 'border-sky-300 bg-gradient-to-br from-sky-100 via-emerald-50 to-amber-100 text-sky-800 shadow-md shadow-sky-100 dark:text-sky-800'
+      : tone === 'developer'
+        ? 'border-slate-400 bg-slate-50 text-slate-900 shadow-sm'
       : 'border-blue-500 bg-blue-50 text-blue-700';
   const inactiveClass =
     tone === 'multicolor'
-      ? 'border-sky-200 bg-gradient-to-br from-white via-sky-50 to-amber-50 text-slate-700 hover:border-sky-300 hover:shadow-sm hover:shadow-sky-100'
+      ? 'border-sky-200 bg-gradient-to-br from-white via-sky-50 to-amber-50 text-slate-700 hover:border-sky-300 hover:shadow-sm hover:shadow-sky-100 dark:text-slate-700'
+      : tone === 'developer'
+        ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:bg-slate-50'
       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300';
 
   return (
@@ -805,26 +1002,25 @@ function ThemeOption({
       onClick={onClick}
       className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
         active ? activeClass : inactiveClass
-      }`}
+      } ${tone === 'multicolor' ? 'settings-theme-option-multicolor' : ''}`}
     >
       <div
         className={`flex h-9 w-9 items-center justify-center rounded-xl ${
           tone === 'multicolor'
             ? 'bg-gradient-to-br from-blue-500 via-cyan-400 to-emerald-400 text-white shadow-sm shadow-sky-200'
+            : tone === 'developer'
+              ? active
+                ? 'bg-slate-200 text-slate-800 ring-1 ring-slate-400'
+                : 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
             : ''
         }`}
+        style={tone === 'multicolor' ? { background: multicolorGradient(previewHue) } : undefined}
       >
         <Icon size={20} />
       </div>
       <span className="text-sm font-medium">{label}</span>
       {tone === 'multicolor' && (
-        <span className="mt-1 flex h-1.5 w-16 overflow-hidden rounded-full">
-          <span className="flex-1 bg-blue-500" />
-          <span className="flex-1 bg-cyan-400" />
-          <span className="flex-1 bg-emerald-400" />
-          <span className="flex-1 bg-amber-400" />
-          <span className="flex-1 bg-rose-500" />
-        </span>
+        <span className="mt-1 h-1.5 w-16 overflow-hidden rounded-full" style={{ background: multicolorGradient(previewHue) }} />
       )}
     </button>
   );
@@ -930,7 +1126,7 @@ function RoleSelect({
       value={value}
       disabled={disabled}
       onChange={(event) => void onChange(event.target.value)}
-      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+      className="w-full min-w-[220px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
     >
       {options.map((role) => (
         <option key={role} value={role}>

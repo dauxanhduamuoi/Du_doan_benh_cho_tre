@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,16 +8,20 @@ from app.database import Base, SessionLocal, engine
 from app.routers import auth, admin, import_data, dashboard, forecast, public, reports, weather_ai, areas
 from app.services.area_service import ensure_area_schema, seed_default_areas
 
-Base.metadata.create_all(bind=engine)
-ensure_area_schema(engine)
 
-with SessionLocal() as db:
-    seed_default_areas(db)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    ensure_area_schema(engine)
+    with SessionLocal() as db:
+        seed_default_areas(db)
+    yield
 
 app = FastAPI(
     title="Seasonal Disease Forecast API",
     description="Backend cho hệ thống phân tích dữ liệu bệnh nhi theo mùa vụ.",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 cors_origins = [

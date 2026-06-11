@@ -25,6 +25,7 @@ import {
 import * as api from '@/lib/api';
 import { loadProvinceRegions, type ProvinceRegionRecord } from '@/lib/provinceRegions';
 import { useAuth } from '../contexts/AuthContext';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 const PROVINCE_COLORS = [
   '#2563eb',
@@ -158,6 +159,34 @@ function aggregateDiseaseRows(rows: api.AreaDiseaseSummary[]): api.AreaDiseaseSu
     .sort((a, b) => b.case_count - a.case_count);
 }
 
+function buildTargetCaseRows(
+  targetProvinces: api.AreaOption[],
+  allCases: api.AreaCaseSummary[],
+): api.AreaCaseSummary[] {
+  const caseByCode = new Map<string, api.AreaCaseSummary>();
+  const caseByName = new Map<string, api.AreaCaseSummary>();
+
+  allCases.forEach((row) => {
+    if (row.area_code) caseByCode.set(row.area_code, row);
+    caseByName.set(normalizeProvinceName(row.area_name), row);
+  });
+
+  return targetProvinces
+    .map((province) => {
+      const matched = caseByCode.get(province.code) ?? caseByName.get(normalizeProvinceName(province.name));
+      return (
+        matched ?? {
+          area_code: province.code,
+          area_name: province.name,
+          level: 'province',
+          case_count: 0,
+          disease_groups: 0,
+        }
+      );
+    })
+    .sort((a, b) => b.case_count - a.case_count || a.area_name.localeCompare(b.area_name, 'vi'));
+}
+
 function aggregateRiskRows(rows: api.AreaLocalRisk[]): api.AreaLocalRisk[] {
   const map = new Map<
     string,
@@ -217,12 +246,13 @@ function buildRegionRecommendations(regionLabel: string, risks: api.AreaLocalRis
 }
 
 export default function AreaInsights() {
+  const isMinimalTheme = useMinimalTheme();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [provinces, setProvinces] = useState<api.AreaOption[]>([]);
   const [provinceRegions, setProvinceRegions] = useState<ProvinceRegionRecord[]>([]);
   const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
-  const [provinceCode, setProvinceCode] = useState('');
+  const [provinceCodes, setProvinceCodes] = useState<string[]>([]);
   const [provinceSearch, setProvinceSearch] = useState('');
   const [provincePickerOpen, setProvincePickerOpen] = useState(false);
   const [caseSummary, setCaseSummary] = useState<api.AreaCaseSummary[]>([]);
@@ -238,9 +268,9 @@ export default function AreaInsights() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const selectedProvince = useMemo(
-    () => provinces.find((p) => p.code === provinceCode) ?? null,
-    [provinces, provinceCode],
+  const selectedProvinces = useMemo(
+    () => provinces.filter((p) => provinceCodes.includes(p.code)),
+    [provinces, provinceCodes],
   );
 
   const selectedRegion = useMemo(
@@ -250,8 +280,8 @@ export default function AreaInsights() {
   const provinceRegionLookup = useMemo(() => buildProvinceRegionLookup(provinceRegions), [provinceRegions]);
   const hasProvinceRegions = provinceRegions.length > 0;
 
-  const activeAreaLabel = selectedProvince
-    ? selectedProvince.name
+  const activeAreaLabel = selectedProvinces.length > 0
+    ? selectedProvinces.map((province) => province.name).join(', ')
     : regionFilter === 'all'
       ? 'toàn bộ dữ liệu'
       : selectedRegion.label;
@@ -268,17 +298,24 @@ export default function AreaInsights() {
 
   const coloredCases = useMemo(
     () =>
-      caseSummary.slice(0, 12).map((row, index) => ({
+      (selectedProvinces.length > 0 ? caseSummary : caseSummary.slice(0, 12)).map((row, index) => ({
         ...row,
         color: provinceColor(row.area_code, index),
       })),
-    [caseSummary],
+    [caseSummary, selectedProvinces.length],
   );
+  const areaChartHeight = Math.max(360, coloredCases.length * 54);
 
   const totalCases = useMemo(
     () => caseSummary.reduce((sum, row) => sum + row.case_count, 0),
     [caseSummary],
   );
+  const areaCountLabel =
+    selectedProvinces.length > 0
+      ? 'Khu vực đã chọn'
+      : regionFilter !== 'all'
+        ? `Khu vực trong ${selectedRegion.label}`
+        : 'Khu vực có dữ liệu';
 
   const diseaseTotalPages = Math.max(1, Math.ceil(diseaseSummary.length / diseasePageSize));
   const diseasePageRows = useMemo(() => {
@@ -301,42 +338,54 @@ export default function AreaInsights() {
       setProvinceRegions(regionRows);
       const regionLookup = buildProvinceRegionLookup(regionRows);
 
-      if (!provinceCode && regionFilter !== 'all') {
-        const regionProvinces = prov.filter((province) => isProvinceInRegion(province, regionFilter, regionLookup));
-        const regionCodes = new Set(regionProvinces.map((province) => province.code));
-        const regionNames = new Set(regionProvinces.map((province) => normalizeProvinceName(province.name)));
-        const [allCases, diseaseLists, riskLists] = await Promise.all([
-          api.getAreaCaseSummary({ limit: 200 }),
+      const selectedProvinceSet = new Set(provinceCodes);
+      const targetProvinces =
+        provinceCodes.length > 0
+          ? prov.filter((province) => selectedProvinceSet.has(province.code))
+          : regionFilter !== 'all'
+            ? prov.filter((province) => isProvinceInRegion(province, regionFilter, regionLookup))
+            : [];
+
+      if (targetProvinces.length > 0) {
+        const allCases = await api.getAreaCaseSummary({ limit: 200 });
+        const targetCases = buildTargetCaseRows(targetProvinces, allCases);
+        const targetDataCodes = Array.from(
+          new Set(
+            targetCases
+              .filter((row) => row.case_count > 0 && row.area_code)
+              .map((row) => row.area_code as string),
+          ),
+        );
+        const [diseaseLists, riskLists] = await Promise.all([
           Promise.all(
-            regionProvinces.map((province) =>
-              api.getAreaDiseaseSummary({ provinceCode: province.code, limit: 200 }).catch(() => []),
+            targetDataCodes.map((provinceCode) =>
+              api.getAreaDiseaseSummary({ provinceCode, limit: 200 }).catch(() => []),
             ),
           ),
           Promise.all(
-            regionProvinces.map((province) =>
-              api.getAreaLocalRisks({ provinceCode: province.code, limit: 200 }).catch(() => []),
+            targetDataCodes.map((provinceCode) =>
+              api.getAreaLocalRisks({ provinceCode, limit: 200 }).catch(() => []),
             ),
           ),
         ]);
-        const regionCases = allCases.filter(
-          (row) =>
-            (row.area_code && regionCodes.has(row.area_code)) || regionNames.has(normalizeProvinceName(row.area_name)),
-        );
         const diseases = aggregateDiseaseRows(diseaseLists.flat()).slice(0, 200);
         const risks = aggregateRiskRows(riskLists.flat()).slice(0, 200);
-        setCaseSummary(regionCases);
+        const targetLabel =
+          provinceCodes.length > 0
+            ? targetProvinces.map((province) => province.name).join(', ')
+            : selectedRegion.label;
+        setCaseSummary(targetCases);
         setDiseaseSummary(diseases);
         setLocalRisks(risks);
-        setRecommendations(buildRegionRecommendations(selectedRegion.label, risks));
+        setRecommendations(buildRegionRecommendations(targetLabel, risks));
         return;
       }
 
-      const provinceParam = provinceCode || undefined;
       const [cases, diseases, risks, rec] = await Promise.all([
-        api.getAreaCaseSummary({ provinceCode: provinceParam, limit: 200 }),
-        api.getAreaDiseaseSummary({ provinceCode: provinceParam, limit: 200 }),
-        api.getAreaLocalRisks({ provinceCode: provinceParam, limit: 200 }),
-        api.getAreaRecommendations({ provinceCode: provinceParam }).catch(() => null),
+        api.getAreaCaseSummary({ limit: 200 }),
+        api.getAreaDiseaseSummary({ limit: 200 }),
+        api.getAreaLocalRisks({ limit: 200 }),
+        api.getAreaRecommendations({}).catch(() => null),
       ]);
       setCaseSummary(cases);
       setDiseaseSummary(diseases);
@@ -347,7 +396,7 @@ export default function AreaInsights() {
     } finally {
       setLoading(false);
     }
-  }, [provinceCode, regionFilter, selectedRegion.label]);
+  }, [provinceCodes, regionFilter, selectedRegion.label]);
 
   useEffect(() => {
     load();
@@ -356,7 +405,7 @@ export default function AreaInsights() {
   useEffect(() => {
     setDiseasePage(1);
     setRiskPage(1);
-  }, [provinceCode, regionFilter, diseasePageSize, riskPageSize]);
+  }, [provinceCodes, regionFilter, diseasePageSize, riskPageSize]);
 
   useEffect(() => {
     if (diseasePage > diseaseTotalPages) setDiseasePage(diseaseTotalPages);
@@ -412,7 +461,7 @@ export default function AreaInsights() {
                 </span>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
                   {REGION_OPTIONS.map((option) => {
-                    const active = option.value === regionFilter && !selectedProvince;
+                    const active = option.value === regionFilter && selectedProvinces.length === 0;
                     const disabled = option.value !== 'all' && !hasProvinceRegions;
                     return (
                       <button
@@ -422,7 +471,7 @@ export default function AreaInsights() {
                         onClick={() => {
                           if (disabled) return;
                           setRegionFilter(option.value);
-                          setProvinceCode('');
+                          setProvinceCodes([]);
                           setProvinceSearch('');
                           setProvincePickerOpen(false);
                         }}
@@ -451,11 +500,11 @@ export default function AreaInsights() {
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Lọc tỉnh/thành phố
                 </span>
-                {(selectedProvince || regionFilter !== 'all') && (
+                {(selectedProvinces.length > 0 || regionFilter !== 'all') && (
                   <button
                     onClick={() => {
                       setRegionFilter('all');
-                      setProvinceCode('');
+                      setProvinceCodes([]);
                       setProvinceSearch('');
                     }}
                     className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs text-slate-500 ring-1 ring-slate-200 hover:text-red-600"
@@ -476,7 +525,6 @@ export default function AreaInsights() {
                   onChange={(e) => {
                     setProvinceSearch(e.target.value);
                     setProvincePickerOpen(true);
-                    if (provinceCode) setProvinceCode('');
                   }}
                   placeholder="Tìm nhanh: Hồ Chí Minh, Đồng Nai..."
                   className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -487,12 +535,12 @@ export default function AreaInsights() {
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
-                        setProvinceCode('');
+                        setProvinceCodes([]);
                         setProvinceSearch('');
                         setProvincePickerOpen(false);
                       }}
                       className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                        !provinceCode ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                        selectedProvinces.length === 0 ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
                       }`}
                     >
                       <span className="font-medium">
@@ -500,21 +548,22 @@ export default function AreaInsights() {
                           ? 'Tất cả tỉnh/thành phố'
                           : `Tất cả tỉnh/thành phố trong ${selectedRegion.label}`}
                       </span>
-                      {!provinceCode && <span className="text-xs font-semibold">Đang chọn</span>}
+                      {selectedProvinces.length === 0 && <span className="text-xs font-semibold">Đang chọn</span>}
                     </button>
                     {filteredProvinces.length > 0 ? (
                       filteredProvinces.map((p, index) => {
-                        const active = p.code === provinceCode;
+                        const active = provinceCodes.includes(p.code);
                         return (
                           <button
                             key={p.code}
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
-                              setRegionFilter('all');
-                              setProvinceCode(p.code);
-                              setProvinceSearch(p.name);
-                              setProvincePickerOpen(false);
+                              setProvinceCodes((current) =>
+                                current.includes(p.code)
+                                  ? current.filter((code) => code !== p.code)
+                                  : [...current, p.code],
+                              );
                             }}
                             className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50 ${
                               active ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
@@ -528,6 +577,7 @@ export default function AreaInsights() {
                             <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
                               {p.code}
                             </span>
+                            {active && <span className="shrink-0 text-xs font-semibold text-blue-700">Đã chọn</span>}
                           </button>
                         );
                       })
@@ -539,16 +589,27 @@ export default function AreaInsights() {
                   </div>
                 )}
               </div>
-              {selectedProvince && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
-                  <span
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: provinceColor(selectedProvince.code, 0) }}
-                  />
-                  <span className="min-w-0 truncate font-medium">{selectedProvince.name}</span>
+              {selectedProvinces.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
+                  {selectedProvinces.map((province, index) => (
+                    <button
+                      key={province.code}
+                      type="button"
+                      onClick={() => setProvinceCodes((current) => current.filter((code) => code !== province.code))}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:text-red-600"
+                      title="Bỏ chọn tỉnh/thành phố này"
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: provinceColor(province.code, index) }}
+                      />
+                      <span className="min-w-0 truncate">{province.name}</span>
+                      <X size={11} />
+                    </button>
+                  ))}
                 </div>
               )}
-              {!selectedProvince && regionFilter !== 'all' && (
+              {selectedProvinces.length === 0 && regionFilter !== 'all' && (
                 <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
                   <span className="h-3 w-3 rounded-full bg-blue-500" />
                   <span className="min-w-0 truncate font-medium">Đang lọc: {selectedRegion.label}</span>
@@ -593,10 +654,10 @@ export default function AreaInsights() {
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <StatCard icon={MapPin} label="Khu vực có dữ liệu" value={caseSummary.length} accent="#2563eb" />
+        <StatCard icon={MapPin} label={areaCountLabel} value={caseSummary.length} accent="#2563eb" />
         <StatCard
           icon={Activity}
-          label={selectedProvince || regionFilter !== 'all' ? `Số ca tại ${activeAreaLabel}` : 'Tổng số ca hiện tại'}
+          label={selectedProvinces.length > 0 || regionFilter !== 'all' ? `Số ca tại ${activeAreaLabel}` : 'Tổng số ca hiện tại'}
           value={totalCases}
           accent="#dc2626"
         />
@@ -608,43 +669,57 @@ export default function AreaInsights() {
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <BarChart3 size={18} className="text-blue-600" />
-              <h3 className="font-semibold text-slate-800">Khu vực có số ca cao</h3>
+              <h3 className="font-semibold text-slate-800">
+                {selectedProvinces.length > 0 ? 'Các khu vực đã chọn' : 'Khu vực có số ca cao'}
+              </h3>
             </div>
-            <span className="text-xs text-slate-400">Top {coloredCases.length} tỉnh/thành phố</span>
+            <span className="text-xs text-slate-400">
+              {selectedProvinces.length > 0
+                ? `${coloredCases.length} tỉnh/thành phố đã chọn`
+                : `Top ${coloredCases.length} tỉnh/thành phố`}
+            </span>
           </div>
           {caseSummary.length === 0 ? (
             <Empty loading={loading} text="Chưa có dữ liệu khu vực. Hãy import file có cột full_address." />
           ) : (
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart data={coloredCases} layout="vertical" margin={{ left: 20, right: 34, top: 4, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis
-                  type="category"
-                  dataKey="area_name"
-                  width={155}
-                  tick={{ fontSize: 12, fill: '#475569' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
-                  formatter={(value: number) => [`${value.toLocaleString()} ca`, 'Số ca']}
-                />
-                <Bar dataKey="case_count" name="Số ca" radius={[0, 6, 6, 0]}>
-                  {coloredCases.map((entry) => (
-                    <Cell key={entry.area_code ?? entry.area_name} fill={entry.color} />
-                  ))}
-                  <LabelList
-                    dataKey="case_count"
-                    position="right"
-                    formatter={(value: number) => value.toLocaleString()}
-                    style={{ fill: '#334155', fontSize: 11, fontWeight: 700 }}
+            <div className="max-h-[720px] overflow-y-auto pr-2">
+              <ResponsiveContainer width="100%" height={areaChartHeight}>
+                <BarChart data={coloredCases} layout="vertical" margin={{ left: 20, right: 34, top: 4, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="area_name"
+                    width={155}
+                    tick={{ fontSize: 12, fill: '#475569' }}
+                    axisLine={false}
+                    tickLine={false}
                   />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0' }}
+                    formatter={(value: number) => [`${value.toLocaleString()} ca`, 'Số ca']}
+                  />
+                  <Bar
+                    dataKey="case_count"
+                    name="Số ca"
+                    radius={[0, 6, 6, 0]}
+                    minPointSize={3}
+                    isAnimationActive={!isMinimalTheme}
+                  >
+                    {coloredCases.map((entry) => (
+                      <Cell key={entry.area_code ?? entry.area_name} fill={entry.color} />
+                    ))}
+                    <LabelList
+                      dataKey="case_count"
+                      position="right"
+                      formatter={(value: number) => value.toLocaleString()}
+                      style={{ fill: '#334155', fontSize: 11, fontWeight: 700 }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </section>
 
@@ -653,7 +728,7 @@ export default function AreaInsights() {
           {coloredCases.length === 0 ? (
             <Empty loading={loading} text="Chưa có dữ liệu." />
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
               {coloredCases.map((row, index) => (
                 <div
                   key={row.area_code ?? row.area_name}
@@ -676,7 +751,7 @@ export default function AreaInsights() {
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="font-semibold text-slate-800">
-              Nhóm bệnh xuất hiện nhiều {selectedProvince || regionFilter !== 'all' ? `tại ${activeAreaLabel}` : 'theo toàn bộ dữ liệu'}
+              Nhóm bệnh xuất hiện nhiều {selectedProvinces.length > 0 || regionFilter !== 'all' ? `tại ${activeAreaLabel}` : 'theo toàn bộ dữ liệu'}
             </h3>
             <PageSizeSelect value={diseasePageSize} onChange={setDiseasePageSize} />
           </div>

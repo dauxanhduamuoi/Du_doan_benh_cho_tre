@@ -18,6 +18,7 @@ import { Activity, BarChart3, Check, ChevronDown, Loader2, RefreshCcw, Search } 
 import * as api from '@/lib/api';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { ensureBilingualMap, fuzzyMatch, splitDiseaseLabel } from '@/lib/disease';
+import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 type AnalysisMode = 'monthly' | 'gender' | 'trend';
 type GenderScope = 'month' | 'year' | 'all';
@@ -208,6 +209,7 @@ function filterPeriodOptions(periods: api.DashboardPeriodOption[], search: strin
 }
 
 export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: AnalysisMode }) {
+  const isMinimalTheme = useMinimalTheme();
   const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>([]);
   const [diseases, setDiseases] = useState<api.DashboardDiseaseGroupOption[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState('');
@@ -590,7 +592,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                     <XAxis type="number" tick={{ fontSize: 12 }} />
                     <YAxis type="category" dataKey="label" width={170} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(value: number) => [`${value.toLocaleString()} ca`, 'Số ca']} />
-                    <Bar dataKey="case_count" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="case_count" radius={[0, 6, 6, 0]} isAnimationActive={!isMinimalTheme}>
                       {topByMonthChart.map((entry) => <Cell key={entry.disease_group} fill={entry.color} />)}
                     </Bar>
                   </BarChart>
@@ -603,7 +605,15 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                 <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-2">
                   <ResponsiveContainer width="100%" height={260}>
                     <PieChart>
-                      <Pie data={percentChart} dataKey="case_count" nameKey="label" innerRadius={55} outerRadius={95} paddingAngle={2}>
+                      <Pie
+                        data={percentChart}
+                        dataKey="case_count"
+                        nameKey="label"
+                        innerRadius={55}
+                        outerRadius={95}
+                        paddingAngle={2}
+                        isAnimationActive={!isMinimalTheme}
+                      >
                         {percentChart.map((entry) => <Cell key={entry.disease_group} fill={entry.color} />)}
                       </Pie>
                       <Tooltip formatter={(value: number, _name, item) => {
@@ -635,8 +645,8 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number, name: string) => [`${value.toLocaleString()} ca`, name === 'current_cases' ? selectedPeriod : 'Tháng trước']} />
                   <Legend />
-                  <Bar dataKey="previous_cases" name="Tháng trước" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="current_cases" name={selectedPeriod} fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="previous_cases" name="Tháng trước" fill="#94a3b8" radius={[4, 4, 0, 0]} isAnimationActive={!isMinimalTheme} />
+                  <Bar dataKey="current_cases" name={selectedPeriod} fill="#2563eb" radius={[4, 4, 0, 0]} isAnimationActive={!isMinimalTheme} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -698,7 +708,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                     <XAxis dataKey="gender" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(value: number) => [`${value.toLocaleString()} ca`, 'Số ca']} />
-                    <Bar dataKey="case_count" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="case_count" radius={[6, 6, 0, 0]} isAnimationActive={!isMinimalTheme}>
                       {genderCases.map((row, index) => <Cell key={row.gender} fill={COLORS[index % COLORS.length]} />)}
                     </Bar>
                   </BarChart>
@@ -780,7 +790,15 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie data={genderComparisonChart} dataKey="case_count" nameKey="gender" innerRadius={55} outerRadius={92} paddingAngle={3}>
+                    <Pie
+                      data={genderComparisonChart}
+                      dataKey="case_count"
+                      nameKey="gender"
+                      innerRadius={55}
+                      outerRadius={92}
+                      paddingAngle={3}
+                      isAnimationActive={!isMinimalTheme}
+                    >
                       {genderComparisonChart.map((entry) => <Cell key={entry.gender} fill={entry.color} />)}
                     </Pie>
                     <Tooltip formatter={(value: number, _name, item) => {
@@ -853,6 +871,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                         )}
                         activeDot={false}
                         connectNulls
+                        isAnimationActive={!isMinimalTheme}
                       />
                     );
                   })}
@@ -873,7 +892,14 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
                   <Tooltip formatter={(value: number, name: string) => [`${value.toLocaleString()} ca`, name]} />
                   <Legend />
                   {trendSeries.map((s) => (
-                    <Bar key={s.key} dataKey={s.key} name={s.label} fill={s.color} stackId="selected-diseases" />
+                    <Bar
+                      key={s.key}
+                      dataKey={s.key}
+                      name={s.label}
+                      fill={s.color}
+                      stackId="selected-diseases"
+                      isAnimationActive={!isMinimalTheme}
+                    />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
