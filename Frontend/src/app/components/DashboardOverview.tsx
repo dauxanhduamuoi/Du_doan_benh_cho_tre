@@ -29,6 +29,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import * as api from '@/lib/api';
+import { loadChartDataCache, saveChartDataCache } from '@/lib/chartDataCache';
 import { addNotification } from '@/lib/notifications';
 import { useT } from '@/lib/i18n';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
@@ -47,6 +48,16 @@ interface Toast {
   id: number;
   type: 'success' | 'error' | 'info';
   message: string;
+}
+
+interface DashboardCacheState {
+  overview: api.OverviewResponse | null;
+  monthly: api.MonthlyStat[];
+  yearlyCases: api.YearlyCaseStat[];
+  topGroups: api.TopDiseaseGroup[];
+  topLimit: number;
+  forecast: api.ForecastGroupSummary[];
+  forecastDetails: api.ForecastResult[];
 }
 
 const RISK_COLORS: Record<string, string> = {
@@ -108,16 +119,18 @@ export default function DashboardOverview() {
   // Dashboard phân tích dữ liệu người dùng import hiện tại (predict_current).
   // train_history chỉ dùng cho model AI/forecast, không dùng để vẽ dashboard phân tích.
   const dataType: DataType = 'predict_current';
+  const [cachedDashboard] = useState(() => loadChartDataCache<DashboardCacheState>('dashboard_overview'));
+  const [hasLoadedDashboard, setHasLoadedDashboard] = useState(Boolean(cachedDashboard));
 
-  const [overview, setOverview] = useState<api.OverviewResponse | null>(null);
-  const [monthly, setMonthly] = useState<api.MonthlyStat[]>([]);
-  const [yearlyCases, setYearlyCases] = useState<api.YearlyCaseStat[]>([]);
-  const [topGroups, setTopGroups] = useState<api.TopDiseaseGroup[]>([]);
-  const [topLimit, setTopLimit] = useState(8);
-  const [forecast, setForecast] = useState<api.ForecastGroupSummary[]>([]);
+  const [overview, setOverview] = useState<api.OverviewResponse | null>(cachedDashboard?.overview ?? null);
+  const [monthly, setMonthly] = useState<api.MonthlyStat[]>(cachedDashboard?.monthly ?? []);
+  const [yearlyCases, setYearlyCases] = useState<api.YearlyCaseStat[]>(cachedDashboard?.yearlyCases ?? []);
+  const [topGroups, setTopGroups] = useState<api.TopDiseaseGroup[]>(cachedDashboard?.topGroups ?? []);
+  const [topLimit, setTopLimit] = useState(cachedDashboard?.topLimit ?? 8);
+  const [forecast, setForecast] = useState<api.ForecastGroupSummary[]>(cachedDashboard?.forecast ?? []);
   // Chi tiết theo (period × disease × age) — load song song để bảng Forecast
   // có thể expand từng nhóm bệnh xem breakdown theo nhóm tuổi.
-  const [forecastDetails, setForecastDetails] = useState<api.ForecastResult[]>([]);
+  const [forecastDetails, setForecastDetails] = useState<api.ForecastResult[]>(cachedDashboard?.forecastDetails ?? []);
   const [expandedForecastKeys, setExpandedForecastKeys] = useState<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(false);
@@ -157,6 +170,16 @@ export default function DashboardOverview() {
       setTopGroups(tg);
       setForecast(fc);
       setForecastDetails(fd);
+      setHasLoadedDashboard(true);
+      saveChartDataCache<DashboardCacheState>('dashboard_overview', {
+        overview: ov,
+        monthly: ms,
+        yearlyCases: yc,
+        topGroups: tg,
+        topLimit,
+        forecast: fc,
+        forecastDetails: fd,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -167,6 +190,8 @@ export default function DashboardOverview() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const showEmptyLoading = loading && !hasLoadedDashboard;
 
   const monthlyChartData = useMemo(() => {
     const byPeriod = new Map<string, number>();
@@ -246,6 +271,15 @@ export default function DashboardOverview() {
       ]);
       setForecast(fc);
       setForecastDetails(fd);
+      saveChartDataCache<DashboardCacheState>('dashboard_overview', {
+        overview,
+        monthly,
+        yearlyCases,
+        topGroups,
+        topLimit,
+        forecast: fc,
+        forecastDetails: fd,
+      });
       const high = fc.filter((r) => r.risk_level === 'Cao').length;
       pushToast('success', t('dashboard.forecastDone'));
       addNotification({
@@ -421,7 +455,7 @@ export default function DashboardOverview() {
                 <div className="space-y-1">
                   <p className="text-sm text-slate-500">{stat.title}</p>
                   <p className="text-3xl font-bold text-slate-800">
-                    {loading && overview === null ? '—' : stat.value.toLocaleString()}
+                    {showEmptyLoading && overview === null ? '—' : stat.value.toLocaleString()}
                   </p>
                   <p className="text-xs text-slate-400 pt-1">
                     {t('settings.data.current')}
@@ -457,7 +491,7 @@ export default function DashboardOverview() {
           </div>
         </div>
         {yearlyChartData.length === 0 ? (
-          <EmptyChart loading={loading} label={t('dashboard.noData')} t={t} />
+          <EmptyChart loading={showEmptyLoading} label={t('dashboard.noData')} t={t} />
         ) : (
           <>
             <ResponsiveContainer width="100%" height={320}>
@@ -530,7 +564,7 @@ export default function DashboardOverview() {
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">{t('dashboard.monthlyCases')}</h3>
           {monthlyChartData.length === 0 ? (
-            <EmptyChart loading={loading} label={t('dashboard.noData')} t={t} />
+            <EmptyChart loading={showEmptyLoading} label={t('dashboard.noData')} t={t} />
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={monthlyChartData} margin={{ bottom: 24 }}>
@@ -571,7 +605,7 @@ export default function DashboardOverview() {
             </div>
           </div>
           {pieData.length === 0 ? (
-            <EmptyChart loading={loading} label={t('dashboard.noGroupData')} t={t} />
+            <EmptyChart loading={showEmptyLoading} label={t('dashboard.noGroupData')} t={t} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
               {/* Pie không có label ngoài — dùng legend bên cạnh để tránh chèn chữ */}
@@ -643,7 +677,7 @@ export default function DashboardOverview() {
           <p className="text-xs text-slate-500 mt-1">Biểu đồ xếp chồng theo các nhóm bệnh đang được chọn ở bộ lọc Top {topLimit}.</p>
         </div>
         {stackedTopChartData.data.length === 0 ? (
-          <EmptyChart loading={loading} label={t('dashboard.noPeriodData')} t={t} />
+          <EmptyChart loading={showEmptyLoading} label={t('dashboard.noPeriodData')} t={t} />
         ) : (
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={stackedTopChartData.data} barGap={2} margin={{ bottom: 32 }}>

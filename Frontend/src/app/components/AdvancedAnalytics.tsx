@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import { Activity, BarChart3, Check, ChevronDown, Loader2, RefreshCcw, Search } from 'lucide-react';
 import * as api from '@/lib/api';
+import { loadChartDataCache, saveChartDataCache } from '@/lib/chartDataCache';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { ensureBilingualMap, fuzzyMatch, splitDiseaseLabel } from '@/lib/disease';
 import { useMinimalTheme } from '@/lib/useMinimalTheme';
@@ -35,6 +36,29 @@ type TrendHoverPoint = {
   clientX: number;
   clientY: number;
 };
+
+interface AdvancedAnalyticsCacheState {
+  periods: api.DashboardPeriodOption[];
+  diseases: api.DashboardDiseaseGroupOption[];
+  selectedPeriod: string;
+  selectedDisease: string;
+  selectedDiseases: string[];
+  genderTotalScope: GenderScope;
+  selectedGenderTotalPeriod: string;
+  selectedGenderTotalYear: number | null;
+  genderDiseaseScope: GenderScope;
+  selectedGenderDiseasePeriod: string;
+  selectedGenderDiseaseYear: number | null;
+  limit: number;
+  summary: api.SummaryCardResponse | null;
+  topByMonth: api.TopDiseaseGroupByMonth[];
+  percentage: api.DiseasePercentageByMonth[];
+  comparison: api.MonthlyComparisonRow[];
+  genderCases: api.CasesByGenderRow[];
+  genderComparison: api.DiseaseByGenderRow | null;
+  trend: api.DiseaseTrendRow[];
+  yearOverYear: api.YearOverYearRow[];
+}
 
 const COLORS = [
   '#2563eb',
@@ -210,31 +234,34 @@ function filterPeriodOptions(periods: api.DashboardPeriodOption[], search: strin
 
 export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: AnalysisMode }) {
   const isMinimalTheme = useMinimalTheme();
-  const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>([]);
-  const [diseases, setDiseases] = useState<api.DashboardDiseaseGroupOption[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('');
-  const [selectedDisease, setSelectedDisease] = useState('');
-  const [selectedDiseases, setSelectedDiseases] = useState<string[]>([]);
-  const [genderTotalScope, setGenderTotalScope] = useState<GenderScope>('month');
-  const [selectedGenderTotalPeriod, setSelectedGenderTotalPeriod] = useState('');
-  const [selectedGenderTotalYear, setSelectedGenderTotalYear] = useState<number | null>(null);
-  const [genderDiseaseScope, setGenderDiseaseScope] = useState<GenderScope>('month');
-  const [selectedGenderDiseasePeriod, setSelectedGenderDiseasePeriod] = useState('');
-  const [selectedGenderDiseaseYear, setSelectedGenderDiseaseYear] = useState<number | null>(null);
+  const cacheKey = `advanced_${mode}`;
+  const [cachedAdvanced] = useState(() => loadChartDataCache<AdvancedAnalyticsCacheState>(cacheKey));
+  const [hasLoadedAdvanced, setHasLoadedAdvanced] = useState(Boolean(cachedAdvanced));
+  const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>(cachedAdvanced?.periods ?? []);
+  const [diseases, setDiseases] = useState<api.DashboardDiseaseGroupOption[]>(cachedAdvanced?.diseases ?? []);
+  const [selectedPeriod, setSelectedPeriod] = useState(cachedAdvanced?.selectedPeriod ?? '');
+  const [selectedDisease, setSelectedDisease] = useState(cachedAdvanced?.selectedDisease ?? '');
+  const [selectedDiseases, setSelectedDiseases] = useState<string[]>(cachedAdvanced?.selectedDiseases ?? []);
+  const [genderTotalScope, setGenderTotalScope] = useState<GenderScope>(cachedAdvanced?.genderTotalScope ?? 'month');
+  const [selectedGenderTotalPeriod, setSelectedGenderTotalPeriod] = useState(cachedAdvanced?.selectedGenderTotalPeriod ?? '');
+  const [selectedGenderTotalYear, setSelectedGenderTotalYear] = useState<number | null>(cachedAdvanced?.selectedGenderTotalYear ?? null);
+  const [genderDiseaseScope, setGenderDiseaseScope] = useState<GenderScope>(cachedAdvanced?.genderDiseaseScope ?? 'month');
+  const [selectedGenderDiseasePeriod, setSelectedGenderDiseasePeriod] = useState(cachedAdvanced?.selectedGenderDiseasePeriod ?? '');
+  const [selectedGenderDiseaseYear, setSelectedGenderDiseaseYear] = useState<number | null>(cachedAdvanced?.selectedGenderDiseaseYear ?? null);
   const [searchPeriod, setSearchPeriod] = useState('');
   const [searchGenderTotalPeriod, setSearchGenderTotalPeriod] = useState('');
   const [searchGenderDiseasePeriod, setSearchGenderDiseasePeriod] = useState('');
   const [searchDisease, setSearchDisease] = useState('');
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(cachedAdvanced?.limit ?? 10);
 
-  const [summary, setSummary] = useState<api.SummaryCardResponse | null>(null);
-  const [topByMonth, setTopByMonth] = useState<api.TopDiseaseGroupByMonth[]>([]);
-  const [percentage, setPercentage] = useState<api.DiseasePercentageByMonth[]>([]);
-  const [comparison, setComparison] = useState<api.MonthlyComparisonRow[]>([]);
-  const [genderCases, setGenderCases] = useState<api.CasesByGenderRow[]>([]);
-  const [genderComparison, setGenderComparison] = useState<api.DiseaseByGenderRow | null>(null);
-  const [trend, setTrend] = useState<api.DiseaseTrendRow[]>([]);
-  const [yearOverYear, setYearOverYear] = useState<api.YearOverYearRow[]>([]);
+  const [summary, setSummary] = useState<api.SummaryCardResponse | null>(cachedAdvanced?.summary ?? null);
+  const [topByMonth, setTopByMonth] = useState<api.TopDiseaseGroupByMonth[]>(cachedAdvanced?.topByMonth ?? []);
+  const [percentage, setPercentage] = useState<api.DiseasePercentageByMonth[]>(cachedAdvanced?.percentage ?? []);
+  const [comparison, setComparison] = useState<api.MonthlyComparisonRow[]>(cachedAdvanced?.comparison ?? []);
+  const [genderCases, setGenderCases] = useState<api.CasesByGenderRow[]>(cachedAdvanced?.genderCases ?? []);
+  const [genderComparison, setGenderComparison] = useState<api.DiseaseByGenderRow | null>(cachedAdvanced?.genderComparison ?? null);
+  const [trend, setTrend] = useState<api.DiseaseTrendRow[]>(cachedAdvanced?.trend ?? []);
+  const [yearOverYear, setYearOverYear] = useState<api.YearOverYearRow[]>(cachedAdvanced?.yearOverYear ?? []);
 
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -244,6 +271,55 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
   const [highlightedTrendDiseases, setHighlightedTrendDiseases] = useState<string[]>([]);
 
   const copy = MODE_COPY[mode];
+
+  useEffect(() => {
+    if (!hasLoadedAdvanced) return;
+    saveChartDataCache<AdvancedAnalyticsCacheState>(cacheKey, {
+      periods,
+      diseases,
+      selectedPeriod,
+      selectedDisease,
+      selectedDiseases,
+      genderTotalScope,
+      selectedGenderTotalPeriod,
+      selectedGenderTotalYear,
+      genderDiseaseScope,
+      selectedGenderDiseasePeriod,
+      selectedGenderDiseaseYear,
+      limit,
+      summary,
+      topByMonth,
+      percentage,
+      comparison,
+      genderCases,
+      genderComparison,
+      trend,
+      yearOverYear,
+    });
+  }, [
+    cacheKey,
+    comparison,
+    diseases,
+    genderCases,
+    genderComparison,
+    genderDiseaseScope,
+    genderTotalScope,
+    hasLoadedAdvanced,
+    limit,
+    percentage,
+    periods,
+    selectedDisease,
+    selectedDiseases,
+    selectedGenderDiseasePeriod,
+    selectedGenderDiseaseYear,
+    selectedGenderTotalPeriod,
+    selectedGenderTotalYear,
+    selectedPeriod,
+    summary,
+    topByMonth,
+    trend,
+    yearOverYear,
+  ]);
 
   useEffect(() => {
     ensureBilingualMap().then(setBilingualMap).catch(() => undefined);
@@ -258,13 +334,13 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
         setPeriods(periodRows);
         setDiseases(diseaseRows);
         const latestPeriod = periodRows[periodRows.length - 1];
-        setSelectedPeriod(latestPeriod?.period ?? '');
-        setSelectedGenderTotalPeriod(latestPeriod?.period ?? '');
-        setSelectedGenderDiseasePeriod(latestPeriod?.period ?? '');
-        setSelectedGenderTotalYear(latestPeriod?.year ?? null);
-        setSelectedGenderDiseaseYear(latestPeriod?.year ?? null);
-        setSelectedDisease(diseaseRows[0]?.disease_group ?? '');
-        setSelectedDiseases(diseaseRows[0]?.disease_group ? [diseaseRows[0].disease_group] : []);
+        setSelectedPeriod((current) => current || latestPeriod?.period || '');
+        setSelectedGenderTotalPeriod((current) => current || latestPeriod?.period || '');
+        setSelectedGenderDiseasePeriod((current) => current || latestPeriod?.period || '');
+        setSelectedGenderTotalYear((current) => current ?? latestPeriod?.year ?? null);
+        setSelectedGenderDiseaseYear((current) => current ?? latestPeriod?.year ?? null);
+        setSelectedDisease((current) => current || diseaseRows[0]?.disease_group || '');
+        setSelectedDiseases((current) => current.length > 0 ? current : (diseaseRows[0]?.disease_group ? [diseaseRows[0].disease_group] : []));
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => {
@@ -367,6 +443,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
         setTrend(trendLists.flat());
         setYearOverYear(yoyLists.flat());
       }
+      setHasLoadedAdvanced(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -441,6 +518,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
   );
   const highlightedTrendSet = useMemo(() => new Set(highlightedTrendDiseases), [highlightedTrendDiseases]);
   const hasTrendHighlight = highlightedTrendDiseases.length > 0;
+  const showEmptyLoading = (loading || initLoading) && !hasLoadedAdvanced;
 
   const toggleTrendHighlight = useCallback((diseaseGroup: string) => {
     setHighlightedTrendDiseases((prev) =>
@@ -585,7 +663,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
         <>
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <ChartPanel title={`Top nhóm bệnh trong ${selectedPeriod}`}>
-              {topByMonthChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+              {topByMonthChart.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={topByMonthChart} layout="vertical" margin={{ left: 12, right: 24 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -601,7 +679,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
             </ChartPanel>
 
             <ChartPanel title={`Tỷ lệ nhóm bệnh trong ${selectedPeriod}`}>
-              {percentChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+              {percentChart.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
                 <div className="grid grid-cols-1 items-center gap-3 md:grid-cols-2">
                   <ResponsiveContainer width="100%" height={260}>
                     <PieChart>
@@ -637,7 +715,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
           </div>
 
           <ChartPanel title="So sánh tháng này với tháng trước">
-            {comparisonChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+            {comparisonChart.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
               <ResponsiveContainer width="100%" height={310}>
                 <BarChart data={comparisonChart} margin={{ bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -701,7 +779,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
-              {genderCases.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+              {genderCases.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
                 <ResponsiveContainer width="100%" height={270}>
                   <BarChart data={genderCases}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -786,7 +864,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
 
             <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
               {genderComparisonChart.length === 0 ? (
-                <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu phù hợp" />
+                <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu phù hợp" />
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -835,7 +913,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
       {mode === 'trend' && (
         <div className="relative z-0 grid grid-cols-1 gap-6">
           <ChartPanel title="Xu hướng nhóm bệnh đã chọn" subtitle={`${trendSeries.length} nhóm bệnh`}>
-            {trendSeries.length === 0 || trendChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+            {trendSeries.length === 0 || trendChart.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
               <>
                 <TrendSeriesFocusPanel
                   series={trendSeries}
@@ -883,7 +961,7 @@ export default function AdvancedAnalytics({ mode = 'monthly' }: { mode?: Analysi
           </ChartPanel>
 
           <ChartPanel title="So sánh cùng tháng qua các năm" subtitle={selectedPeriodInfo ? monthLabel(selectedPeriodInfo.month) : ''}>
-            {trendSeries.length === 0 || yearOverYearChart.length === 0 ? <EmptyBox loading={loading || initLoading} label="Chưa có dữ liệu" /> : (
+            {trendSeries.length === 0 || yearOverYearChart.length === 0 ? <EmptyBox loading={showEmptyLoading} label="Chưa có dữ liệu" /> : (
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={yearOverYearChart} barGap={2} margin={{ bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

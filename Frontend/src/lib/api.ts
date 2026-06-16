@@ -233,6 +233,29 @@ export function importDiseaseCodes(file: File) {
   return uploadFile<{ message: string; total_codes: number; file: string }>('/api/import/disease-codes', file);
 }
 
+export interface ImportJobInfo {
+  id: string;
+  kind: 'patient' | 'disease-codes' | string;
+  label: string;
+  file_name: string;
+  started_at: string;
+  imported_by: string | null;
+  status: string;
+  success?: boolean;
+  error?: string | null;
+  finished_at?: string;
+}
+
+export interface ImportJobStatus {
+  active: boolean;
+  job: ImportJobInfo | null;
+  last_finished: ImportJobInfo | null;
+}
+
+export function getImportJobStatus(): Promise<ImportJobStatus> {
+  return request<ImportJobStatus>('/api/import/job-status');
+}
+
 export interface ProvinceRegionsPreview {
   sheet: string;
   columns: string[];
@@ -324,6 +347,16 @@ export interface DiseaseCodesStatus {
   uploaded_file: string | null;
 }
 
+export interface PatientDataStatus {
+  has_patient_data: boolean;
+  patient_rows: number;
+  monthly_rows: number;
+  periods: number;
+  uploaded_file: string | null;
+  latest_import_file: string | null;
+  latest_import_at: string | null;
+}
+
 export interface DiseaseCodeRow {
   id: number;
   icd_code: string;
@@ -345,6 +378,10 @@ export interface DiseaseCodesListResponse {
 
 export function getDiseaseCodesStatus(): Promise<DiseaseCodesStatus> {
   return request<DiseaseCodesStatus>('/api/import/disease-codes/status');
+}
+
+export function getPatientDataStatus(): Promise<PatientDataStatus> {
+  return request<PatientDataStatus>('/api/import/patient-data/status');
 }
 
 export function listDiseaseCodes(params: {
@@ -369,24 +406,6 @@ export function runForecast(lastCompletedPeriod = 'auto', horizon = 1) {
     forecast_horizon: String(horizon),
   });
   return request<{ message: string; result: unknown }>(`/api/forecast/run?${qs.toString()}`, {
-    method: 'POST',
-  });
-}
-
-export function runWeatherForecast(lastCompletedPeriod = 'auto', horizon = 1) {
-  const qs = new URLSearchParams({
-    last_completed_period: lastCompletedPeriod,
-    forecast_horizon: String(horizon),
-  });
-  return request<{
-    message: string;
-    result: {
-      forecast_periods: string[];
-      rows: number;
-      model: string;
-      metrics?: { mae: number; rmse: number; valid_periods: string[] };
-    };
-  }>(`/api/forecast/run-weather?${qs.toString()}`, {
     method: 'POST',
   });
 }

@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import * as api from '@/lib/api';
 import { useMinimalTheme } from '@/lib/useMinimalTheme';
+import { clearWeatherRiskCache, loadWeatherRiskCache, saveWeatherRiskCache } from '@/lib/weatherRiskCache';
 
 type LocationMode = 'geo' | 'manual';
 type ProvinceOption = api.AreaOption & {
@@ -195,25 +196,28 @@ function pageCount(total: number, pageSize: number): number {
 
 export default function WeatherRisk() {
   const isMinimalTheme = useMinimalTheme();
+  const [cachedRiskState] = useState(() => loadWeatherRiskCache());
   const [status, setStatus] = useState<api.WeatherAIStatus | null>(null);
   const [options, setOptions] = useState<api.WeatherAIOptions | null>(null);
   const [provinces, setProvinces] = useState<ProvinceOption[]>(VIETNAM_PROVINCES);
-  const [locationMode, setLocationMode] = useState<LocationMode>('manual');
-  const [provinceCode, setProvinceCode] = useState('');
+  const [locationMode, setLocationMode] = useState<LocationMode>(cachedRiskState?.locationMode ?? 'manual');
+  const [provinceCode, setProvinceCode] = useState(cachedRiskState?.provinceCode ?? '');
   const [provinceSearch, setProvinceSearch] = useState('');
   const [provinceOpen, setProvinceOpen] = useState(false);
-  const [geoPoint, setGeoPoint] = useState<{ latitude: number; longitude: number; province: ProvinceOption | null } | null>(null);
-  const [geoStatus, setGeoStatus] = useState('Chưa lấy vị trí hiện tại.');
-  const [ageGroup, setAgeGroup] = useState('');
-  const [gender, setGender] = useState('');
-  const [topKInput, setTopKInput] = useState('10');
-  const [pageSizeInput, setPageSizeInput] = useState('5');
-  const [riskPage, setRiskPage] = useState(1);
+  const [geoPoint, setGeoPoint] = useState<{ latitude: number; longitude: number; province: ProvinceOption | null } | null>(
+    cachedRiskState?.geoPoint ?? null,
+  );
+  const [geoStatus, setGeoStatus] = useState(cachedRiskState?.geoStatus ?? 'Chưa lấy vị trí hiện tại.');
+  const [ageGroup, setAgeGroup] = useState(cachedRiskState?.ageGroup ?? '');
+  const [gender, setGender] = useState(cachedRiskState?.gender ?? '');
+  const [topKInput, setTopKInput] = useState(cachedRiskState?.topKInput ?? '10');
+  const [pageSizeInput, setPageSizeInput] = useState(cachedRiskState?.pageSizeInput ?? '5');
+  const [riskPage, setRiskPage] = useState(cachedRiskState?.riskPage ?? 1);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<api.WeatherAIPredictResponse | null>(null);
+  const [result, setResult] = useState<api.WeatherAIPredictResponse | null>(cachedRiskState?.result ?? null);
 
   useEffect(() => {
     let alive = true;
@@ -230,8 +234,8 @@ export default function WeatherRisk() {
         setStatus(st);
         setOptions(opt);
         setProvinces(mergeProvinceOptions(provinceRows));
-        setAgeGroup(opt.age_groups?.includes('1-5 tuổi') ? '1-5 tuổi' : (opt.age_groups?.[0] ?? ''));
-        setGender(opt.genders?.includes('Nam') ? 'Nam' : (opt.genders?.[0] ?? ''));
+        setAgeGroup((current) => current || (opt.age_groups?.includes('1-5 tuổi') ? '1-5 tuổi' : (opt.age_groups?.[0] ?? '')));
+        setGender((current) => current || (opt.genders?.includes('Nam') ? 'Nam' : (opt.genders?.[0] ?? '')));
       } catch (e) {
         if (alive) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -267,6 +271,7 @@ export default function WeatherRisk() {
   }, [result]);
 
   const totalRiskPages = pageCount(result?.top_risks.length ?? 0, riskPageSize);
+  const currentRiskPage = Math.min(riskPage, totalRiskPages);
   const visibleRisks = useMemo(() => {
     const rows = result?.top_risks ?? [];
     const safePage = Math.min(riskPage, pageCount(rows.length, riskPageSize));
@@ -288,7 +293,25 @@ export default function WeatherRisk() {
     setResult(null);
     setRiskPage(1);
     setError(null);
+    clearWeatherRiskCache();
   };
+
+  useEffect(() => {
+    if (!result) return;
+    saveWeatherRiskCache({
+      result,
+      locationMode,
+      provinceCode,
+      geoPoint,
+      geoStatus,
+      ageGroup,
+      gender,
+      topKInput,
+      pageSizeInput,
+      riskPage: currentRiskPage,
+      savedAt: new Date().toISOString(),
+    });
+  }, [ageGroup, currentRiskPage, gender, geoPoint, geoStatus, locationMode, pageSizeInput, provinceCode, result, topKInput]);
 
   const handleLocationModeChange = (mode: LocationMode) => {
     setLocationMode(mode);
@@ -660,7 +683,7 @@ export default function WeatherRisk() {
 
                 {result.top_risks.length > riskPageSize && (
                   <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
-                    <span className="text-sm text-slate-500">Trang {riskPage} / {totalRiskPages}</span>
+                    <span className="text-sm text-slate-500">Trang {currentRiskPage} / {totalRiskPages}</span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -674,7 +697,7 @@ export default function WeatherRisk() {
                       <button
                         type="button"
                         onClick={() => setRiskPage((page) => Math.min(totalRiskPages, page + 1))}
-                        disabled={riskPage >= totalRiskPages}
+                        disabled={currentRiskPage >= totalRiskPages}
                         className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 disabled:opacity-50"
                       >
                         Sau

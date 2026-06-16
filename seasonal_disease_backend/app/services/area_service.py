@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-import urllib.request
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -157,6 +156,7 @@ KNOWN_PROVINCES = {
 }
 
 
+@lru_cache(maxsize=1)
 def _load_province_region_rows() -> list[dict[str, Any]]:
     if not PROVINCE_REGIONS_JSON.exists():
         return []
@@ -176,6 +176,7 @@ def _load_province_coord_rows() -> list[dict[str, Any]]:
         return []
 
 
+@lru_cache(maxsize=1)
 def _province_region_lookup() -> dict[str, dict[str, Any]]:
     lookup: dict[str, dict[str, Any]] = {}
     for row in _load_province_region_rows():
@@ -194,6 +195,13 @@ def _province_region_lookup() -> dict[str, dict[str, Any]]:
     for key, (code, name, _lat, _lon) in KNOWN_PROVINCES.items():
         lookup.setdefault(key, {"code": code, "name": name, "aliases": []})
     return lookup
+
+
+def clear_area_lookup_caches() -> None:
+    _load_province_region_rows.cache_clear()
+    _province_region_lookup.cache_clear()
+    _load_province_coord_rows.cache_clear()
+    _province_coord_lookup.cache_clear()
 
 
 @lru_cache(maxsize=1)
@@ -269,12 +277,15 @@ def get_province_options(db: Session) -> list[dict[str, Any]]:
     merged: dict[str, dict[str, Any]] = {}
 
     for row in db.query(AreaProvince).filter(AreaProvince.is_active.is_(True)).all():
-        key = _province_match_key(row.name)
+        catalog = _resolve_catalog_province(row.name)
+        if not catalog:
+            continue
+        key = _province_match_key(catalog["name"])
         merged[key] = {
-            "code": row.code,
-            "name": row.name,
-            "latitude": row.latitude,
-            "longitude": row.longitude,
+            "code": catalog.get("code") or row.code,
+            "name": catalog["name"],
+            "latitude": row.latitude if row.latitude is not None else catalog.get("latitude"),
+            "longitude": row.longitude if row.longitude is not None else catalog.get("longitude"),
             "is_active": row.is_active,
         }
 
@@ -358,6 +369,15 @@ def _find_value(row: pd.Series, candidates: list[str]) -> str | None:
         col = columns.get(name.lower())
         if col is not None:
             return _normalize_code(row.get(col))
+    return None
+
+
+def _find_column(columns, candidates: list[str]):
+    by_name = {str(c).strip().lower(): c for c in columns}
+    for name in candidates:
+        col = by_name.get(name.lower())
+        if col is not None:
+            return col
     return None
 
 
@@ -510,83 +530,6 @@ def seed_default_areas(db: Session) -> dict[str, int]:
     return inserted
 
 
-def sync_areas_from_payload(db: Session, payload: dict[str, Any]) -> dict[str, int]:
-    """Upsert area catalog from a JSON payload with provinces/districts/wards arrays."""
-    counts = {"provinces": 0, "districts": 0, "wards": 0}
-
-    for item in payload.get("provinces", []):
-        code = _normalize_code(item.get("code"))
-        if not code:
-            continue
-        row = db.query(AreaProvince).filter(AreaProvince.code == code).first()
-        values = {
-            "name": str(item.get("name") or code),
-            "latitude": item.get("latitude"),
-            "longitude": item.get("longitude"),
-            "is_active": bool(item.get("is_active", True)),
-            "updated_at": datetime.utcnow(),
-        }
-        if row:
-            for k, v in values.items():
-                setattr(row, k, v)
-        else:
-            db.add(AreaProvince(code=code, **values))
-        counts["provinces"] += 1
-
-    for item in payload.get("districts", []):
-        code = _normalize_code(item.get("code"))
-        province_code = _normalize_code(item.get("province_code"))
-        if not code or not province_code:
-            continue
-        row = db.query(AreaDistrict).filter(AreaDistrict.code == code).first()
-        values = {
-            "province_code": province_code,
-            "name": str(item.get("name") or code),
-            "latitude": item.get("latitude"),
-            "longitude": item.get("longitude"),
-            "is_active": bool(item.get("is_active", True)),
-            "updated_at": datetime.utcnow(),
-        }
-        if row:
-            for k, v in values.items():
-                setattr(row, k, v)
-        else:
-            db.add(AreaDistrict(code=code, **values))
-        counts["districts"] += 1
-
-    for item in payload.get("wards", []):
-        code = _normalize_code(item.get("code"))
-        district_code = _normalize_code(item.get("district_code"))
-        province_code = _normalize_code(item.get("province_code"))
-        if not code or not district_code or not province_code:
-            continue
-        row = db.query(AreaWard).filter(AreaWard.code == code).first()
-        values = {
-            "district_code": district_code,
-            "province_code": province_code,
-            "name": str(item.get("name") or code),
-            "latitude": item.get("latitude"),
-            "longitude": item.get("longitude"),
-            "is_active": bool(item.get("is_active", True)),
-            "updated_at": datetime.utcnow(),
-        }
-        if row:
-            for k, v in values.items():
-                setattr(row, k, v)
-        else:
-            db.add(AreaWard(code=code, **values))
-        counts["wards"] += 1
-
-    db.commit()
-    return counts
-
-
-def sync_areas_from_url(db: Session, source_url: str) -> dict[str, int]:
-    with urllib.request.urlopen(source_url, timeout=20) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    return sync_areas_from_payload(db, payload)
-
-
 def get_area_maps(db: Session) -> tuple[dict[str, AreaProvince], dict[str, AreaDistrict], dict[str, AreaWard]]:
     provinces = {p.code: p for p in db.query(AreaProvince).filter(AreaProvince.is_active.is_(True)).all()}
     districts = {d.code: d for d in db.query(AreaDistrict).filter(AreaDistrict.is_active.is_(True)).all()}
@@ -638,21 +581,49 @@ def attach_patient_areas(db: Session, df: pd.DataFrame) -> pd.DataFrame:
     provinces, _, _ = get_area_maps(db)
     province_by_name = {_province_match_key(p.name): p for p in provinces.values()}
     assigned: list[dict[str, str | None]] = []
+    work = df.reset_index(drop=True)
+    province_code_col = _find_column(work.columns, PROVINCE_CODE_COLUMNS)
+    province_name_col = _find_column(work.columns, PROVINCE_NAME_COLUMNS)
+    full_address_col = _find_column(work.columns, FULL_ADDRESS_COLUMNS)
+    catalog_cache: dict[str, dict[str, Any] | None] = {}
+    match_key_cache: dict[str, str] = {}
+    code_from_name_cache: dict[str, str] = {}
 
-    for idx, row in df.reset_index(drop=True).iterrows():
-        province_code = _find_value(row, PROVINCE_CODE_COLUMNS)
-        province_name = _find_province_name(row)
+    def cached_catalog(name: str | None) -> dict[str, Any] | None:
+        if not name:
+            return None
+        if name not in catalog_cache:
+            catalog_cache[name] = _resolve_catalog_province(name)
+        return catalog_cache[name]
+
+    def cached_match_key(name: str) -> str:
+        if name not in match_key_cache:
+            match_key_cache[name] = _province_match_key(name)
+        return match_key_cache[name]
+
+    def cached_code_from_name(name: str) -> str:
+        if name not in code_from_name_cache:
+            code_from_name_cache[name] = _province_code_from_name(name)
+        return code_from_name_cache[name]
+
+    for row in work.itertuples(index=False):
+        province_code = _normalize_code(getattr(row, province_code_col)) if province_code_col else None
+        province_name = None
+        if province_name_col:
+            province_name = normalize_province_name(getattr(row, province_name_col))
+        if not province_name and full_address_col:
+            province_name = extract_province_from_full_address(getattr(row, full_address_col))
         province = provinces.get(province_code or "") if province_code else None
-        catalog = _resolve_catalog_province(province_name) if province_name else None
+        catalog = cached_catalog(province_name)
 
         if not province and province_name:
-            province = province_by_name.get(_province_match_key(province_name))
+            province = province_by_name.get(cached_match_key(province_name))
 
         if not province and catalog:
             province = provinces.get(str(catalog.get("code") or ""))
 
         if not province and province_name:
-            code = province_code or (str(catalog.get("code")) if catalog and catalog.get("code") else _province_code_from_name(province_name))
+            code = province_code or (str(catalog.get("code")) if catalog and catalog.get("code") else cached_code_from_name(province_name))
             province = provinces.get(code)
 
         if province and province_name:
@@ -667,17 +638,13 @@ def attach_patient_areas(db: Session, df: pd.DataFrame) -> pd.DataFrame:
                 province.longitude = catalog["longitude"]
             province.updated_at = datetime.utcnow()
 
-        if not province and province_name:
-            code = province_code or (str(catalog.get("code")) if catalog and catalog.get("code") else _province_code_from_name(province_name))
-            latitude = catalog.get("latitude") if catalog else None
-            longitude = catalog.get("longitude") if catalog else None
-            if latitude is None or longitude is None:
-                known = KNOWN_PROVINCES.get(_key(province_name))
-                latitude = known[2] if known else latitude
-                longitude = known[3] if known else longitude
+        if not province and province_name and catalog:
+            code = province_code or str(catalog.get("code") or cached_code_from_name(province_name))
+            latitude = catalog.get("latitude")
+            longitude = catalog.get("longitude")
             province = AreaProvince(
                 code=code,
-                name=str(catalog.get("name")) if catalog and catalog.get("name") else province_name,
+                name=str(catalog.get("name")),
                 latitude=latitude,
                 longitude=longitude,
                 is_active=True,
@@ -685,7 +652,7 @@ def attach_patient_areas(db: Session, df: pd.DataFrame) -> pd.DataFrame:
             )
             db.add(province)
             provinces[code] = province
-            province_by_name[_province_match_key(province_name)] = province
+            province_by_name[cached_match_key(province_name)] = province
 
         assigned.append({
             "province_code": province.code if province else None,

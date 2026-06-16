@@ -88,7 +88,6 @@ const en: LocaleMessages = {
   'dashboard.history': 'History',
   'dashboard.current': 'Current',
   'dashboard.importData': 'Import data (.xlsx)',
-  'dashboard.importWeather': 'Import weather (.xlsx)',
   'dashboard.runForecast': 'Run forecast',
   'dashboard.totalRecords': 'Total records',
   'dashboard.totalPeriods': 'Data periods',

@@ -108,7 +108,8 @@ def get_monthly_stats_df(db: Session, data_type: str) -> pd.DataFrame:
 
 def get_last_completed_period(predict_monthly: pd.DataFrame, last_completed_period: str = "auto") -> str:
     if last_completed_period == "auto":
-        return str(pd.Period(predict_monthly["period"].max(), freq="M"))
+        periods = pd.PeriodIndex(predict_monthly["period"].astype(str), freq="M")
+        return str(periods.max())
     return str(pd.Period(last_completed_period, freq="M"))
 
 def get_forecast_periods(last_completed_period: str, forecast_horizon: int = 1):
@@ -434,7 +435,7 @@ def run_forecast(db: Session, last_completed_period: str = "auto", forecast_hori
             )
 
     # Xóa kết quả cũ của các tháng dự báo rồi lưu lại
-    db.query(ForecastResult).filter(ForecastResult.forecast_period.in_(forecast_periods)).delete(synchronize_session=False)
+    db.query(ForecastResult).delete(synchronize_session=False)
     db.add_all(all_results)
     db.commit()
 

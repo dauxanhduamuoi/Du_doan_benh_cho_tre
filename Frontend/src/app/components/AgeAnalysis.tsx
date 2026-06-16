@@ -21,6 +21,7 @@ import {
   YAxis,
 } from 'recharts';
 import * as api from '@/lib/api';
+import { loadChartDataCache, saveChartDataCache } from '@/lib/chartDataCache';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { ensureBilingualMap, splitDiseaseLabel } from '@/lib/disease';
 import { useMinimalTheme } from '@/lib/useMinimalTheme';
@@ -39,6 +40,17 @@ const COLORS = [
   '#4338ca',
   '#db2777',
 ];
+
+interface AgeAnalysisCacheState {
+  periods: api.DashboardPeriodOption[];
+  period: string;
+  minAge: string;
+  maxAge: string;
+  limit: number;
+  total: api.CasesByAgeRangeResult | null;
+  rows: api.DiseaseByAgeRangeRow[];
+  diseaseSearch: string;
+}
 
 function toNumberOrUndefined(value: string): number | undefined {
   if (value.trim() === '') return undefined;
@@ -77,15 +89,17 @@ function EmptyBox({ loading, label }: { loading: boolean; label: string }) {
 
 export default function AgeAnalysis() {
   const isMinimalTheme = useMinimalTheme();
-  const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>([]);
-  const [period, setPeriod] = useState('');
-  const [minAge, setMinAge] = useState('');
-  const [maxAge, setMaxAge] = useState('');
-  const [limit, setLimit] = useState(10);
-  const [total, setTotal] = useState<api.CasesByAgeRangeResult | null>(null);
-  const [rows, setRows] = useState<api.DiseaseByAgeRangeRow[]>([]);
+  const [cachedAge] = useState(() => loadChartDataCache<AgeAnalysisCacheState>('age_analysis'));
+  const [hasLoadedAge, setHasLoadedAge] = useState(Boolean(cachedAge));
+  const [periods, setPeriods] = useState<api.DashboardPeriodOption[]>(cachedAge?.periods ?? []);
+  const [period, setPeriod] = useState(cachedAge?.period ?? '');
+  const [minAge, setMinAge] = useState(cachedAge?.minAge ?? '');
+  const [maxAge, setMaxAge] = useState(cachedAge?.maxAge ?? '');
+  const [limit, setLimit] = useState(cachedAge?.limit ?? 10);
+  const [total, setTotal] = useState<api.CasesByAgeRangeResult | null>(cachedAge?.total ?? null);
+  const [rows, setRows] = useState<api.DiseaseByAgeRangeRow[]>(cachedAge?.rows ?? []);
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
-  const [diseaseSearch, setDiseaseSearch] = useState('');
+  const [diseaseSearch, setDiseaseSearch] = useState(cachedAge?.diseaseSearch ?? '');
   const [loading, setLoading] = useState(false);
   const [initLoading, setInitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +179,17 @@ export default function AgeAnalysis() {
       ]);
       setTotal(totalResult);
       setRows(diseaseRows);
+      setHasLoadedAge(true);
+      saveChartDataCache<AgeAnalysisCacheState>('age_analysis', {
+        periods,
+        period,
+        minAge,
+        maxAge,
+        limit,
+        total: totalResult,
+        rows: diseaseRows,
+        diseaseSearch,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -175,6 +200,22 @@ export default function AgeAnalysis() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!hasLoadedAge) return;
+    saveChartDataCache<AgeAnalysisCacheState>('age_analysis', {
+      periods,
+      period,
+      minAge,
+      maxAge,
+      limit,
+      total,
+      rows,
+      diseaseSearch,
+    });
+  }, [diseaseSearch, hasLoadedAge, limit, maxAge, minAge, period, periods, rows, total]);
+
+  const showEmptyLoading = (loading || initLoading) && !hasLoadedAge;
 
   return (
     <div className="space-y-6">
@@ -275,7 +316,7 @@ export default function AgeAnalysis() {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 font-semibold text-slate-800">Top nhóm bệnh theo khoảng tháng tuổi</h3>
         {chartRows.length === 0 ? (
-          <EmptyBox loading={loading || initLoading} label={noAgeChartLabel} />
+          <EmptyBox loading={showEmptyLoading} label={noAgeChartLabel} />
         ) : (
           <ResponsiveContainer width="100%" height={360}>
             <BarChart data={chartRows} layout="vertical" margin={{ left: 24, right: 40 }}>
@@ -314,7 +355,7 @@ export default function AgeAnalysis() {
         </label>
 
         {filteredRows.length === 0 ? (
-          <EmptyBox loading={loading || initLoading} label={noAgeRowsLabel} />
+          <EmptyBox loading={showEmptyLoading} label={noAgeRowsLabel} />
         ) : (
           <div className="max-h-[520px] overflow-auto">
             <table className="w-full min-w-[900px] text-sm">

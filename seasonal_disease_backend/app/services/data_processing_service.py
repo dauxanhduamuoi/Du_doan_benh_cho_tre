@@ -18,12 +18,45 @@ DISEASE_GROUP_COL = "TENNHOMICD"
 # ===== Danh sách tên sheet có thể gặp trong file =====
 PATIENT_SHEET_CANDIDATES = ["DS-BenhNhan", "DS_BenhNhan", "BenhNhan", "Sheet1"]
 DISEASE_SHEET_CANDIDATES = ["DS-MaBenh", "DS_MaBenh", "MaBenh"]
+PATIENT_OPTIONAL_AREA_COLUMNS = {
+    "province_code",
+    "ma_tinh",
+    "matinh",
+    "tinh_code",
+    "city_code",
+    "province_name",
+    "tinh",
+    "thanh_pho",
+    "province",
+    "city",
+    "full_address",
+    "dia_chi",
+    "diachi",
+    "address",
+}
+PATIENT_IMPORT_COLUMNS = {
+    ICD_ADMISSION_COL,
+    ICD_DISCHARGE_COL,
+    CHECK_IN_DATE_COL,
+    DATE_OF_BIRTH_COL,
+    GENDER_COL,
+    MONTH_AGE_COL,
+    *PATIENT_OPTIONAL_AREA_COLUMNS,
+}
+DISEASE_CODE_IMPORT_COLUMNS = {
+    ICD_CODE_COL,
+    DISEASE_NAME_COL,
+    "IDNHOMICD",
+    DISEASE_GROUP_COL,
+    "MANHOMBAOCAO",
+    "TENTIENGANH",
+}
 
 
 # =========================================================
 # HÀM ĐỌC SHEET LINH HOẠT
 # =========================================================
-def _read_sheet_flexible(file_path: str, candidates: list[str]) -> pd.DataFrame:
+def _read_sheet_flexible(file_path: str, candidates: list[str], usecols=None) -> pd.DataFrame:
     """
     Thử đọc lần lượt các tên sheet trong danh sách candidates.
     Nếu không khớp tên nào, raise lỗi kèm danh sách sheet thực tế trong file.
@@ -33,7 +66,9 @@ def _read_sheet_flexible(file_path: str, candidates: list[str]) -> pd.DataFrame:
 
     for name in candidates:
         if name in available:
-            return pd.read_excel(xls, sheet_name=name)
+            df = pd.read_excel(xls, sheet_name=name, usecols=usecols)
+            df.columns = [str(c).strip() for c in df.columns]
+            return df
 
     raise ValueError(
         f"Không tìm thấy sheet phù hợp. Đã thử: {candidates}. "
@@ -62,13 +97,28 @@ def parse_excel_date_value(x):
 
 
 def parse_mixed_excel_date(series):
-    return series.apply(parse_excel_date_value)
+    numeric = pd.to_numeric(series, errors="coerce")
+    numeric_date_mask = numeric.between(20000, 80000)
+    parsed = pd.to_datetime(series.where(~numeric_date_mask), errors="coerce", dayfirst=True)
+
+    if numeric_date_mask.any():
+        parsed.loc[numeric_date_mask] = (
+            pd.to_datetime("1899-12-30")
+            + pd.to_timedelta(numeric.loc[numeric_date_mask], unit="D")
+        )
+
+    return parsed
 
 
 def normalize_icd(x):
     if pd.isna(x):
         return np.nan
     return str(x).strip().upper()
+
+
+def normalize_icd_series(series):
+    normalized = series.astype("string").str.strip().str.upper()
+    return normalized.mask(normalized == "")
 
 
 def parse_month_age(value):
@@ -92,6 +142,12 @@ def parse_month_age(value):
         return np.nan
 
     return m
+
+
+def parse_month_age_series(series):
+    month_age = pd.to_numeric(series, errors="coerce")
+    month_age = month_age.mask(month_age < 0)
+    return np.floor(month_age)
 
 
 def calculate_age_years(check_in_date, date_of_birth):
@@ -130,9 +186,24 @@ def month_to_season_vn(month):
 # =========================================================
 # ĐỌC DANH MỤC MÃ BỆNH
 # =========================================================
+def to_age_group_series(age):
+    result = pd.Series(to_age_group(np.nan), index=age.index, dtype=object)
+    valid = age.notna()
+    result.loc[valid & (age < 1)] = to_age_group(0)
+    result.loc[valid & (age >= 1) & (age <= 5)] = to_age_group(1)
+    result.loc[valid & (age > 5) & (age <= 10)] = to_age_group(6)
+    result.loc[valid & (age > 10) & (age <= 15)] = to_age_group(11)
+    result.loc[valid & (age > 15)] = to_age_group(16)
+    return result
+
+
 def load_disease_codes(file_path: str) -> pd.DataFrame:
-    disease_codes = _read_sheet_flexible(file_path, DISEASE_SHEET_CANDIDATES)
-    disease_codes[ICD_CODE_COL] = disease_codes[ICD_CODE_COL].apply(normalize_icd)
+    disease_codes = _read_sheet_flexible(
+        file_path,
+        DISEASE_SHEET_CANDIDATES,
+        usecols=lambda c: str(c).strip() in DISEASE_CODE_IMPORT_COLUMNS,
+    )
+    disease_codes[ICD_CODE_COL] = normalize_icd_series(disease_codes[ICD_CODE_COL])
     return disease_codes
 
 
@@ -140,23 +211,27 @@ def load_disease_codes(file_path: str) -> pd.DataFrame:
 # XỬ LÝ DANH SÁCH BỆNH NHÂN
 # =========================================================
 def process_patients(file_path: str, disease_codes: pd.DataFrame) -> pd.DataFrame:
-    patients = _read_sheet_flexible(file_path, PATIENT_SHEET_CANDIDATES)
+    patients = _read_sheet_flexible(
+        file_path,
+        PATIENT_SHEET_CANDIDATES,
+        usecols=lambda c: str(c).strip() in PATIENT_IMPORT_COLUMNS,
+    )
 
     # Parse ngày tháng (kể cả ngày dạng số Excel)
     patients[CHECK_IN_DATE_COL] = parse_mixed_excel_date(patients[CHECK_IN_DATE_COL])
     patients[DATE_OF_BIRTH_COL] = parse_mixed_excel_date(patients[DATE_OF_BIRTH_COL])
 
     # Chuẩn hoá mã ICD
-    patients[ICD_ADMISSION_COL] = patients[ICD_ADMISSION_COL].apply(normalize_icd)
-    patients[ICD_DISCHARGE_COL] = patients[ICD_DISCHARGE_COL].apply(normalize_icd)
+    patients[ICD_ADMISSION_COL] = normalize_icd_series(patients[ICD_ADMISSION_COL])
+    patients[ICD_DISCHARGE_COL] = normalize_icd_series(patients[ICD_DISCHARGE_COL])
 
     # Ưu tiên ICD xuất viện, không có thì dùng ICD nhập viện
     patients["main_icd"] = patients[ICD_DISCHARGE_COL].fillna(patients[ICD_ADMISSION_COL])
-    patients["main_icd"] = patients["main_icd"].apply(normalize_icd)
+    patients["main_icd"] = normalize_icd_series(patients["main_icd"])
 
     # Đọc cột số tháng tuổi - chấp nhận giá trị 0
     if MONTH_AGE_COL in patients.columns:
-        patients["month_age"] = patients[MONTH_AGE_COL].apply(parse_month_age)
+        patients["month_age"] = parse_month_age_series(patients[MONTH_AGE_COL])
     else:
         patients["month_age"] = np.nan
 
@@ -169,11 +244,9 @@ def process_patients(file_path: str, disease_codes: pd.DataFrame) -> pd.DataFram
     )
 
     # Tính tuổi (theo năm) và nhóm tuổi
-    df["age"] = df.apply(
-        lambda row: calculate_age_years(row[CHECK_IN_DATE_COL], row[DATE_OF_BIRTH_COL]),
-        axis=1
-    )
-    df["age_group"] = df["age"].apply(to_age_group)
+    df["age"] = (df[CHECK_IN_DATE_COL] - df[DATE_OF_BIRTH_COL]).dt.days / 365.25
+    df.loc[df["age"] < 0, "age"] = np.nan
+    df["age_group"] = to_age_group_series(df["age"])
 
     # Tách năm/tháng/period/season từ ngày khám
     df["year"] = df[CHECK_IN_DATE_COL].dt.year

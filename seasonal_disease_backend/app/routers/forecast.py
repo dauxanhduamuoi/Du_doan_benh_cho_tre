@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+﻿from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,34 @@ from app.security import require_permission
 from app.services.forecast_service import run_forecast
 
 router = APIRouter(prefix="/api/forecast", tags=["Forecast"])
+
+
+def _next_period_after_latest_predict_current(db: Session) -> str | None:
+    latest = db.query(func.max(MonthlyStatistic.period)).filter(
+        MonthlyStatistic.data_type == "predict_current"
+    ).scalar()
+    if not latest:
+        return None
+
+    import pandas as pd
+
+    return str(pd.Period(str(latest), freq="M") + 1)
+
+
+def _default_forecast_period(db: Session) -> str | None:
+    """
+    Forecast screens should follow the current imported patient data.
+    If predict_current ends at 2025-04, the default forecast period is 2025-05;
+    stale results from older imports/runs must not be mixed into the response.
+    """
+    expected_period = _next_period_after_latest_predict_current(db)
+    if not expected_period:
+        return None
+
+    exists = db.query(ForecastResult.id).filter(
+        ForecastResult.forecast_period == expected_period
+    ).first()
+    return expected_period if exists else None
 
 @router.post("/run")
 def run_ai_forecast(
@@ -31,38 +59,6 @@ def run_ai_forecast(
     }
 
 
-@router.post("/run-weather")
-def run_weather_monthly_forecast_compat(
-    last_completed_period: str = Query("auto"),
-    forecast_horizon: int = Query(1, ge=1, le=3),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("feature.forecast")),
-):
-    """
-    Endpoint tương thích frontend.
-
-    Dự báo bệnh theo thời tiết realtime đã nằm ở /api/weather-ai/predict-risk.
-    Endpoint này giữ cho màn hình Forecast cũ không lỗi khi chọn model weather;
-    nó chạy cùng pipeline forecast tháng tiếp theo như /run.
-    """
-    try:
-        result = run_forecast(
-            db=db,
-            last_completed_period=last_completed_period,
-            forecast_horizon=forecast_horizon,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    result = dict(result)
-    result["model"] = "seasonal_forecast_compat_for_weather_button"
-
-    return {
-        "message": "Chạy dự báo tháng tiếp theo thành công. Dự đoán bệnh theo thời tiết dùng /api/weather-ai/predict-risk.",
-        "result": result,
-    }
-
-
 @router.get("/results")
 def get_forecast_results(
     forecast_period: str | None = Query(None),
@@ -71,8 +67,11 @@ def get_forecast_results(
 ):
     query = db.query(ForecastResult)
 
-    if forecast_period:
-        query = query.filter(ForecastResult.forecast_period == forecast_period)
+    period_filter = forecast_period or _default_forecast_period(db)
+    if period_filter:
+        query = query.filter(ForecastResult.forecast_period == period_filter)
+    elif forecast_period is None:
+        query = query.filter(ForecastResult.id == -1)
 
     rows = query.order_by(
         ForecastResult.forecast_period.desc(),
@@ -90,8 +89,11 @@ def get_group_summary(
 ):
     query = db.query(ForecastResult)
 
-    if forecast_period:
-        query = query.filter(ForecastResult.forecast_period == forecast_period)
+    period_filter = forecast_period or _default_forecast_period(db)
+    if period_filter:
+        query = query.filter(ForecastResult.forecast_period == period_filter)
+    elif forecast_period is None:
+        query = query.filter(ForecastResult.id == -1)
 
     rows = query.all()
 

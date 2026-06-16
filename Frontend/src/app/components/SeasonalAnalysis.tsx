@@ -13,12 +13,26 @@ import {
 } from 'recharts';
 import { Calendar, TrendingUp, AlertTriangle, Loader2, RefreshCcw, Search } from 'lucide-react';
 import * as api from '@/lib/api';
+import { loadChartDataCache, saveChartDataCache } from '@/lib/chartDataCache';
 import { useT } from '@/lib/i18n';
 import { ensureBilingualMap, splitDiseaseLabel } from '@/lib/disease';
 import DiseaseLabelCell from './common/DiseaseLabelCell';
 import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
 type Season = 'dry' | 'rainy';
+
+interface SeasonalCacheState {
+  data: api.MonthlyStat[];
+  selectedYear: number | null;
+  selectedSeason: Season;
+  seasonalLimit: number;
+  seasonalSummary: api.SeasonalSummaryRow[];
+  seasonCompare: api.DiseaseSeasonComparisonRow[];
+  seasonPeak: api.SeasonalPeakRow[];
+  seasonSummarySearch: string;
+  seasonCompareSearch: string;
+  seasonPeakSearch: string;
+}
 
 const SEASONS: Season[] = ['dry', 'rainy'];
 
@@ -141,19 +155,21 @@ function SeasonalBilingualLegend({
 export default function SeasonalAnalysis() {
   const isMinimalTheme = useMinimalTheme();
   const t = useT();
-  const [data, setData] = useState<api.MonthlyStat[]>([]);
+  const [cachedSeasonal] = useState(() => loadChartDataCache<SeasonalCacheState>('seasonal_analysis'));
+  const [hasLoadedSeasonal, setHasLoadedSeasonal] = useState(Boolean(cachedSeasonal));
+  const [data, setData] = useState<api.MonthlyStat[]>(cachedSeasonal?.data ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [selectedSeason, setSelectedSeason] = useState<Season>('rainy');
-  const [seasonalLimit, setSeasonalLimit] = useState(10);
-  const [seasonalSummary, setSeasonalSummary] = useState<api.SeasonalSummaryRow[]>([]);
-  const [seasonCompare, setSeasonCompare] = useState<api.DiseaseSeasonComparisonRow[]>([]);
-  const [seasonPeak, setSeasonPeak] = useState<api.SeasonalPeakRow[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(cachedSeasonal?.selectedYear ?? null);
+  const [selectedSeason, setSelectedSeason] = useState<Season>(cachedSeasonal?.selectedSeason ?? 'rainy');
+  const [seasonalLimit, setSeasonalLimit] = useState(cachedSeasonal?.seasonalLimit ?? 10);
+  const [seasonalSummary, setSeasonalSummary] = useState<api.SeasonalSummaryRow[]>(cachedSeasonal?.seasonalSummary ?? []);
+  const [seasonCompare, setSeasonCompare] = useState<api.DiseaseSeasonComparisonRow[]>(cachedSeasonal?.seasonCompare ?? []);
+  const [seasonPeak, setSeasonPeak] = useState<api.SeasonalPeakRow[]>(cachedSeasonal?.seasonPeak ?? []);
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
-  const [seasonSummarySearch, setSeasonSummarySearch] = useState('');
-  const [seasonCompareSearch, setSeasonCompareSearch] = useState('');
-  const [seasonPeakSearch, setSeasonPeakSearch] = useState('');
+  const [seasonSummarySearch, setSeasonSummarySearch] = useState(cachedSeasonal?.seasonSummarySearch ?? '');
+  const [seasonCompareSearch, setSeasonCompareSearch] = useState(cachedSeasonal?.seasonCompareSearch ?? '');
+  const [seasonPeakSearch, setSeasonPeakSearch] = useState(cachedSeasonal?.seasonPeakSearch ?? '');
 
   const seasonLabel = useCallback((s: Season) => t(`season.${s}`), [t]);
 
@@ -176,6 +192,19 @@ export default function SeasonalAnalysis() {
       setSeasonalSummary(summaryRows);
       setSeasonCompare(compareRows);
       setSeasonPeak(peakRows);
+      setHasLoadedSeasonal(true);
+      saveChartDataCache<SeasonalCacheState>('seasonal_analysis', {
+        data: rows,
+        selectedYear,
+        selectedSeason,
+        seasonalLimit,
+        seasonalSummary: summaryRows,
+        seasonCompare: compareRows,
+        seasonPeak: peakRows,
+        seasonSummarySearch,
+        seasonCompareSearch,
+        seasonPeakSearch,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -186,6 +215,34 @@ export default function SeasonalAnalysis() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!hasLoadedSeasonal) return;
+    saveChartDataCache<SeasonalCacheState>('seasonal_analysis', {
+      data,
+      selectedYear,
+      selectedSeason,
+      seasonalLimit,
+      seasonalSummary,
+      seasonCompare,
+      seasonPeak,
+      seasonSummarySearch,
+      seasonCompareSearch,
+      seasonPeakSearch,
+    });
+  }, [
+    data,
+    hasLoadedSeasonal,
+    seasonCompare,
+    seasonCompareSearch,
+    seasonPeak,
+    seasonPeakSearch,
+    seasonSummarySearch,
+    seasonalLimit,
+    seasonalSummary,
+    selectedSeason,
+    selectedYear,
+  ]);
 
   const years = useMemo(() => {
     const ys = new Set<number>();
@@ -272,6 +329,7 @@ export default function SeasonalAnalysis() {
 
     return rows;
   }, [data, years, seasonLabel]);
+  const showEmptyLoading = loading && !hasLoadedSeasonal;
 
   const insights = useMemo(() => {
     if (data.length === 0 || selectedYear === null) return null;
@@ -462,7 +520,7 @@ export default function SeasonalAnalysis() {
             {t('seasonal.monthlyTrend')} ({selectedYear ?? '—'})
           </h3>
           {monthlyChartData.length === 0 || topDiseases.length === 0 ? (
-            <EmptyChart loading={loading} label={t('seasonal.noYearData')} t={t} />
+            <EmptyChart loading={showEmptyLoading} label={t('seasonal.noYearData')} t={t} />
           ) : (
             <ResponsiveContainer width="100%" height={400}>
               <AreaChart data={monthlyChartData} margin={{ bottom: 60 }}>
@@ -509,7 +567,7 @@ export default function SeasonalAnalysis() {
         <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">{t('seasonal.distribution')}</h3>
           {seasonDiseaseData.length === 0 ? (
-            <EmptyChart loading={loading} label={t('common.noData')} t={t} />
+            <EmptyChart loading={showEmptyLoading} label={t('common.noData')} t={t} />
           ) : (
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={seasonDiseaseData} layout="vertical" margin={{ left: 140, right: 20 }}>
@@ -547,7 +605,7 @@ export default function SeasonalAnalysis() {
       <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">{t('seasonal.comparison')}</h3>
         {years.length === 0 ? (
-          <EmptyChart loading={loading} label={t('common.noData')} t={t} />
+          <EmptyChart loading={showEmptyLoading} label={t('common.noData')} t={t} />
         ) : (
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={comparativeData}>
@@ -620,7 +678,7 @@ export default function SeasonalAnalysis() {
             <SeasonSearchInput value={seasonSummarySearch} onChange={setSeasonSummarySearch} />
             <SeasonDataTable
               empty={filteredSeasonalSummary.length === 0}
-              loading={loading}
+              loading={showEmptyLoading}
               headers={['Nhóm bệnh', 'Số ca']}
               rows={filteredSeasonalSummary.map((row) => [
                 <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,
@@ -633,7 +691,7 @@ export default function SeasonalAnalysis() {
             <SeasonSearchInput value={seasonCompareSearch} onChange={setSeasonCompareSearch} />
             <SeasonDataTable
               empty={filteredSeasonCompare.length === 0}
-              loading={loading}
+              loading={showEmptyLoading}
               headers={['Nhóm bệnh', 'Mùa trội', 'Mùa khô', 'Mùa mưa', 'Tổng']}
               rows={filteredSeasonCompare.map((row) => [
                 <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,
@@ -650,7 +708,7 @@ export default function SeasonalAnalysis() {
           <SeasonSearchInput value={seasonPeakSearch} onChange={setSeasonPeakSearch} />
           <SeasonDataTable
             empty={filteredSeasonPeak.length === 0}
-            loading={loading}
+            loading={showEmptyLoading}
             headers={['Nhóm bệnh', 'Tháng đỉnh', 'Mùa', 'Trung bình ca']}
             rows={filteredSeasonPeak.map((row) => [
               <DiseaseLabelCell key="dg" raw={row.disease_group} map={bilingualMap} />,

@@ -11,7 +11,7 @@ from app.services.data_processing_service import (
     process_patients,
     create_monthly_stats,
 )
-from app.services.area_service import attach_patient_areas
+from app.services.area_service import attach_patient_areas, clear_area_lookup_caches
 
 
 def is_missing(value):
@@ -375,6 +375,7 @@ def import_province_regions_file(
         raise
 
     temp_output_path.replace(output_path)
+    clear_area_lookup_caches()
 
     return {
         "sheet": sheet_name,

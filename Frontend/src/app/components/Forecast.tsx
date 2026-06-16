@@ -27,6 +27,7 @@ import {
   LabelList,
 } from 'recharts';
 import * as api from '@/lib/api';
+import { loadChartDataCache, saveChartDataCache } from '@/lib/chartDataCache';
 import { addNotification } from '@/lib/notifications';
 import { downloadReport, formatBytes } from '@/lib/reports';
 import { useT } from '@/lib/i18n';
@@ -60,6 +61,18 @@ const PREVIOUS_STROKE = '#cbd5e1';
 
 type RiskFilter = 'all' | 'Cao' | 'Trung bình' | 'Thấp';
 
+interface ForecastCacheState {
+  summary: api.ForecastGroupSummary[];
+  details: api.ForecastResult[];
+  riskFilter: RiskFilter;
+  searchTerm: string;
+  summarySearchTerm: string;
+  selectedPeriod: string;
+  summaryPage: number;
+  summaryPageSize: number | 'custom';
+  summaryCustomSize: string;
+}
+
 // BE trả tiếng Việt → dịch cho hiển thị.
 function riskLabel(level: string, t: (k: string) => string): string {
   if (level === 'Cao') return t('common.high');
@@ -71,8 +84,10 @@ function riskLabel(level: string, t: (k: string) => string): string {
 export default function Forecast() {
   const isMinimalTheme = useMinimalTheme();
   const t = useT();
-  const [summary, setSummary] = useState<api.ForecastGroupSummary[]>([]);
-  const [details, setDetails] = useState<api.ForecastResult[]>([]);
+  const [cachedForecast] = useState(() => loadChartDataCache<ForecastCacheState>('forecast'));
+  const [hasLoadedForecast, setHasLoadedForecast] = useState(Boolean(cachedForecast));
+  const [summary, setSummary] = useState<api.ForecastGroupSummary[]>(cachedForecast?.summary ?? []);
+  const [details, setDetails] = useState<api.ForecastResult[]>(cachedForecast?.details ?? []);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,12 +95,12 @@ export default function Forecast() {
 
   // Chỉ chạy dự báo 1 tháng — đã bỏ tuỳ chọn 2/3 tháng theo yêu cầu.
   const horizon = 1 as const;
-  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>(cachedForecast?.riskFilter ?? 'all');
+  const [searchTerm, setSearchTerm] = useState(cachedForecast?.searchTerm ?? '');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [summarySearchTerm, setSummarySearchTerm] = useState('');
+  const [summarySearchTerm, setSummarySearchTerm] = useState(cachedForecast?.summarySearchTerm ?? '');
   const [debouncedSummarySearch, setDebouncedSummarySearch] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(cachedForecast?.selectedPeriod ?? '');
   // Map VN→EN từ BE để search có thể match cả 2 ngôn ngữ.
   const [bilingualMap, setBilingualMap] = useState<Record<string, string>>({});
 
@@ -119,6 +134,18 @@ export default function Forecast() {
       ]);
       setSummary(s);
       setDetails(d);
+      setHasLoadedForecast(true);
+      saveChartDataCache<ForecastCacheState>('forecast', {
+        summary: s,
+        details: d,
+        riskFilter,
+        searchTerm,
+        summarySearchTerm,
+        selectedPeriod,
+        summaryPage,
+        summaryPageSize,
+        summaryCustomSize,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,6 +169,18 @@ export default function Forecast() {
       ]);
       setSummary(s);
       setDetails(d);
+      setHasLoadedForecast(true);
+      saveChartDataCache<ForecastCacheState>('forecast', {
+        summary: s,
+        details: d,
+        riskFilter,
+        searchTerm,
+        summarySearchTerm,
+        selectedPeriod,
+        summaryPage,
+        summaryPageSize,
+        summaryCustomSize,
+      });
       const high = s.filter((r) => r.risk_level === 'Cao').length;
       addNotification({
         type: 'forecast',
@@ -172,15 +211,19 @@ export default function Forecast() {
   }, [summary, details]);
 
   useEffect(() => {
-    if (selectedPeriod === 'all') return;
-    if (periods.length > 0 && !periods.includes(selectedPeriod)) {
+    if (periods.length === 0) {
+      if (selectedPeriod) setSelectedPeriod('');
+      return;
+    }
+
+    if (!selectedPeriod || !periods.includes(selectedPeriod)) {
       setSelectedPeriod(periods[0]);
     }
   }, [periods, selectedPeriod]);
 
   const filteredSummary = useMemo(() => {
     return summary.filter((r) => {
-      if (selectedPeriod !== 'all' && r.forecast_period !== selectedPeriod) return false;
+      if (selectedPeriod && r.forecast_period !== selectedPeriod) return false;
       if (riskFilter !== 'all' && r.risk_level !== riskFilter) return false;
       if (debouncedSearch) {
         // Search match cả tên VN gốc lẫn tên EN tách ra.
@@ -205,37 +248,14 @@ export default function Forecast() {
     [summary],
   );
 
-  // Liệt kê các tháng đang được dự báo CHO LẦN CHẠY HIỆN TẠI.
-  // Lấy `forecast_horizon` (1) kỳ kế tiếp ngay sau kỳ thật mới nhất trong
-  // dataset, không đi tìm trong DB (vì DB có thể còn kết quả cũ từ lần
-  // chạy horizon khác → dễ gây nhầm).
   const forecastedPeriods = useMemo(() => {
-    if (periods.length === 0) return [];
-    // Tìm kỳ "thật" cuối cùng = kỳ < tháng hiện tại trong tập periods.
-    const now = new Date();
-    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const past = periods.filter((p) => p < currentKey);
-    const future = periods.filter((p) => p >= currentKey);
-
-    // Nếu đã có kết quả forecast cho tương lai → hiển thị tối đa `horizon` kỳ
-    // gần nhất (lọc trùng số horizon đang chọn).
-    if (future.length > 0) {
-      return future.slice(0, horizon);
-    }
-    // Fallback: chưa có forecast nào, gợi ý kỳ kế tiếp dựa trên `past`.
-    if (past.length > 0) {
-      const last = past[past.length - 1];
-      const [y, m] = last.split('-').map(Number);
-      const next = new Date(y, m, 1); // m = 0-indexed nên đây là tháng kế tiếp
-      return [`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`];
-    }
-    return periods.slice(-1);
+    return periods.slice(0, horizon);
   }, [periods, horizon]);
 
   const chartData = useMemo(() => {
     // Khi xem nhiều kỳ, kèm kỳ vào label để không bị trùng nhãn trên trục Y
     // (cùng nhóm bệnh ở nhiều kỳ khác nhau sẽ là 2 dòng khác nhau).
-    const showPeriod = selectedPeriod === 'all' && periods.length > 1;
+    const showPeriod = !selectedPeriod && periods.length > 1;
     return filteredSummary
       .slice()
       .sort((a, b) => b.predicted_cases - a.predicted_cases)
@@ -253,9 +273,9 @@ export default function Forecast() {
   }, [filteredSummary, selectedPeriod, periods]);
 
   // Pagination cho bảng "Tổng hợp theo nhóm bệnh".
-  const [summaryPage, setSummaryPage] = useState(1);
-  const [summaryPageSize, setSummaryPageSize] = useState<number | 'custom'>(20);
-  const [summaryCustomSize, setSummaryCustomSize] = useState('20');
+  const [summaryPage, setSummaryPage] = useState(cachedForecast?.summaryPage ?? 1);
+  const [summaryPageSize, setSummaryPageSize] = useState<number | 'custom'>(cachedForecast?.summaryPageSize ?? 20);
+  const [summaryCustomSize, setSummaryCustomSize] = useState(cachedForecast?.summaryCustomSize ?? '20');
   // Mỗi (period × disease) trong summary có thể expand ra chi tiết theo tuổi
   // (giống bảng "Kết quả dự báo mới nhất" ở Tổng quan).
   const [summaryExpandedKeys, setSummaryExpandedKeys] = useState<Set<string>>(new Set());
@@ -287,6 +307,32 @@ export default function Forecast() {
     return summaryTableFiltered.slice(start, start + summaryEffectiveSize);
   }, [summaryTableFiltered, summaryPage, summaryEffectiveSize]);
 
+  useEffect(() => {
+    if (!hasLoadedForecast) return;
+    saveChartDataCache<ForecastCacheState>('forecast', {
+      summary,
+      details,
+      riskFilter,
+      searchTerm,
+      summarySearchTerm,
+      selectedPeriod,
+      summaryPage,
+      summaryPageSize,
+      summaryCustomSize,
+    });
+  }, [
+    details,
+    hasLoadedForecast,
+    riskFilter,
+    searchTerm,
+    selectedPeriod,
+    summary,
+    summaryCustomSize,
+    summaryPage,
+    summaryPageSize,
+    summarySearchTerm,
+  ]);
+
   const summaryAllExpanded = useMemo(
     () =>
       summaryTableFiltered.length > 0 &&
@@ -315,7 +361,7 @@ export default function Forecast() {
     const result = downloadReport(
       {
         title: 'Forecast-disease-group',
-        subtitle: selectedPeriod === 'all' ? t('common.all') : `${t('col.period')} ${selectedPeriod}`,
+        subtitle: selectedPeriod ? `${t('col.period')} ${selectedPeriod}` : t('common.all'),
         generatedAt: new Date().toISOString(),
         columns: [
           { key: 'forecast_period', label: t('col.period') },
@@ -343,6 +389,7 @@ export default function Forecast() {
   };
 
   const isEmpty = summary.length === 0 && details.length === 0;
+  const showEmptyLoading = loading && !hasLoadedForecast;
 
   return (
     <div className="space-y-6">
@@ -467,18 +514,22 @@ export default function Forecast() {
       <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Calendar size={16} className="text-slate-500" />
-          <span className="text-sm text-slate-500">{t('col.period')}</span>
+          <span className="text-sm text-slate-500">Kỳ dự báo</span>
           <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}
+            disabled={periods.length === 0}
             className="px-3 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="all">{t('common.all')}</option>
-            {periods.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
+            {periods.length === 0 ? (
+              <option value="">Chưa có</option>
+            ) : (
+              periods.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -517,7 +568,7 @@ export default function Forecast() {
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h3 className="text-lg font-semibold text-slate-800">
             {t('forecast.topChart')}
-            {selectedPeriod !== 'all' && (
+            {selectedPeriod && (
               <span className="text-sm text-slate-500 ml-2">· {t('col.period')} {selectedPeriod}</span>
             )}
           </h3>
@@ -535,7 +586,7 @@ export default function Forecast() {
           </div>
         </div>
         {chartData.length === 0 ? (
-          <EmptyChart loading={loading} label={t('forecast.noMatch')} t={t} />
+          <EmptyChart loading={showEmptyLoading} label={t('forecast.noMatch')} t={t} />
         ) : (
           <ResponsiveContainer width="100%" height={Math.max(320, chartData.length * 40 + 80)}>
             <BarChart

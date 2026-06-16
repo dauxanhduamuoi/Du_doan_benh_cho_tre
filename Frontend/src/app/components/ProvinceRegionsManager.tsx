@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Eye, Loader2, RefreshCcw, Upload, X } from 'lucide-react';
 import * as api from '@/lib/api';
+import { clearAreaInsightsCache } from '@/lib/areaInsightsCache';
+import { clearChartDataCaches } from '@/lib/chartDataCache';
 
 export default function ProvinceRegionsManager() {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,6 +53,8 @@ export default function ProvinceRegionsManager() {
     if (!selectedFile || !preview || preview.missing_columns.length > 0) return;
     setImporting(true);
     setMessage(null);
+    clearAreaInsightsCache();
+    clearChartDataCaches();
     try {
       const res = await api.importProvinceRegions(selectedFile);
       setMessage({ type: 'success', text: `${res.message} Đã lưu ${res.result.saved_rows} tỉnh/thành.` });

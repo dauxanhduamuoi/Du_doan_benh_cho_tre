@@ -95,7 +95,6 @@ const vi: LocaleMessages = {
   'dashboard.history': 'Lịch sử',
   'dashboard.current': 'Hiện tại',
   'dashboard.importData': 'Import dữ liệu (.xlsx)',
-  'dashboard.importWeather': 'Import thời tiết (.xlsx)',
   'dashboard.runForecast': 'Chạy dự báo',
   'dashboard.totalRecords': 'Tổng bản ghi',
   'dashboard.totalPeriods': 'Số kỳ dữ liệu',

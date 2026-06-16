@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import * as api from '@/lib/api';
 import { loadProvinceRegions, type ProvinceRegionRecord } from '@/lib/provinceRegions';
+import { loadAreaInsightsCache, saveAreaInsightsCache } from '@/lib/areaInsightsCache';
 import { useAuth } from '../contexts/AuthContext';
 import { useMinimalTheme } from '@/lib/useMinimalTheme';
 
@@ -249,20 +250,22 @@ export default function AreaInsights() {
   const isMinimalTheme = useMinimalTheme();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const [provinces, setProvinces] = useState<api.AreaOption[]>([]);
-  const [provinceRegions, setProvinceRegions] = useState<ProvinceRegionRecord[]>([]);
-  const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
-  const [provinceCodes, setProvinceCodes] = useState<string[]>([]);
+  const [cachedAreaState] = useState(() => loadAreaInsightsCache());
+  const [hasLoadedAreaData, setHasLoadedAreaData] = useState(Boolean(cachedAreaState));
+  const [provinces, setProvinces] = useState<api.AreaOption[]>(cachedAreaState?.provinces ?? []);
+  const [provinceRegions, setProvinceRegions] = useState<ProvinceRegionRecord[]>(cachedAreaState?.provinceRegions ?? []);
+  const [regionFilter, setRegionFilter] = useState<RegionFilter>(cachedAreaState?.regionFilter ?? 'all');
+  const [provinceCodes, setProvinceCodes] = useState<string[]>(cachedAreaState?.provinceCodes ?? []);
   const [provinceSearch, setProvinceSearch] = useState('');
   const [provincePickerOpen, setProvincePickerOpen] = useState(false);
-  const [caseSummary, setCaseSummary] = useState<api.AreaCaseSummary[]>([]);
-  const [diseaseSummary, setDiseaseSummary] = useState<api.AreaDiseaseSummary[]>([]);
-  const [localRisks, setLocalRisks] = useState<api.AreaLocalRisk[]>([]);
-  const [diseasePage, setDiseasePage] = useState(1);
-  const [diseasePageSize, setDiseasePageSize] = useState(10);
-  const [riskPage, setRiskPage] = useState(1);
-  const [riskPageSize, setRiskPageSize] = useState(10);
-  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [caseSummary, setCaseSummary] = useState<api.AreaCaseSummary[]>(cachedAreaState?.caseSummary ?? []);
+  const [diseaseSummary, setDiseaseSummary] = useState<api.AreaDiseaseSummary[]>(cachedAreaState?.diseaseSummary ?? []);
+  const [localRisks, setLocalRisks] = useState<api.AreaLocalRisk[]>(cachedAreaState?.localRisks ?? []);
+  const [diseasePage, setDiseasePage] = useState(cachedAreaState?.diseasePage ?? 1);
+  const [diseasePageSize, setDiseasePageSize] = useState(cachedAreaState?.diseasePageSize ?? 10);
+  const [riskPage, setRiskPage] = useState(cachedAreaState?.riskPage ?? 1);
+  const [riskPageSize, setRiskPageSize] = useState(cachedAreaState?.riskPageSize ?? 10);
+  const [recommendations, setRecommendations] = useState<string[]>(cachedAreaState?.recommendations ?? []);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -328,6 +331,19 @@ export default function AreaInsights() {
     const start = (riskPage - 1) * riskPageSize;
     return localRisks.slice(start, start + riskPageSize);
   }, [localRisks, riskPage, riskPageSize]);
+  const showEmptyLoading = loading && !hasLoadedAreaData;
+
+  const prepareAreaFilterLoad = useCallback(() => {
+    setHasLoadedAreaData(false);
+    setLoading(true);
+    setError(null);
+    setCaseSummary([]);
+    setDiseaseSummary([]);
+    setLocalRisks([]);
+    setRecommendations([]);
+    setDiseasePage(1);
+    setRiskPage(1);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -378,6 +394,22 @@ export default function AreaInsights() {
         setDiseaseSummary(diseases);
         setLocalRisks(risks);
         setRecommendations(buildRegionRecommendations(targetLabel, risks));
+        setHasLoadedAreaData(true);
+        saveAreaInsightsCache({
+          provinces: prov,
+          provinceRegions: regionRows,
+          regionFilter,
+          provinceCodes,
+          caseSummary: targetCases,
+          diseaseSummary: diseases,
+          localRisks: risks,
+          diseasePage: 1,
+          diseasePageSize,
+          riskPage: 1,
+          riskPageSize,
+          recommendations: buildRegionRecommendations(targetLabel, risks),
+          savedAt: new Date().toISOString(),
+        });
         return;
       }
 
@@ -391,12 +423,28 @@ export default function AreaInsights() {
       setDiseaseSummary(diseases);
       setLocalRisks(risks);
       setRecommendations(rec?.recommendations ?? []);
+      setHasLoadedAreaData(true);
+      saveAreaInsightsCache({
+        provinces: prov,
+        provinceRegions: regionRows,
+        regionFilter,
+        provinceCodes,
+        caseSummary: cases,
+        diseaseSummary: diseases,
+        localRisks: risks,
+        diseasePage: 1,
+        diseasePageSize,
+        riskPage: 1,
+        riskPageSize,
+        recommendations: rec?.recommendations ?? [],
+        savedAt: new Date().toISOString(),
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [provinceCodes, regionFilter, selectedRegion.label]);
+  }, [diseasePageSize, provinceCodes, regionFilter, riskPageSize, selectedRegion.label]);
 
   useEffect(() => {
     load();
@@ -470,6 +518,9 @@ export default function AreaInsights() {
                         disabled={disabled}
                         onClick={() => {
                           if (disabled) return;
+                          if (option.value !== regionFilter || selectedProvinces.length > 0) {
+                            prepareAreaFilterLoad();
+                          }
                           setRegionFilter(option.value);
                           setProvinceCodes([]);
                           setProvinceSearch('');
@@ -503,6 +554,7 @@ export default function AreaInsights() {
                 {(selectedProvinces.length > 0 || regionFilter !== 'all') && (
                   <button
                     onClick={() => {
+                      prepareAreaFilterLoad();
                       setRegionFilter('all');
                       setProvinceCodes([]);
                       setProvinceSearch('');
@@ -535,6 +587,7 @@ export default function AreaInsights() {
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
+                        if (selectedProvinces.length > 0) prepareAreaFilterLoad();
                         setProvinceCodes([]);
                         setProvinceSearch('');
                         setProvincePickerOpen(false);
@@ -559,6 +612,7 @@ export default function AreaInsights() {
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => {
+                              prepareAreaFilterLoad();
                               setProvinceCodes((current) =>
                                 current.includes(p.code)
                                   ? current.filter((code) => code !== p.code)
@@ -595,7 +649,10 @@ export default function AreaInsights() {
                     <button
                       key={province.code}
                       type="button"
-                      onClick={() => setProvinceCodes((current) => current.filter((code) => code !== province.code))}
+                      onClick={() => {
+                        prepareAreaFilterLoad();
+                        setProvinceCodes((current) => current.filter((code) => code !== province.code));
+                      }}
                       className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200 hover:text-red-600"
                       title="Bỏ chọn tỉnh/thành phố này"
                     >
@@ -680,7 +737,7 @@ export default function AreaInsights() {
             </span>
           </div>
           {caseSummary.length === 0 ? (
-            <Empty loading={loading} text="Chưa có dữ liệu khu vực. Hãy import file có cột full_address." />
+            <Empty loading={showEmptyLoading} text="Chưa có dữ liệu khu vực. Hãy import file có cột full_address." />
           ) : (
             <div className="max-h-[720px] overflow-y-auto pr-2">
               <ResponsiveContainer width="100%" height={areaChartHeight}>
@@ -726,7 +783,7 @@ export default function AreaInsights() {
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 font-semibold text-slate-800">Bảng xếp hạng khu vực</h3>
           {coloredCases.length === 0 ? (
-            <Empty loading={loading} text="Chưa có dữ liệu." />
+            <Empty loading={showEmptyLoading} text="Chưa có dữ liệu." />
           ) : (
             <div className="max-h-[720px] space-y-2 overflow-y-auto pr-1">
               {coloredCases.map((row, index) => (
@@ -756,7 +813,7 @@ export default function AreaInsights() {
             <PageSizeSelect value={diseasePageSize} onChange={setDiseasePageSize} />
           </div>
           {diseaseSummary.length === 0 ? (
-            <Empty loading={loading} text="Chưa có dữ liệu nhóm bệnh cho khu vực này." />
+            <Empty loading={showEmptyLoading} text="Chưa có dữ liệu nhóm bệnh cho khu vực này." />
           ) : (
             <>
               <div className="space-y-2">
@@ -792,7 +849,7 @@ export default function AreaInsights() {
             <PageSizeSelect value={riskPageSize} onChange={setRiskPageSize} />
           </div>
           {localRisks.length === 0 ? (
-            <Empty loading={loading} text="Chưa có dữ liệu nguy cơ tại khu vực này." />
+            <Empty loading={showEmptyLoading} text="Chưa có dữ liệu nguy cơ tại khu vực này." />
           ) : (
             <>
               <div className="space-y-3">
@@ -831,7 +888,7 @@ export default function AreaInsights() {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="mb-4 font-semibold text-slate-800">Khuyến nghị phòng bệnh theo khu vực</h3>
         {recommendations.length === 0 ? (
-          <Empty loading={loading} text="Chưa có khuyến nghị." />
+          <Empty loading={showEmptyLoading} text="Chưa có khuyến nghị." />
         ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {recommendations.map((item, idx) => (

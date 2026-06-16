@@ -1,4 +1,4 @@
-from sqlalchemy import func
+﻿from sqlalchemy import func
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -164,33 +164,6 @@ def top_disease_groups(
     return [
         {
             "disease_group": r.disease_group,
-            "case_count": int(r.case_count),
-        }
-        for r in rows
-    ]
-
-
-@router.get("/cases-by-month")
-def cases_by_month(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("feature.dashboard")),
-):
-    data_type = DASHBOARD_DATA_TYPE
-
-    rows = db.query(
-        MonthlyStatistic.period,
-        func.sum(MonthlyStatistic.case_count).label("case_count")
-    ).filter(
-        MonthlyStatistic.data_type == data_type
-    ).group_by(
-        MonthlyStatistic.period
-    ).order_by(
-        MonthlyStatistic.period
-    ).all()
-
-    return [
-        {
-            "period": r.period,
             "case_count": int(r.case_count),
         }
         for r in rows

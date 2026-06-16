@@ -2,57 +2,26 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from datetime import datetime
 import re
 import unicodedata
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import AreaDistrict, AreaProvince, AreaWard, DiseaseKnowledge, ForecastResult, PatientRecord, User
+from app.models import DiseaseKnowledge, ForecastResult, PatientRecord, User
 from app.security import require_admin_permission, require_permission
 from app.services.area_service import (
     apply_area_filters,
     get_province_options,
     resolve_area,
     seed_default_areas,
-    sync_areas_from_payload,
-    sync_areas_from_url,
 )
-from app.services.weather_ai_service import predict_weather_risk
 
 router = APIRouter(prefix="/api/areas", tags=["Areas"])
 
 PROVINCE_REGIONS_JSON = Path("uploads") / "province_regions" / "province_regions.json"
-
-
-class AreaUpsert(BaseModel):
-    code: str = Field(..., min_length=1, max_length=20)
-    name: str = Field(..., min_length=1, max_length=255)
-    province_code: str | None = Field(None, max_length=20)
-    district_code: str | None = Field(None, max_length=20)
-    latitude: float | None = None
-    longitude: float | None = None
-    is_active: bool = True
-
-
-class AreaSyncPayload(BaseModel):
-    source_url: str | None = None
-    payload: dict[str, Any] | None = None
-
-
-class AreaWeatherRiskPayload(BaseModel):
-    age_group: str
-    gender: str
-    top_k: int = Field(5, ge=1, le=20)
-    province_code: str | None = None
-    district_code: str | None = None
-    ward_code: str | None = None
-    weather: dict[str, Any] | None = None
 
 
 def _serialize_area(row) -> dict:
@@ -141,33 +110,6 @@ def list_province_regions():
         return json.loads(PROVINCE_REGIONS_JSON.read_text(encoding="utf-8"))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Không đọc được file phân miền tỉnh/thành: {e}")
-
-
-@router.get("/districts")
-def list_districts(
-    province_code: str | None = Query(None),
-    db: Session = Depends(get_db),
-):
-    query = db.query(AreaDistrict).filter(AreaDistrict.is_active.is_(True))
-    if province_code:
-        query = query.filter(AreaDistrict.province_code == province_code)
-    rows = query.order_by(AreaDistrict.name.asc()).all()
-    return [_serialize_area(r) for r in rows]
-
-
-@router.get("/wards")
-def list_wards(
-    district_code: str | None = Query(None),
-    province_code: str | None = Query(None),
-    db: Session = Depends(get_db),
-):
-    query = db.query(AreaWard).filter(AreaWard.is_active.is_(True))
-    if district_code:
-        query = query.filter(AreaWard.district_code == district_code)
-    if province_code:
-        query = query.filter(AreaWard.province_code == province_code)
-    rows = query.order_by(AreaWard.name.asc()).all()
-    return [_serialize_area(r) for r in rows]
 
 
 @router.get("/case-summary")
@@ -312,140 +254,9 @@ def recommendations(
     }
 
 
-@router.post("/weather-risk")
-def weather_risk_by_area(
-    payload: AreaWeatherRiskPayload,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("feature.weather_risk")),
-):
-    area = resolve_area(db, payload.province_code, payload.district_code, payload.ward_code)
-    latitude = area["latitude"]
-    longitude = area["longitude"]
-    if latitude is None or longitude is None:
-        raise HTTPException(status_code=400, detail="Khu vuc chua co toa do de lay thoi tiet.")
-    try:
-        result = predict_weather_risk(
-            age_group=payload.age_group,
-            gender=payload.gender,
-            top_k=payload.top_k,
-            weather=payload.weather,
-            latitude=float(latitude),
-            longitude=float(longitude),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    result["area"] = {
-        "province": _serialize_area(area["province"]) if area["province"] else None,
-        "district": _serialize_area(area["district"]) if area["district"] else None,
-        "ward": _serialize_area(area["ward"]) if area["ward"] else None,
-    }
-    return result
-
-
 @router.post("/sync-defaults")
 def sync_defaults(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin_permission("admin.assign_permissions")),
 ):
     return {"message": "Da dong bo danh muc khu vuc mac dinh.", "inserted": seed_default_areas(db)}
-
-
-@router.post("/sync-external")
-def sync_external(
-    payload: AreaSyncPayload,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin_permission("admin.assign_permissions")),
-):
-    if payload.payload:
-        counts = sync_areas_from_payload(db, payload.payload)
-    elif payload.source_url:
-        try:
-            counts = sync_areas_from_url(db, payload.source_url)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    else:
-        raise HTTPException(status_code=400, detail="Can truyen source_url hoac payload.")
-    return {"message": "Da dong bo danh muc khu vuc.", "updated": counts}
-
-
-@router.post("/provinces")
-def upsert_province(
-    payload: AreaUpsert,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin_permission("admin.assign_permissions")),
-):
-    row = db.query(AreaProvince).filter(AreaProvince.code == payload.code).first()
-    values = {
-        "name": payload.name,
-        "latitude": payload.latitude,
-        "longitude": payload.longitude,
-        "is_active": payload.is_active,
-        "updated_at": datetime.utcnow(),
-    }
-    if row:
-        for key, value in values.items():
-            setattr(row, key, value)
-    else:
-        row = AreaProvince(code=payload.code, **values)
-        db.add(row)
-    db.commit()
-    db.refresh(row)
-    return _serialize_area(row)
-
-
-@router.post("/districts")
-def upsert_district(
-    payload: AreaUpsert,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin_permission("admin.assign_permissions")),
-):
-    if not payload.province_code:
-        raise HTTPException(status_code=400, detail="province_code la bat buoc.")
-    row = db.query(AreaDistrict).filter(AreaDistrict.code == payload.code).first()
-    values = {
-        "province_code": payload.province_code,
-        "name": payload.name,
-        "latitude": payload.latitude,
-        "longitude": payload.longitude,
-        "is_active": payload.is_active,
-        "updated_at": datetime.utcnow(),
-    }
-    if row:
-        for key, value in values.items():
-            setattr(row, key, value)
-    else:
-        row = AreaDistrict(code=payload.code, **values)
-        db.add(row)
-    db.commit()
-    db.refresh(row)
-    return _serialize_area(row)
-
-
-@router.post("/wards")
-def upsert_ward(
-    payload: AreaUpsert,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin_permission("admin.assign_permissions")),
-):
-    if not payload.province_code or not payload.district_code:
-        raise HTTPException(status_code=400, detail="province_code va district_code la bat buoc.")
-    row = db.query(AreaWard).filter(AreaWard.code == payload.code).first()
-    values = {
-        "province_code": payload.province_code,
-        "district_code": payload.district_code,
-        "name": payload.name,
-        "latitude": payload.latitude,
-        "longitude": payload.longitude,
-        "is_active": payload.is_active,
-        "updated_at": datetime.utcnow(),
-    }
-    if row:
-        for key, value in values.items():
-            setattr(row, key, value)
-    else:
-        row = AreaWard(code=payload.code, **values)
-        db.add(row)
-    db.commit()
-    db.refresh(row)
-    return _serialize_area(row)
