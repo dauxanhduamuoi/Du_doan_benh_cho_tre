@@ -1,0 +1,237 @@
+﻿disease_target,rows,total_actual_cases,MAE,RMSE,R2
+Các bệnh viêm phổi - Pneumonia,66,10375,29.8788,53.4583,0.9309
+Viêm phế quản và viêm tiểu phế quản cấp - Acute bronchitis and acute bronchiolitis,55,4089,17.6,30.647,0.8906
+Viêm họng và viêm amidan cấp - Acute pharyngitis and acute tonsillitis,55,3618,14.9273,25.2115,0.9027
+Dị tật bẩm sinh khác của bộ máy sinh dục tiết niệu - Other malformations of the genitourinary system,55,3494,14.4182,24.5086,0.8732
+"Ỉa chảy, viêm dạy dày, ruột non có nguồn gốc nhiễm khuẩn - Diarrhoea and gastroenteritis of presumed infectious origin.",55,3491,15.7273,23.214,0.8796
+Các bệnh nhiễm khuẩn ruột khác - Other intestinal infectious diseases,66,3226,11.2273,19.3058,0.8866
+Bệnh bạch cầu - Leukaemia,55,2240,8.3091,12.9958,0.8778
+Bệnh mạn tính của amidan và của VA - Chronic diseases of tonsils and adenoids,55,1884,19.8909,40.5933,0.5396
+"Các triệu chứng, dấu hiệu và kết quả bất thường về khám lâm sàng và xét nghiệm khác, chưa xếp ở chỗ khác - Other symptoms, signs and abnormal clinical and laboratory findings, not elsewhere classified",66,1646,5.3485,10.0416,0.8582
+Hen - Asthma,55,1635,10.3636,17.6903,0.8415
+Sởi - Measles,55,1575,13.5273,22.6105,0.7119
+Bệnh virut khác - Other viral diseases,55,1348,10.7455,19.3771,0.5456
+Gãy các phần khác của chi do lao động và giao thông - Fracture of other lim bones,55,1295,4.2909,7.0993,0.8712
+"Tổn thương chảy máu, bệnh khác của máu và cơ quan tạo máu - Haemorrhagic conditions and other diseases of blood, blood",55,1274,5.3636,7.24,0.7587
+Tổn thương khác có nguồn gốc trong thời kỳ chu sinh - Other conditions originating in the perinatal period,55,1109,6.4545,10.27,0.8038
+"U khác insitu, lành tính và các u tiến triển không chắc chắn hoặc chưa rõ - Other insitus and benign neoplasms and neoplasms of uncertain or unknown behaviour",55,1099,5.7273,8.2693,0.6493
+Thoát vị bẹn - Inguinal hernia,55,1078,5.3636,8.7355,0.7964
+Động kinh - Epilepsy,55,1054,4.6545,6.2144,0.7671
+Bệnh khác của da và mô tế bào dưới da - Other diseases of skin and subcutaneous tissue,55,1039,4.7273,6.4583,0.7714
+Sốt virut khác do tiết túc truyền và sốt virus xuất huyết - Other arthropod,55,1034,6.4727,8.8111,0.7094
+Viêm dạ dày và tá tràng - Gastritis and duodenitis,55,956,5.6727,8.6171,0.7846
+Viêm cấp đường hô hấp trên khác - Other acute upper respiratory infections,55,901,4.8909,7.315,0.7885
+Dị dạng bẩm sinh của bộ máy sinh dục tiết niệu - Congenital malformations of genital organs,55,851,4.7455,6.7703,0.7757
+"Tắc liệt ruột và tắc ruột không do thoát vị - Paralytic ileus, intestinal obstruction without hernia",66,822,2.803,5.9912,0.9056
+"Thừa bao qui đầu, hẹp và nghẹt bao qui đầu - Redundant prepuce, phimosis and paraphimosis",55,821,7.0909,14.0945,0.5531
+Dị tật bẩm sinh khác của bộ máy tuần hoàn - Congenital malfor-mation of the circulatory system,55,748,4.7091,7.4821,0.631
+Thiếu máu khác - Other anaemias,55,713,2.7818,3.5853,0.8652
+Bệnh của ruột thừa - Diseases of appendix,55,650,2.5636,3.7197,0.9086
+Bệnh nhiễm khuẩn da và mô tế bào dưới da - Infections of skin and subcutaneous tissue,55,642,3.0364,4.1757,0.7276
+"Bệnh khác của thực quản, dạ dày và tá tràng - Other diseases of oesophagus, stomach, duodenum",55,623,3.4364,4.9045,0.4931
+Bệnh của hệ thống tổ chức liên kết - Systematic connective tissue disorders,55,561,3.2545,4.4292,0.6204
+"Các tổn thương khác do chấn thương xác định và ở nhiều nơi - Other injuries of specified, unspecified and multiple body regions",55,549,2.5818,3.7659,0.7812
+Tinh hoàn lạc chỗ - Undescended testicle,55,477,3.2727,4.7136,0.7414
+Các bệnh khác của gan - Other diseases of liver,55,472,3.2909,4.7117,0.6771
+Dị dạng bẩm sinh khác - Other congenital malformations,55,455,3.0182,4.2298,0.6509
+"Bệnh khác của khoang miệng, tuyến nước bọt và hàm - Other diseases of the oral cavity, salivary glands and jaws",66,450,2.4848,4.9543,0.8009
+Bệnh do tiếp xúc với dịch vụ y tế phải chăm sóc và khám xét đặc biệt - Persons encountering health services for specific procedures and health care,55,431,3.4,4.3505,0.1655
+Viêm hệ thần kinh trung ương - Inflamatory diseases of the central nervous system,55,427,3.5273,4.5726,0.2927
+Bệnh khác của bộ máy tiết niệu - Other diseases of the urnary system,55,415,2.8182,3.9612,0.5231
+"Viêm thanh, khí quản cấp - Acute laryngitis and tracheitis",55,400,2.7818,5.8636,0.5836
+Bệnh cầu thận khác - Other glomerular diseases,66,380,2.5,4.3641,0.4633
+Bệnh khác của ruột non và màng bụng - Other diseases of intestine peritoneum,55,377,2.4909,3.8067,0.5712
+"Viêm khớp dạng thấp và viêm khớp khác - Rheumatoid arthritis, other inflamatory polyarthropaties",55,374,2.4,4.0765,0.719
+Thương tổn do chấn thương trong sọ - Intracranial injury,55,372,2.4727,3.3683,0.4602
+"Bệnh khác về nội tiết, dinh dưỡng và chuyển hoá - Other endocrine, nutritional and metabolic disorders",55,343,2.1818,3.0332,0.5755
+Dị dạng bẩm sinh khác của hệ xương và cơ - Other congenital malformations and deformations of the musculo skeletal system,55,298,3.0182,4.3359,0.493
+U ác mạc treo và các mô mềm - Malignantneoplasms of mesothelial and soft tissue,55,297,2.5273,3.3764,0.6842
+U bạch huyết không phải Hodgkin - Non-Hodgkin's lymphoma,55,284,1.7636,2.5972,0.6963
+U ác khác của đường tiết niệu - Other malignant neoplasms of uterinary tract,44,260,2.2727,3.1116,0.8065
+Tổn thương các mô mềm - Soft tissue disorders,55,254,2.3273,3.668,0.4473
+Gãy xương đùi - Fracture of femur,55,254,2.4182,3.6407,0.205
+Bệnh khác của bộ máy tiêu hoá - Other diseases of the digestive system,55,241,1.6182,2.1867,0.3811
+Tai biến của thuốc và các chất sinh học trong điều trị - Drugs medicament and biological substances causing adverseeffects in therapeutic use.,44,225,2.1818,3.5675,0.6775
+Nhiễm khuẩn và kí sinh vật bẩm sinh - Congenital infectious and parasitic diseases,11,211,5.0,6.2012,-0.0532
+"U ác các khu trú khác, khó định nghĩa, thứ phát, không xác định rõ và phức hợp - Malignant neoplasm of other and ill",55,209,1.9636,2.4421,0.1857
+Đau bụng và khung chậu - Abdominal and pelvic pain,44,204,1.7955,2.5091,0.6521
+Suy thận - Renal failure,55,202,1.7818,2.77,0.6656
+Vỡ xương sọ và các xương mặt - Fracture of skull and facial bones,55,199,2.0545,2.7732,0.0784
+Bệnh khác của hệ thần kinh - Other diseases of the nervous system,55,185,2.0182,2.6389,-0.0797
+Bỏng và sự ăn mòn - Burnss and corrosions,55,180,1.6364,2.3433,0.6062
+U ác não - Malignant neoplasm of brain,55,175,1.6,2.4271,0.4435
+Thiếu máu do thiếu sắt - Iron deficiency anaemia,55,172,1.2182,1.9679,0.6931
+Hậu quả do dị vật vào hốc tự nhiên - Effects of foreign body entert hrough natural orifice,44,172,1.6591,2.3597,0.4805
+Sứt môi và hở hàm ếch - Cleft lip and cleft palate,55,163,1.7818,2.7236,0.5096
+Đái tháo đường - Diabetes mellitus.,55,162,1.4909,2.2401,0.591
+U da lành - Benign neoplasm of skin,55,158,1.4,1.9587,0.4075
+"Tổn thương không viêm của buồng trứng, vòi fallope và dây chằng rộng - Noinflammatory disorders of ovary, fallopian tube and broad ligament",55,149,1.0727,1.5667,0.8024
+Bệnh khác của cơ quan sinh dục nam - Other diseases of male genital organs,55,121,1.2545,2.1363,0.2366
+Viêm tuỵ cấp và bệnh khác của tuỵ - Acute pancreatitis and other diseases of pancreas,55,121,1.1273,1.5492,0.5161
+Hậu quả của các nguyên nhân bên ngoài khác và không xác định - Other and unspecified effects of external causes,55,111,1.1273,1.6293,0.2512
+U ác gan và đường mật trong gan - Malignant neoplasm of liver and intrahepatic bile ducts,55,105,1.1455,1.7529,0.5903
+U lành não và các phần khác của hệ thần kinh trung ương - Benign neoplasm of brain and other parts of central nervous system,55,104,1.0182,1.4523,0.281
+Các u khác cơ quan hô hấp và lồng ngực - Other malignant neplasm of respiratory and intrathoracic,55,99,1.0545,1.5015,0.458
+U ác xương và sụn khớp - Malignant neoplasms of bone and articular cartilage,55,95,0.8364,1.3484,0.6996
+U ác các phần khác và không xác định của tử cung - Malignant neoplasms of other and unspecified parts of uterus,55,91,1.0182,1.7162,0.6165
+Nhiễm khuẩn huyết - Septicemia,55,88,0.9455,1.5015,0.2211
+Bệnh Crohn (viêm ruột non từng vùng) và viêm loét đại tràng - Crohn’s disease and ulcerative colitis,55,88,0.8182,1.3416,0.5442
+Bệnh do tiếp xúc với dịch vụ y tế vì những lý do khác - Person encoutering health services for other reasons,55,86,0.9273,1.1985,0.5169
+U buồng trứng lành - Benign neoplasm of ovary,55,86,1.0545,1.7373,0.5331
+Loét dạ dày và tá tràng - Gastric and duodenal ulcer,44,86,0.9318,1.4538,0.6605
+Bệnh khác của bộ máy hô hấp - Other diseases of respiratory system.,55,85,0.8909,1.3003,0.3947
+"Một số biến chứng sớm của chấn thương, của chăm sóc ngoại khoa và y học, chưa xếp ở nơi khác - Certain early complications of trauma and complications of surgical and medical care, not elsewhere classified",55,79,1.2364,1.6949,-0.0857
+Tăng huyết áp nguyên phát - Essential (primary) hypertension,55,78,1.0727,1.9212,0.2936
+Một số rối loạn hệ miễn dịch - Certain disorders involving the immune mechanism,55,76,1.0,1.6679,0.1355
+U ác khác của cơ quan sinh dục nam - Other malignant neoplasms of male genital organs,44,74,0.8636,1.6376,0.6824
+Bệnh Hodgkin - Hodgkin disease,44,72,1.5909,2.6371,0.5235
+Rối loạn dẫn truyền và loạn nhịp tim - Conduction disorders and cardiac arrhythymias,55,72,1.0727,1.4585,-0.2753
+Bệnh khác của khớp - Other joint disorders,55,71,0.9455,1.427,0.1725
+Di tật về mật độ và cấu trúc của xương - Disorders of bone density and structure,55,69,0.8364,1.4894,0.1435
+Các bệnh khác của bộ máy tuần hoàn - Other diseases of the circulatory system,55,68,1.1818,1.7425,0.0398
+"Thai chậm phát triển, suy dinh dưỡng, rối loạn gắn liền với thai nghén và cân nặng không đủ khi sinh - Slow fetal growth, fetal malnutrition and disorders related to short gestation and low birth weight",22,64,1.4545,2.6799,0.4623
+Hội chứng viêm thận cấp và tiến triển nhanh - Acute and rapidly prograssive nephritis syndromes,55,63,0.7273,1.2358,0.4575
+Bệnh tim khác - Other heart diseases,55,62,0.9636,1.3685,-0.169
+"Tràn dịch tinh mạc, u nang tinh dịch - Hydrocele and spermatocele",44,60,1.1818,2.1638,0.3137
+Bệnh khác của cột sống - Other dorsopathies,55,60,1.0,1.5667,0.3588
+Tổn thương khác liên quan đến răng và mô quanh răng - Other disorders of teeth and supporting structures,44,51,0.8864,1.5,0.2923
+Sỏi tiết niệu - Urolithiasis,55,51,0.7636,1.0617,-0.1129
+Viêm xương tuỷ - Osteomyelitis,55,47,0.7636,1.1119,-0.2401
+Rối loạn tâm thần và nhân cách khác - Other mental and behavioural disorders,55,45,0.6,0.963,0.2935
+Đau nửa đầu và các hội chứng đau đầu khác - Migraine and other headache syndromes.,44,44,0.8182,1.3981,-0.0238
+Dị dạng bẩm sinh hông - Congenital deformities of hip,33,40,0.6667,1.101,0.5093
+Bệnh mạch máu não khác - Other cerebrovascular diseases,55,38,0.8909,1.3948,0.025
+Các thoát vị khác - Other hernia,55,37,0.6,0.9439,0.0221
+"Viêm tai giữa, bệnh khác của tai giữa và xương chũm - Otitis media and other disorders of middle ear and mastoid",55,36,0.7636,1.3484,-0.4197
+Bệnh nhiễm khuẩn và kí sinh vật khác - Other infectious and parasitic diseases,66,36,0.5152,0.8528,0.0833
+"Loạn thần kinh, rối loạn gắn liền với các yếu tố stress và các rối loạn thuộc thân thể - Neurotic, sterss - related and somatoform disorders",55,33,0.6727,1.1037,-0.1713
+Thuỷ đậu và zôna - Varicella and Zoster,55,33,0.6364,0.7977,-0.2868
+Tác hại của các chất có nguồn gốc chủ yếu không phải thuốc - Toxic effects of substances chiefly nonmedical as to source,44,33,0.7955,1.1774,-0.1244
+Bệnh khác của bộ máy sinh dục tiết niệu - Other disorders of genitourinary tract,55,32,0.5273,0.8842,0.2759
+Chảy máu não - Intracerebral haemorrhage,55,31,0.5273,0.8421,-0.1632
+Tổn thương khác của tuyến giáp - Other disorders of thyroid.,55,31,0.6364,0.9439,-0.4615
+Viêm não Virut - Viral encephalitis,55,31,0.6182,0.9909,-0.3661
+Sỏi mật và viêm túi mật - Cholelithiasis and cholecystitis,55,30,0.5091,0.8944,0.0359
+Nhiễm độc thuốc và các sinh phẩm - Poisoning by drugs and biological substances,55,29,0.5455,0.8528,-0.2615
+Bệnh của mũi và các xoang phụ của mũi - Other diseases of nose and nasal sinuses,55,28,0.5273,0.8202,-0.1655
+Ho gà - Whooping cough,33,28,1.0,1.8174,-0.1566
+Người có nguy cơ liên quan đến bệnh truyền nhiễm - Other persons with potential health hazards related to communicable diseases,33,26,0.7576,1.1934,-0.3234
+Dị tật bẩm sinh khác của hệ thần kinh - Other congenital malforma,55,26,0.5455,0.8944,-0.3053
+Các dạng lao khác - Other tuberculosis,55,25,0.5636,0.8634,-0.3834
+Nhiễm khuẩn đặc hiệu khác thời kỳ chu sinh - Other infectious specific to the perinatal period,11,25,1.4545,1.7581,0.0053
+"Tổn thương thần kinh, rễ và đám rối thần kinh - Nerve, nerve root and plexus disorders",55,24,0.6,0.8202,-0.7188
+Suy tim - Heart failure,44,22,0.8409,1.118,-1.2
+Tổn thương viêm khác của các cơ quan khung chậu nữ - Other inflamatory diseases of female pelvic organs,44,22,0.5,0.7687,-0.2381
+U ác các phần khác của hệ thần kinh trung ương - Malignant neoplasm of other parts of central nervous system,55,22,0.3455,0.7006,0.233
+Sốt không rõ nguyên nhân - Fever of unknown origin,44,21,0.6818,1.0,-0.3343
+Tai nạn do tiếp xúc với động vật và cây độc - Contact with venomous animals and plants,55,21,0.5091,1.009,-0.2449
+Thương tổn do chấn thương các nội tạng khác - Injury of other internal organs,55,18,0.4727,0.8739,-0.4942
+"Viêm tĩnh mạch, viêm tĩnh mạch huyết khối, nghẽn mạch và huyết khối tĩnh mạch - Phlebitis, thrombophlebitis,venous embolism and thrombosis",55,18,0.4545,0.7508,-0.2858
+Các bệnh khác của mắt và phần phụ mắt - Other diseases of the eye and adnexa,55,18,0.3636,0.7385,-0.3569
+Dị dạng bẩm sinh bàn chân - Congenital deformities of feet,55,18,0.4909,0.8421,-0.0801
+Suy dinh dưỡng - Malnutrition,55,17,0.4727,0.7135,-0.7783
+Biến dạng các chi mắc phải - Accquired deformities of limbs,44,17,0.5,0.879,-0.5157
+"Giang mai sớm (Giang mai I, II và kín) - Early syphilis",22,16,0.4545,0.8528,0.3433
+Tai nạn do các nguyên nhân sức mạnh cơ học và không cố ý - exposure to inanimate mechanical forces,55,16,0.4364,0.7385,-0.285
+Bệnh ống thận kẽ - Renal tubulo-interstitial diseases,55,16,0.3273,0.5721,-0.173
+"Sai khớp, bong gân, tổn thương khu trú và ở nhiều vùng cơ thể - Dislocations, sprains and strains of specified and multiple body regions",55,15,0.3273,0.603,-0.3415
+Nhồi máu não - Cerebral infarction,55,15,0.2909,0.5394,-0.2394
+Viêm bàng quang - Cystitis,44,13,0.4318,0.723,-0.3404
+Bệnh khác của tai và xương chũm - Other diseases of the ear and mastoid process,55,13,0.3091,0.6467,-0.4441
+Sốt Rickettsia - Typhus fever,44,13,0.3182,0.6396,-0.1874
+Giang mai bẩm sinh - Congenital syphilis,55,12,0.3455,0.6467,-0.7188
+Các u khác cơ quan tiêu hoá - Other malignant neoplasms of digestive organs,22,12,0.5909,0.879,0.3321
+U vú lành - Benign neoplasm of breast,33,11,0.5758,0.8704,-0.6304
+Nhiễm độc do tuyến giáp (cường giáp) - Thyrotoxicosis,44,10,0.2727,0.5222,-0.0233
+"U ác limphô khác, cơ quan tạo máu và tổ chức có liên quan - Other malignant neoplasms of lymphoid, haematopoietic and related tissue",55,10,0.2909,0.5721,-0.7679
+"Bệnh khác của hệ xương khớp, cơ và mô liên kết - Other diseases of the musculo-skeletal system and connective tissue",55,10,0.2182,0.4671,-0.4667
+Các tổn thương hô hấp đặc hiệu khác của thời kỳ chu sinh - Other respiratory disorders originating in the perinatal period,22,10,0.3636,0.6742,0.127
+Bệnh thấp tim mãn - Chronic rheumatic disease,44,9,0.2955,0.5839,-0.6377
+Bệnh khác đường hô hấp trên - Other diseases of upper respiratory tract,44,8,0.4091,0.6396,-1.1064
+Nhiễm HIV - Human immuno deficiency virus disease,44,8,0.1818,0.4264,-0.2222
+"Dị thường nhiễm sắc thể, chưa xếp ở chỗ khác - Chromosomal abnormalities, not elsewhere sclassified",55,8,0.2,0.4862,-0.4712
+Lác mắt - Strabismus,44,7,0.25,0.5436,-0.6484
+"Viêm kết mạc, tổn thương khác của kết mạc - Conjunctivitis and other disoders of conjunctiva",44,7,0.25,0.5436,-0.6484
+Tổn thương của vú - Disorders of breast,44,7,0.25,0.5839,-0.902
+Béo phì - Obesity,55,6,0.2182,0.4671,-1.2449
+Nấm - Mycoses,44,6,0.2045,0.5,-0.5316
+"Tai nạn chết đuối, chết chìm - Accident drowning and submersion",33,6,0.1818,0.4924,-0.1579
+Chậm phát triển tâm thần - Mental retardation,44,6,0.1818,0.4264,-0.5439
+Người tiếp xúc với các dịch vụ y tế làm các khám xét và điều tra - Person encountering health services for examination and investigation,55,6,0.2182,0.5045,-0.9059
+Bạo lực đánh nhau - Assault,44,6,0.1818,0.4264,-0.5439
+Rối loạn kinh nguyệt - Disorders of menstruation,22,5,0.3182,0.7687,-0.318
+U ác mắt và các phần phụ - Malignant neoplasm of eye and adnexa,33,5,0.1818,0.4924,-0.2816
+Thấp khớp cấp - Acute rheumatic heart disease,33,5,0.1515,0.3892,-0.1786
+Viêm gan virut khác - Other viral hepatitis,44,5,0.1591,0.3989,-0.5795
+"Không có, tịt hoặc hẹp ruột non - Absence, atresia and stenosis of small intestine",22,5,0.3636,0.7977,-0.4194
+"Gãy xương cổ, ngực, khung chậu - Fracture of neck, thorax or pelvis.",33,5,0.1818,0.4264,-0.4143
+Lao bộ máy hô hấp - Respiratory tuberculosis,55,4,0.1818,0.4671,-1.1019
+Bệnh túi thừa của ruột non - Diverticular disease of intestine,44,4,0.1136,0.3371,-0.375
+Viêm gan B cấp - Acute hepatitis B,44,4,0.0909,0.3015,-0.1
+U ác tụy - Malignant neoplasm of pancreas,33,4,0.2424,0.5505,-0.8132
+Bệnh giun sán khác - Other Helminthiases,55,3,0.0545,0.2335,-0.0577
+"Liệt não, hội chứng liệt khác - Cerebral palsy and other paralytic syndromes",44,3,0.0682,0.2611,-0.0732
+"Viêm phế quản tràn khí và các bệnh phổi tắc nghẽn mạn tính - Bronchitis, emphysema and other chronic obstructive diseases",33,3,0.4848,0.6963,-4.8667
+Xơ cứng nhiều nơi - Multiple sclerosis,33,3,0.0909,0.3015,-0.1
+U ác đại tràng - Malignant neoplasm of colon,22,3,0.1364,0.3693,-0.1579
+"Tâm thần phân liệt, rối loạn dạng phân liệt và hoang tưởng - Schizophrenia, schiztypal and delusional disorders",44,3,0.0909,0.3693,-0.2512
+COVID-19 * U07.1 là bệnh nhân COVID-19 có kết quả xét nghiệm SARS-CoV-2 dương tính cập nhật theo hướng dẫn chẩn đoán và điều trị của Bộ Y tế.,66,3,0.7727,1.7538,-69.8889
+Cúm - Influenza,22,3,0.1364,0.3693,-0.1579
+Bệnh tăng huyết áp khác - Other hypertensive diseases,33,3,0.1212,0.4264,-0.2692
+Nhiễm virut Héc-pét - Herpesviral infections,33,3,0.0909,0.3015,-0.1
+U ác hắc tố da - Malignant melanoma of skin,33,3,0.1212,0.3482,-0.4667
+U lành cơ quan tiết niệu - Benign neoplasm of urinary organs,33,2,0.0606,0.2462,-0.0645
+Tổn thương khác của tuyến tiền liệt - Other disorders of prostate,22,2,0.0909,0.3015,-0.1
+Viêm xoang mạn tính - Chronic sinusitis,33,2,0.0606,0.2462,-0.0645
+U ác bàng quang - Malignant neoplasm of bladder,33,2,0.1818,0.4264,-2.1935
+Nhiễm khuẩn não mô cầu - Meningococcal infection,11,2,0.1818,0.4264,-0.2222
+Rối loạn khí sắc - Mood ( affective) disorders.,22,2,0.0909,0.3015,-0.1
+Quai bị - Mumps,11,2,0.1818,0.4264,-0.2222
+"Thương hàn, phó thương hàn - Typhoid and paratyphoid fevers",22,2,0.0909,0.3015,-0.1
+Thiếu vitamin khác - Other vitamin deficiencies.,33,2,0.0909,0.3015,-0.5968
+Lỵ Amip - Amoebiasis,44,2,0.0455,0.2132,-0.0476
+Cơn thiếu máu não thoáng qua và các hội chứng tương tự - Transient cerebral ischaemic attacks and related syndromes,22,2,0.0909,0.3015,-0.1
+"U ác môi, khoang miệng, họng - Malignant neoplasm of lip, oral cavity and pharynx",55,2,0.0364,0.1907,-0.0377
+"Tật khúc xạ, các rối loạn điều tiết - Disorders of refraction and accomodation",22,2,0.0909,0.4264,-0.0476
+Tả - Cholera,11,2,0.3636,0.7385,-0.65
+Tai nạn do tiếp xúc với các chất nóng - contact with heat and hot,11,2,0.1818,0.4264,-0.2222
+"Tai nạn do khói, lửa, đám cháy - expossure to smoke, fire and fpames",11,2,0.1818,0.603,-0.1
+"Bệnh lí thai nhi và sơ sinh do biến chứng thai nghén, chửa, đẻ - Fetus and newborn affected by maternal factors and by complications of pregnancy, labour and delivery",11,1,0.0909,0.3015,-0.1
+Bệnh tim thiếu máu cục bộ khác - Other ischaemic heart diseases,22,1,0.0455,0.2132,-0.0476
+Chấn thương dập nát và cắt cụt đã xác định và nhiều vùng trong cơ thể - Fracture of other lim bones,11,1,0.0909,0.3015,-0.1
+Gai đôi cột sống - Spina bifida,33,1,0.0606,0.2462,-1.0625
+Bệnh mạch máu ngoại vi khác - Other peripheral vascular disease,11,1,0.0909,0.3015,-0.1
+Bệnh thoái hoá khớp - Arthrosis,22,1,0.0455,0.2132,-0.0476
+"Di chứng, thương tổn do chấn thương, do ngộ độc và hậu quả khác do nguyên nhân bên ngoài - Sequalae of injuries, of poisoning and of other consequences of external causes",44,1,0.0227,0.1508,-0.0233
+Viêm mi mắt - Inflammation of eyelid,33,1,0.0303,0.1741,-0.0312
+Viêm vòi trứng và viêm buồng trứng - Salpingitis and oophoritis,22,1,0.0455,0.2132,-0.0476
+Tự tử - Intentional self-harm,11,1,0.0909,0.3015,-0.1
+Sâu răng - Dental caries,11,1,0.0909,0.3015,-0.1
+"Tai biến mạch máu não, không xác định rõ chảy máu hoặc do nhồi máu - Stroke, not specified as haemorrhage or infarction",22,1,0.0455,0.2132,-0.0476
+"U ác khí quản, phế quản và phổi - Malignant neoplasms of trachea, bronchus and lung",22,1,0.0455,0.2132,-0.0476
+U ác dạ dày - Malignant neoplasm of stomach,22,1,0.0455,0.2132,-0.0476
+Thương tổn do chấn thương ở mắt và hốc mắt - Injury of eye and orbit,33,1,0.0303,0.1741,-0.0312
+Các bệnh do vi khuẩn khác - Other bacterial diseases,44,1,0.0227,0.1508,-0.0233
+Mất thính giác - Hearing loss,22,1,0.0455,0.2132,-0.0476
+"Bệnh khác của động mạch, tiểu động mạch và mao mạch - Other diseases of arteries, arterioles and capillaries",44,0,0.0227,0.1508,0.0
+Dịch hạch - Plague,11,0,0.0,0.0,1.0
+Các nhiễm khuẩn do sán lá - Other fluke infections,11,0,0.0,0.0,1.0
+Các dạng uốn ván khác - Other tetanus,33,0,0.0,0.0,1.0
+Các chấn thương sản khoa - Birth trauma,11,0,0.0,0.0,1.0
+Các biến chứng khác của chửa đẻ - Other complications pregnancy and delivery,11,0,0.0,0.0,1.0
+Nghẽn và huyết khối động mạch - Arterial embolism and thrombosis,44,0,0.0,0.0,1.0
+Không rõ nhóm bệnh,22,0,0.0,0.0,1.0
+Glôcôm - Glaucoma,11,0,0.0,0.0,1.0
+Tai nạn giao thông - Transport accidént,22,0,0.0,0.0,1.0
+Rối loạn tâm thần và ứng xử liên quan dùng các chất kích thích tâm lí khác - Mental and behavioural disorders due to other psychoactive substances use,11,0,0.0,0.0,1.0
+Quá sản tuyến tiền liệt - Hyperplasia of prostate,22,0,0.0,0.0,1.0
+Nhiễm khuẩn khác lây truyền qua đường tình dục - Other infection with a predominantly sexual mode of transmission,11,0,0.0,0.0,1.0
+Sán Echinococ - Echinococcosis,11,0,0.0,0.0,1.0
+Trật đốt sống cổ và các đốt sống khác - Cervical and other interverbral disc disorders,11,0,0.0909,0.3015,0.0
+Tai nạn ngộ độc do các chất độc - Accident poisoning by and exposure to noxious substances,11,0,0.0,0.0,1.0
+Tổn thương tuyến giáp liên quan đến thiếu iod - Iodine deficiency- related thyroid disorders,22,0,0.0,0.0,1.0
+U cơ trơn tử cung - Leiomyoma of uterus,11,0,0.0,0.0,1.0
+"U ác chỗ nối trực tràng sigma, trực tràng, hậu môn và ống hậu môn - Malignant neoplasm of rectosigmoid function, rectum, anus and anal canal",33,0,0.0,0.0,1.0
+U ác khác cơ quan sinh dục nữ - Malignant neoplasms of female genital organs,33,0,0.0,0.0,1.0
+"Viêm giác mạc, tổn thương khác của củng mạc và giác mạc - Keratitis and other disorders of sclera and cornea.",33,0,0.0,0.0,1.0
+U ác vú - Malignant neoplasm of breast,11,0,0.0,0.0,1.0

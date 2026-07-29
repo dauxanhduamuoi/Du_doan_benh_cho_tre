@@ -1,0 +1,257 @@
+﻿feature,importance
+num__lag_1,0.9157729787477055
+num__change_1,0.01347116291852894
+num__lag_2,0.011763584512546301
+num__rolling_3,0.010045552873294393
+num__target_month_cos,0.00782981739031288
+cat__target_season_Mùa khô,0.0064531656062027255
+num__rolling_5,0.0062072718014600705
+num__lag_5,0.005493322541298314
+num__lag_3,0.0046368004211009535
+num__lag_4,0.004599678089723071
+num__target_month_num,0.0037065148748042596
+num__target_month_sin,0.0020914836394502778
+cat__disease_target_Bệnh virut khác - Other viral diseases,0.0010529117150654182
+cat__disease_target_COVID-19 * U07.1 là bệnh nhân COVID-19 có kết quả xét nghiệm SARS-CoV-2 dương tính cập nhật theo hướng dẫn chẩn đoán và điều trị của Bộ Y tế.,0.0010321852310676573
+num__target_year,0.0009827279507792963
+cat__disease_target_Các bệnh viêm phổi - Pneumonia,0.0006308115643324842
+cat__age_group_1-5 tu?i,0.0006138990533850812
+cat__disease_target_Hen - Asthma,0.0004527082702632037
+cat__disease_target_Viêm phế quản và viêm tiểu phế quản cấp - Acute bronchitis and acute bronchiolitis,0.00040418456023260513
+cat__disease_target_Sốt virut khác do tiết túc truyền và sốt virus xuất huyết - Other arthropod,0.0003104863055871917
+cat__disease_target_Viêm họng và viêm amidan cấp - Acute pharyngitis and acute tonsillitis,0.00025681134660835743
+cat__age_group_6-10 tu?i,0.00021704715874997733
+cat__target_season_Mùa mưa,0.00021163657727986951
+cat__age_group_D??i 1 tu?i,0.0001994994938406206
+cat__disease_target_Các bệnh nhiễm khuẩn ruột khác - Other intestinal infectious diseases,0.00019152173879497515
+cat__disease_target_Bệnh mạn tính của amidan và của VA - Chronic diseases of tonsils and adenoids,0.00017536469878385132
+cat__age_group_11-15 tu?i,0.000104371796804857
+cat__disease_target_Bệnh bạch cầu - Leukaemia,9.81709583965841e-05
+"cat__disease_target_Các triệu chứng, dấu hiệu và kết quả bất thường về khám lâm sàng và xét nghiệm khác, chưa xếp ở chỗ khác - Other symptoms, signs and abnormal clinical and laboratory findings, not elsewhere classified",9.677413814527773e-05
+cat__disease_target_Dị tật bẩm sinh khác của bộ máy sinh dục tiết niệu - Other malformations of the genitourinary system,7.531957435296458e-05
+"cat__disease_target_Viêm thanh, khí quản cấp - Acute laryngitis and tracheitis",7.308487980464391e-05
+"cat__disease_target_Bệnh khác của khoang miệng, tuyến nước bọt và hàm - Other diseases of the oral cavity, salivary glands and jaws",4.178195639596692e-05
+cat__disease_target_Gãy các phần khác của chi do lao động và giao thông - Fracture of other lim bones,3.8387081111702604e-05
+cat__disease_target_Tai biến của thuốc và các chất sinh học trong điều trị - Drugs medicament and biological substances causing adverseeffects in therapeutic use.,3.252060274152594e-05
+cat__disease_target_Viêm cấp đường hô hấp trên khác - Other acute upper respiratory infections,3.124897694424261e-05
+"cat__disease_target_Ỉa chảy, viêm dạy dày, ruột non có nguồn gốc nhiễm khuẩn - Diarrhoea and gastroenteritis of presumed infectious origin.",3.0210551302667218e-05
+"cat__disease_target_U khác insitu, lành tính và các u tiến triển không chắc chắn hoặc chưa rõ - Other insitus and benign neoplasms and neoplasms of uncertain or unknown behaviour",3.0032447452198354e-05
+cat__disease_target_Dị dạng bẩm sinh của bộ máy sinh dục tiết niệu - Congenital malformations of genital organs,2.8803209746406135e-05
+cat__disease_target_Dị dạng bẩm sinh khác - Other congenital malformations,2.8587200912326143e-05
+"cat__disease_target_Thừa bao qui đầu, hẹp và nghẹt bao qui đầu - Redundant prepuce, phimosis and paraphimosis",2.7625070550468954e-05
+cat__disease_target_Viêm dạ dày và tá tràng - Gastritis and duodenitis,2.3478995858923612e-05
+"cat__disease_target_Bệnh khác của thực quản, dạ dày và tá tràng - Other diseases of oesophagus, stomach, duodenum",2.13123334266266e-05
+cat__disease_target_Thoát vị bẹn - Inguinal hernia,1.8905020184707817e-05
+cat__disease_target_Viêm hệ thần kinh trung ương - Inflamatory diseases of the central nervous system,1.849403619152601e-05
+cat__disease_target_Tổn thương khác có nguồn gốc trong thời kỳ chu sinh - Other conditions originating in the perinatal period,1.831761285606605e-05
+"cat__disease_target_Tổn thương chảy máu, bệnh khác của máu và cơ quan tạo máu - Haemorrhagic conditions and other diseases of blood, blood",1.7168077466649885e-05
+cat__disease_target_Bệnh khác của da và mô tế bào dưới da - Other diseases of skin and subcutaneous tissue,1.6931214016264415e-05
+cat__disease_target_U ác mạc treo và các mô mềm - Malignantneoplasms of mesothelial and soft tissue,1.6575179999808322e-05
+cat__age_group_Tr?n 15 tu?i,1.609408490875427e-05
+cat__disease_target_Bệnh của hệ thống tổ chức liên kết - Systematic connective tissue disorders,1.476648077280303e-05
+cat__disease_target_Dị tật bẩm sinh khác của bộ máy tuần hoàn - Congenital malfor-mation of the circulatory system,1.2495677691422532e-05
+cat__disease_target_Nhiễm khuẩn và kí sinh vật bẩm sinh - Congenital infectious and parasitic diseases,1.2366048210643466e-05
+cat__disease_target_U bạch huyết không phải Hodgkin - Non-Hodgkin's lymphoma,1.1739607571800471e-05
+cat__disease_target_Bệnh khác của hệ thần kinh - Other diseases of the nervous system,1.1725579500475464e-05
+cat__disease_target_Tinh hoàn lạc chỗ - Undescended testicle,1.1605694298646226e-05
+cat__disease_target_Thiếu máu khác - Other anaemias,1.1566545885587495e-05
+cat__disease_target_Bệnh do tiếp xúc với dịch vụ y tế phải chăm sóc và khám xét đặc biệt - Persons encountering health services for specific procedures and health care,9.596494412593866e-06
+cat__disease_target_Các bệnh khác của gan - Other diseases of liver,8.90203467880282e-06
+cat__disease_target_Thương tổn do chấn thương trong sọ - Intracranial injury,8.470010312077242e-06
+cat__disease_target_Đau bụng và khung chậu - Abdominal and pelvic pain,7.0943466893418916e-06
+cat__disease_target_Bỏng và sự ăn mòn - Burnss and corrosions,6.5609079221705855e-06
+"cat__disease_target_Các tổn thương khác do chấn thương xác định và ở nhiều nơi - Other injuries of specified, unspecified and multiple body regions",6.529944626970013e-06
+cat__disease_target_Hậu quả do dị vật vào hốc tự nhiên - Effects of foreign body entert hrough natural orifice,6.104124923031307e-06
+"cat__disease_target_Tắc liệt ruột và tắc ruột không do thoát vị - Paralytic ileus, intestinal obstruction without hernia",5.939137409374452e-06
+cat__disease_target_U ác khác của đường tiết niệu - Other malignant neoplasms of uterinary tract,5.822948642184909e-06
+cat__disease_target_Nhiễm khuẩn huyết - Septicemia,5.709237216844518e-06
+cat__disease_target_Bệnh khác của bộ máy tiêu hoá - Other diseases of the digestive system,5.560593151168212e-06
+cat__disease_target_U da lành - Benign neoplasm of skin,4.584438386116582e-06
+cat__disease_target_Sứt môi và hở hàm ếch - Cleft lip and cleft palate,4.346200905390665e-06
+cat__disease_target_Tổn thương các mô mềm - Soft tissue disorders,4.110352157050916e-06
+cat__disease_target_Dị dạng bẩm sinh khác của hệ xương và cơ - Other congenital malformations and deformations of the musculo skeletal system,3.96768736795922e-06
+cat__disease_target_U lành não và các phần khác của hệ thần kinh trung ương - Benign neoplasm of brain and other parts of central nervous system,3.6579019703727884e-06
+cat__disease_target_Đái tháo đường - Diabetes mellitus.,3.6352916206685625e-06
+cat__disease_target_Bệnh khác của cột sống - Other dorsopathies,3.559727508258682e-06
+cat__disease_target_Bệnh khác của bộ máy tiết niệu - Other diseases of the urnary system,3.5371447070706502e-06
+cat__disease_target_Bệnh của ruột thừa - Diseases of appendix,3.4078425695334414e-06
+cat__disease_target_Viêm tuỵ cấp và bệnh khác của tuỵ - Acute pancreatitis and other diseases of pancreas,3.361400061129939e-06
+cat__disease_target_U ác não - Malignant neoplasm of brain,3.1942605091170983e-06
+cat__disease_target_Bệnh khác của ruột non và màng bụng - Other diseases of intestine peritoneum,3.186970033210587e-06
+cat__disease_target_U ác các phần khác và không xác định của tử cung - Malignant neoplasms of other and unspecified parts of uterus,2.8701783114012453e-06
+cat__disease_target_Vỡ xương sọ và các xương mặt - Fracture of skull and facial bones,2.8511225649382912e-06
+cat__disease_target_Bệnh nhiễm khuẩn da và mô tế bào dưới da - Infections of skin and subcutaneous tissue,2.8427012123770034e-06
+"cat__disease_target_U ác các khu trú khác, khó định nghĩa, thứ phát, không xác định rõ và phức hợp - Malignant neoplasm of other and ill",2.761057380913971e-06
+cat__disease_target_Động kinh - Epilepsy,2.7504312136430323e-06
+cat__disease_target_Thiếu máu do thiếu sắt - Iron deficiency anaemia,2.4732453967779877e-06
+"cat__disease_target_Viêm khớp dạng thấp và viêm khớp khác - Rheumatoid arthritis, other inflamatory polyarthropaties",2.4143882364327807e-06
+"cat__disease_target_Bệnh khác về nội tiết, dinh dưỡng và chuyển hoá - Other endocrine, nutritional and metabolic disorders",2.412824253146217e-06
+cat__disease_target_Suy thận - Renal failure,2.114555819194584e-06
+cat__disease_target_Bệnh khác của cơ quan sinh dục nam - Other diseases of male genital organs,2.0364576727297164e-06
+cat__disease_target_Bệnh khác của khớp - Other joint disorders,1.8466394010573023e-06
+cat__disease_target_U ác xương và sụn khớp - Malignant neoplasms of bone and articular cartilage,1.8299564456205109e-06
+cat__disease_target_U ác gan và đường mật trong gan - Malignant neoplasm of liver and intrahepatic bile ducts,1.827658785967922e-06
+cat__disease_target_Bệnh khác của bộ máy hô hấp - Other diseases of respiratory system.,1.6703606794600364e-06
+cat__disease_target_Dị dạng bẩm sinh bàn chân - Congenital deformities of feet,1.5962775785188685e-06
+cat__disease_target_Gãy xương đùi - Fracture of femur,1.5525497947545869e-06
+cat__disease_target_Hậu quả của các nguyên nhân bên ngoài khác và không xác định - Other and unspecified effects of external causes,1.4783950669630108e-06
+"cat__disease_target_Một số biến chứng sớm của chấn thương, của chăm sóc ngoại khoa và y học, chưa xếp ở nơi khác - Certain early complications of trauma and complications of surgical and medical care, not elsewhere classified",1.4518195569286924e-06
+"cat__disease_target_Viêm tai giữa, bệnh khác của tai giữa và xương chũm - Otitis media and other disorders of middle ear and mastoid",1.4103640940326777e-06
+cat__disease_target_Các bệnh khác của bộ máy tuần hoàn - Other diseases of the circulatory system,1.3716475256907626e-06
+cat__disease_target_U buồng trứng lành - Benign neoplasm of ovary,1.3486724796463555e-06
+cat__disease_target_Rối loạn dẫn truyền và loạn nhịp tim - Conduction disorders and cardiac arrhythymias,1.3068423133174258e-06
+cat__disease_target_Các u khác cơ quan hô hấp và lồng ngực - Other malignant neplasm of respiratory and intrathoracic,1.3052514781503748e-06
+cat__disease_target_Bệnh tim khác - Other heart diseases,1.2481859206623587e-06
+cat__disease_target_Sỏi tiết niệu - Urolithiasis,1.2388608712298974e-06
+cat__disease_target_Bệnh cầu thận khác - Other glomerular diseases,1.2180659634152339e-06
+cat__disease_target_Dị tật bẩm sinh khác của hệ thần kinh - Other congenital malforma,1.139717760286672e-06
+cat__disease_target_Các thoát vị khác - Other hernia,1.085944736423989e-06
+cat__disease_target_Tổn thương khác liên quan đến răng và mô quanh răng - Other disorders of teeth and supporting structures,1.0581346927644328e-06
+"cat__disease_target_Loạn thần kinh, rối loạn gắn liền với các yếu tố stress và các rối loạn thuộc thân thể - Neurotic, sterss - related and somatoform disorders",1.0123195807816775e-06
+cat__disease_target_Đau nửa đầu và các hội chứng đau đầu khác - Migraine and other headache syndromes.,9.377866131476482e-07
+cat__disease_target_Bệnh nhiễm khuẩn và kí sinh vật khác - Other infectious and parasitic diseases,9.134771528851057e-07
+cat__disease_target_Bệnh Crohn (viêm ruột non từng vùng) và viêm loét đại tràng - Crohn’s disease and ulcerative colitis,9.133807432177447e-07
+cat__disease_target_Bệnh do tiếp xúc với dịch vụ y tế vì những lý do khác - Person encoutering health services for other reasons,9.108669621770822e-07
+cat__disease_target_Rối loạn tâm thần và nhân cách khác - Other mental and behavioural disorders,8.860243193719621e-07
+cat__disease_target_Thuỷ đậu và zôna - Varicella and Zoster,8.229793428968739e-07
+"cat__disease_target_Tổn thương thần kinh, rễ và đám rối thần kinh - Nerve, nerve root and plexus disorders",8.206053285360855e-07
+cat__disease_target_Thương tổn do chấn thương các nội tạng khác - Injury of other internal organs,7.382751412981073e-07
+cat__disease_target_Bệnh ống thận kẽ - Renal tubulo-interstitial diseases,7.365568160574921e-07
+cat__disease_target_Tác hại của các chất có nguồn gốc chủ yếu không phải thuốc - Toxic effects of substances chiefly nonmedical as to source,7.113276645380822e-07
+"cat__disease_target_U ác limphô khác, cơ quan tạo máu và tổ chức có liên quan - Other malignant neoplasms of lymphoid, haematopoietic and related tissue",7.00773355565106e-07
+cat__disease_target_U ác bàng quang - Malignant neoplasm of bladder,6.845245559867745e-07
+cat__disease_target_Tăng huyết áp nguyên phát - Essential (primary) hypertension,6.534624392532806e-07
+cat__disease_target_Bệnh Hodgkin - Hodgkin disease,6.344725704796011e-07
+cat__disease_target_Viêm xương tuỷ - Osteomyelitis,6.34077937480563e-07
+cat__disease_target_Một số rối loạn hệ miễn dịch - Certain disorders involving the immune mechanism,6.296972081696159e-07
+cat__disease_target_Viêm bàng quang - Cystitis,6.282969655227241e-07
+cat__disease_target_Bệnh mạch máu não khác - Other cerebrovascular diseases,6.170920386533149e-07
+cat__disease_target_Nhồi máu não - Cerebral infarction,5.837726028786415e-07
+"cat__disease_target_Tràn dịch tinh mạc, u nang tinh dịch - Hydrocele and spermatocele",5.702311800081478e-07
+cat__disease_target_Nhiễm khuẩn đặc hiệu khác thời kỳ chu sinh - Other infectious specific to the perinatal period,5.625605950237187e-07
+cat__disease_target_Chảy máu não - Intracerebral haemorrhage,5.60229194623756e-07
+cat__disease_target_Bệnh khác của bộ máy sinh dục tiết niệu - Other disorders of genitourinary tract,5.144280492628784e-07
+cat__disease_target_Sốt Rickettsia - Typhus fever,4.7493937542724464e-07
+cat__disease_target_Bệnh của mũi và các xoang phụ của mũi - Other diseases of nose and nasal sinuses,4.5271560118542824e-07
+cat__disease_target_Tổn thương khác của tuyến giáp - Other disorders of thyroid.,4.375843994057958e-07
+cat__disease_target_Tai nạn do các nguyên nhân sức mạnh cơ học và không cố ý - exposure to inanimate mechanical forces,4.3485756100037943e-07
+cat__disease_target_U ác khác của cơ quan sinh dục nam - Other malignant neoplasms of male genital organs,4.236346602091021e-07
+cat__disease_target_Chậm phát triển tâm thần - Mental retardation,4.120706638802244e-07
+cat__disease_target_Sốt không rõ nguyên nhân - Fever of unknown origin,3.831474529750893e-07
+"cat__disease_target_Tổn thương không viêm của buồng trứng, vòi fallope và dây chằng rộng - Noinflammatory disorders of ovary, fallopian tube and broad ligament",3.7982369240570106e-07
+cat__disease_target_Bạo lực đánh nhau - Assault,3.78999129930331e-07
+cat__disease_target_Loét dạ dày và tá tràng - Gastric and duodenal ulcer,3.7317795932412427e-07
+cat__disease_target_Suy dinh dưỡng - Malnutrition,3.7300067252409435e-07
+cat__disease_target_Hội chứng viêm thận cấp và tiến triển nhanh - Acute and rapidly prograssive nephritis syndromes,3.674378902894379e-07
+cat__disease_target_Sỏi mật và viêm túi mật - Cholelithiasis and cholecystitis,3.645234033487934e-07
+cat__disease_target_Các dạng lao khác - Other tuberculosis,3.522067226345457e-07
+cat__disease_target_U vú lành - Benign neoplasm of breast,3.320167807980157e-07
+"cat__disease_target_Viêm tĩnh mạch, viêm tĩnh mạch huyết khối, nghẽn mạch và huyết khối tĩnh mạch - Phlebitis, thrombophlebitis,venous embolism and thrombosis",3.1771532632440425e-07
+cat__disease_target_Viêm mi mắt - Inflammation of eyelid,2.9252594831949443e-07
+"cat__disease_target_U ác môi, khoang miệng, họng - Malignant neoplasm of lip, oral cavity and pharynx",2.8969249764245003e-07
+cat__disease_target_Các u khác cơ quan tiêu hoá - Other malignant neoplasms of digestive organs,2.8030479155447884e-07
+cat__disease_target_Tổn thương viêm khác của các cơ quan khung chậu nữ - Other inflamatory diseases of female pelvic organs,2.7653792269797505e-07
+cat__disease_target_Dị dạng bẩm sinh hông - Congenital deformities of hip,2.6801396208713926e-07
+cat__disease_target_Tai nạn ngộ độc do các chất độc - Accident poisoning by and exposure to noxious substances,2.6342974829152223e-07
+cat__disease_target_Bệnh khác đường hô hấp trên - Other diseases of upper respiratory tract,2.5928334504222315e-07
+cat__disease_target_Viêm não Virut - Viral encephalitis,2.5588256690690206e-07
+cat__disease_target_Biến dạng các chi mắc phải - Accquired deformities of limbs,2.538969619297754e-07
+cat__disease_target_U ác khác cơ quan sinh dục nữ - Malignant neoplasms of female genital organs,2.508152871203487e-07
+cat__disease_target_Di tật về mật độ và cấu trúc của xương - Disorders of bone density and structure,2.3916589562592784e-07
+cat__disease_target_Các bệnh khác của mắt và phần phụ mắt - Other diseases of the eye and adnexa,2.3912151587118935e-07
+cat__disease_target_Lao bộ máy hô hấp - Respiratory tuberculosis,2.348782554766766e-07
+"cat__disease_target_Bệnh khác của hệ xương khớp, cơ và mô liên kết - Other diseases of the musculo-skeletal system and connective tissue",2.3075079540132556e-07
+cat__disease_target_Tổn thương của vú - Disorders of breast,2.2560479817908193e-07
+cat__disease_target_Nhiễm độc do tuyến giáp (cường giáp) - Thyrotoxicosis,2.1787434762631135e-07
+cat__disease_target_Gai đôi cột sống - Spina bifida,2.1202620183407785e-07
+cat__disease_target_Tai nạn do tiếp xúc với động vật và cây độc - Contact with venomous animals and plants,2.051308543737915e-07
+"cat__disease_target_Viêm phế quản tràn khí và các bệnh phổi tắc nghẽn mạn tính - Bronchitis, emphysema and other chronic obstructive diseases",2.0360934085452278e-07
+cat__disease_target_Lác mắt - Strabismus,2.0056129347548138e-07
+cat__disease_target_Béo phì - Obesity,1.9758519783114756e-07
+cat__disease_target_Suy tim - Heart failure,1.8631937407938554e-07
+"cat__disease_target_Sai khớp, bong gân, tổn thương khu trú và ở nhiều vùng cơ thể - Dislocations, sprains and strains of specified and multiple body regions",1.747478224569757e-07
+"cat__disease_target_Viêm kết mạc, tổn thương khác của kết mạc - Conjunctivitis and other disoders of conjunctiva",1.6870685886835196e-07
+cat__disease_target_Các tổn thương hô hấp đặc hiệu khác của thời kỳ chu sinh - Other respiratory disorders originating in the perinatal period,1.6555408813796685e-07
+cat__disease_target_Bệnh thấp tim mãn - Chronic rheumatic disease,1.6332961574789108e-07
+cat__disease_target_Nhiễm độc thuốc và các sinh phẩm - Poisoning by drugs and biological substances,1.5688186341887632e-07
+cat__disease_target_Viêm gan virut khác - Other viral hepatitis,1.5524807661899812e-07
+cat__disease_target_Lỵ Amip - Amoebiasis,1.513886401396727e-07
+"cat__disease_target_Liệt não, hội chứng liệt khác - Cerebral palsy and other paralytic syndromes",1.3479667046852662e-07
+cat__disease_target_Nấm - Mycoses,1.2886416047926925e-07
+cat__disease_target_Bệnh khác của tai và xương chũm - Other diseases of the ear and mastoid process,1.245626739366752e-07
+cat__disease_target_Người tiếp xúc với các dịch vụ y tế làm các khám xét và điều tra - Person encountering health services for examination and investigation,1.1812465499457776e-07
+cat__disease_target_Giang mai bẩm sinh - Congenital syphilis,1.1572047298166277e-07
+cat__disease_target_Bệnh giun sán khác - Other Helminthiases,1.144400915319599e-07
+cat__disease_target_U ác tụy - Malignant neoplasm of pancreas,1.0813476594183261e-07
+"cat__disease_target_Gãy xương cổ, ngực, khung chậu - Fracture of neck, thorax or pelvis.",9.860715376458562e-08
+cat__disease_target_U ác hắc tố da - Malignant melanoma of skin,9.775912022997734e-08
+cat__disease_target_Nghẽn và huyết khối động mạch - Arterial embolism and thrombosis,9.017125142968697e-08
+cat__disease_target_Xơ cứng nhiều nơi - Multiple sclerosis,8.983149708405462e-08
+cat__age_group_Kh?ng r?,8.902388445500627e-08
+"cat__disease_target_Tai nạn chết đuối, chết chìm - Accident drowning and submersion",8.715867295949356e-08
+cat__disease_target_Rối loạn kinh nguyệt - Disorders of menstruation,8.714886399886497e-08
+"cat__disease_target_Viêm giác mạc, tổn thương khác của củng mạc và giác mạc - Keratitis and other disorders of sclera and cornea.",8.17296199186701e-08
+cat__disease_target_Viêm vòi trứng và viêm buồng trứng - Salpingitis and oophoritis,6.867109158800988e-08
+cat__disease_target_Viêm xoang mạn tính - Chronic sinusitis,6.381753441978108e-08
+cat__disease_target_Cơn thiếu máu não thoáng qua và các hội chứng tương tự - Transient cerebral ischaemic attacks and related syndromes,6.240026949307663e-08
+cat__disease_target_U ác các phần khác của hệ thần kinh trung ương - Malignant neoplasm of other parts of central nervous system,5.992307062213759e-08
+cat__disease_target_U ác mắt và các phần phụ - Malignant neoplasm of eye and adnexa,5.912058652164053e-08
+cat__disease_target_Các bệnh do vi khuẩn khác - Other bacterial diseases,5.700669864465228e-08
+"cat__disease_target_Dị thường nhiễm sắc thể, chưa xếp ở chỗ khác - Chromosomal abnormalities, not elsewhere sclassified",5.6894234042245386e-08
+cat__disease_target_Thiếu vitamin khác - Other vitamin deficiencies.,5.42500764814158e-08
+"cat__disease_target_Tâm thần phân liệt, rối loạn dạng phân liệt và hoang tưởng - Schizophrenia, schiztypal and delusional disorders",5.141684579382098e-08
+cat__disease_target_Nhiễm virut Héc-pét - Herpesviral infections,4.919776000222373e-08
+cat__disease_target_U lành cơ quan tiết niệu - Benign neoplasm of urinary organs,4.9158614947160784e-08
+"cat__disease_target_Thai chậm phát triển, suy dinh dưỡng, rối loạn gắn liền với thai nghén và cân nặng không đủ khi sinh - Slow fetal growth, fetal malnutrition and disorders related to short gestation and low birth weight",4.631415886755419e-08
+cat__disease_target_Trật đốt sống cổ và các đốt sống khác - Cervical and other interverbral disc disorders,4.463917830170256e-08
+cat__disease_target_Viêm gan B cấp - Acute hepatitis B,4.4391959574430655e-08
+cat__disease_target_Rối loạn khí sắc - Mood ( affective) disorders.,4.403540172676924e-08
+"cat__disease_target_Bệnh khác của động mạch, tiểu động mạch và mao mạch - Other diseases of arteries, arterioles and capillaries",4.0788637938936375e-08
+cat__disease_target_Nhiễm HIV - Human immuno deficiency virus disease,3.961183921967208e-08
+"cat__disease_target_Không có, tịt hoặc hẹp ruột non - Absence, atresia and stenosis of small intestine",3.857018990391405e-08
+cat__disease_target_Thấp khớp cấp - Acute rheumatic heart disease,3.712744396517266e-08
+cat__disease_target_Tai nạn giao thông - Transport accidént,3.528359268348661e-08
+"cat__disease_target_Di chứng, thương tổn do chấn thương, do ngộ độc và hậu quả khác do nguyên nhân bên ngoài - Sequalae of injuries, of poisoning and of other consequences of external causes",3.259314301068104e-08
+cat__disease_target_Thương tổn do chấn thương ở mắt và hốc mắt - Injury of eye and orbit,2.9430757663463063e-08
+cat__disease_target_Bệnh tăng huyết áp khác - Other hypertensive diseases,2.7088225293986842e-08
+cat__disease_target_Bệnh thoái hoá khớp - Arthrosis,2.5119473617044828e-08
+"cat__disease_target_U ác chỗ nối trực tràng sigma, trực tràng, hậu môn và ống hậu môn - Malignant neoplasm of rectosigmoid function, rectum, anus and anal canal",2.3762207323630283e-08
+"cat__disease_target_Tật khúc xạ, các rối loạn điều tiết - Disorders of refraction and accomodation",2.205979663171971e-08
+"cat__disease_target_Giang mai sớm (Giang mai I, II và kín) - Early syphilis",1.9309484674424785e-08
+cat__disease_target_Không rõ nhóm bệnh,1.8922935010150657e-08
+cat__disease_target_Bệnh tim thiếu máu cục bộ khác - Other ischaemic heart diseases,1.6979982637123226e-08
+cat__disease_target_Các dạng uốn ván khác - Other tetanus,1.6357648553879705e-08
+cat__disease_target_Quá sản tuyến tiền liệt - Hyperplasia of prostate,1.60715537651532e-08
+cat__disease_target_U ác vú - Malignant neoplasm of breast,1.4943635230961973e-08
+cat__disease_target_Người có nguy cơ liên quan đến bệnh truyền nhiễm - Other persons with potential health hazards related to communicable diseases,1.4309941968501743e-08
+cat__disease_target_Sởi - Measles,1.3188240483531598e-08
+cat__disease_target_Tả - Cholera,1.2791459738676715e-08
+cat__disease_target_Các biến chứng khác của chửa đẻ - Other complications pregnancy and delivery,1.1940971960871047e-08
+cat__disease_target_Bệnh túi thừa của ruột non - Diverticular disease of intestine,1.0447422148677921e-08
+cat__disease_target_Rối loạn tâm thần và ứng xử liên quan dùng các chất kích thích tâm lí khác - Mental and behavioural disorders due to other psychoactive substances use,1.0024876927509872e-08
+cat__disease_target_U ác dạ dày - Malignant neoplasm of stomach,9.374503894341395e-09
+cat__disease_target_Sán Echinococ - Echinococcosis,9.2168685401327e-09
+cat__disease_target_Dịch hạch - Plague,9.174520483958009e-09
+cat__disease_target_Cúm - Influenza,7.3882150152818454e-09
+cat__disease_target_Glôcôm - Glaucoma,7.3378515763995486e-09
+cat__disease_target_Ho gà - Whooping cough,7.1679561437833855e-09
+"cat__disease_target_Tai biến mạch máu não, không xác định rõ chảy máu hoặc do nhồi máu - Stroke, not specified as haemorrhage or infarction",6.957532381928582e-09
+cat__disease_target_U cơ trơn tử cung - Leiomyoma of uterus,6.334679552716632e-09
+"cat__disease_target_U ác khí quản, phế quản và phổi - Malignant neoplasms of trachea, bronchus and lung",6.298420948420837e-09
+cat__disease_target_Mất thính giác - Hearing loss,5.264598509518723e-09
+cat__disease_target_Các nhiễm khuẩn do sán lá - Other fluke infections,5.13787554721068e-09
+cat__disease_target_Các chấn thương sản khoa - Birth trauma,4.279010345573624e-09
+"cat__disease_target_Bệnh lí thai nhi và sơ sinh do biến chứng thai nghén, chửa, đẻ - Fetus and newborn affected by maternal factors and by complications of pregnancy, labour and delivery",3.729074267615423e-09
+cat__disease_target_Tai nạn do tiếp xúc với các chất nóng - contact with heat and hot,2.885247531364275e-09
+cat__disease_target_Sâu răng - Dental caries,2.4019283731462044e-09
+"cat__disease_target_Tai nạn do khói, lửa, đám cháy - expossure to smoke, fire and fpames",1.964811753221775e-09
+cat__disease_target_Tổn thương khác của tuyến tiền liệt - Other disorders of prostate,1.7003002351455107e-09
+cat__disease_target_Chấn thương dập nát và cắt cụt đã xác định và nhiều vùng trong cơ thể - Fracture of other lim bones,1.1865526551009408e-09
+cat__disease_target_Nhiễm khuẩn não mô cầu - Meningococcal infection,1.0876421645998425e-09
+cat__disease_target_Tổn thương tuyến giáp liên quan đến thiếu iod - Iodine deficiency- related thyroid disorders,9.123870794904851e-10
+cat__disease_target_U ác đại tràng - Malignant neoplasm of colon,8.587172512851419e-10
+cat__disease_target_Tự tử - Intentional self-harm,3.4960534017965336e-10
+cat__disease_target_Quai bị - Mumps,0.0
+cat__disease_target_Nhiễm khuẩn khác lây truyền qua đường tình dục - Other infection with a predominantly sexual mode of transmission,0.0
+cat__disease_target_Bệnh mạch máu ngoại vi khác - Other peripheral vascular disease,0.0
+"cat__disease_target_Thương hàn, phó thương hàn - Typhoid and paratyphoid fevers",0.0

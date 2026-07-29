@@ -1,0 +1,16 @@
+{
+  "monthly_rows": 48516,
+  "model_rows": 47583,
+  "period_min": "2021-02",
+  "period_max": "2025-04",
+  "period_count": 51,
+  "train_period_start": "2021-02",
+  "train_period_end": "2024-05",
+  "train_period_count": 40,
+  "test_period_start": "2024-06",
+  "test_period_end": "2025-04",
+  "test_period_count": 11,
+  "train_rows": 37320,
+  "test_rows": 10263,
+  "total_runtime_seconds": 204.16
+}

@@ -1,0 +1,10 @@
+﻿model,train_time_seconds,MAE,RMSE,R2
+Random Forest 300 cây,23.2043,2.2293,7.7975,0.923617
+Gradient Boosting,19.8675,2.2417,7.7329,0.924878
+KNN k=5,0.0511,2.2954,8.7694,0.90339
+Baseline tháng trước (lag_1),0.0,2.3076,7.9993,0.919613
+Baseline TB 3 tháng,0.0,2.3574,9.0217,0.897749
+Ridge tuyến tính,0.1334,2.3901,7.8567,0.922452
+Baseline TB 5 tháng,0.0,2.5173,9.9672,0.875194
+Decision Tree đơn,1.5719,2.9306,10.6656,0.857092
+Dummy trung bình train,0.046,8.7452,28.2733,-0.004244

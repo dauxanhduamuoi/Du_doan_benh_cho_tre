@@ -83,3 +83,6 @@ secrets.json
 agent-tools/
 terminals/
 seasonal_disease_backend/Tool/
+
+# Local archive copy of this project. GitHub blocks files over 100MB.
+ThucTap-main.zip
