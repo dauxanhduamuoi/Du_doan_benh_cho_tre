@@ -1,0 +1,52 @@
+{
+  "benchmark_name": "pretrain_model_selection_h7",
+  "horizon": 7,
+  "random_seed": 42,
+  "train_query_fraction": 0.1,
+  "validation_query_fraction": 0.1,
+  "ensure_all_supported_h7_labels_in_train_subset": true,
+  "smoke_train_queries": 300,
+  "smoke_validation_queries": 100,
+  "categorical_features_common": [
+    "age_group",
+    "gender",
+    "season"
+  ],
+  "month_treatment": "numeric_calendar_month",
+  "multilabel": {
+    "algorithm": "CatBoostClassifier",
+    "loss_function": "MultiLogloss",
+    "task_type": "GPU",
+    "devices": "0",
+    "iterations": 100,
+    "smoke_iterations": 10,
+    "depth": 6,
+    "learning_rate": 0.1,
+    "verbose": 20,
+    "allow_writing_files": false
+  },
+  "ranker": {
+    "algorithm": "CatBoostRanker",
+    "loss_function": "YetiRank",
+    "eval_metric": "NDCG:top=5",
+    "task_type": "GPU",
+    "devices": "0",
+    "iterations": 100,
+    "smoke_iterations": 10,
+    "depth": 6,
+    "learning_rate": 0.1,
+    "verbose": 20,
+    "allow_writing_files": false,
+    "categorical_feature_extra": "disease_group_id"
+  },
+  "gpu_monitor_interval_seconds": 0.5,
+  "source_sha256": {
+    "data/processed/contexts.csv.gz": "6559eafc8a73809d509e712ed2b5744827c37beedfab8bde4c38b6349cfc0659",
+    "data/processed/targets.csv.gz": "a05d8930cf77203fdf25141fb08613442b35cf7041c1b8bc0235ae6616c09895",
+    "data/processed/disease_catalog.csv": "734f99eb5fe6a4a7a90f7eb6118d2c3da9f90b076cdc96be0fd8d4cb4b17299a",
+    "data/processed/dataset_metadata.json": "168c3e288a84d872b47bed5298d3b8d522af1229039423b85b5e837e217825df",
+    "data/splits/train_query_ids.csv": "181a8a84be64b2fc64ceab744adefddd4877433da390c487fa4674067b8c4443",
+    "data/splits/validation_query_ids.csv": "f09171ac42c6b68efc1cb7b2ce4069a80d4db35d29ecba1d561a3ddf2c0a8bd8",
+    "data/splits/split_metadata.json": "bc90fbbe483ac73945806d176ecc285486a3a4d8a97d41ddc082d750704a4723"
+  }
+}

@@ -1,0 +1,277 @@
+{
+  "feature_count": 45,
+  "feature_order": [
+    "age_group",
+    "gender",
+    "month",
+    "season",
+    "day_of_year_sin",
+    "day_of_year_cos",
+    "weather_code_current",
+    "temperature_mean_current",
+    "temperature_max_current",
+    "temperature_min_current",
+    "humidity_mean_current",
+    "humidity_max_current",
+    "humidity_min_current",
+    "wind_speed_mean_current",
+    "wind_speed_max_current",
+    "precipitation_sum_current",
+    "rain_sum_current",
+    "wind_gust_max_current",
+    "rain_day_current",
+    "temperature_mean_3d",
+    "temperature_max_3d",
+    "temperature_min_3d",
+    "humidity_mean_3d",
+    "humidity_max_3d",
+    "humidity_min_3d",
+    "wind_speed_mean_3d",
+    "wind_speed_max_3d",
+    "precipitation_sum_3d",
+    "rain_sum_3d",
+    "rain_days_3d",
+    "rain_max_daily_3d",
+    "wind_gust_max_3d",
+    "temperature_mean_7d",
+    "temperature_max_7d",
+    "temperature_min_7d",
+    "humidity_mean_7d",
+    "humidity_max_7d",
+    "humidity_min_7d",
+    "wind_speed_mean_7d",
+    "wind_speed_max_7d",
+    "precipitation_sum_7d",
+    "rain_sum_7d",
+    "rain_days_7d",
+    "rain_max_daily_7d",
+    "wind_gust_max_7d"
+  ],
+  "features": [
+    {
+      "feature": "age_group",
+      "feature_group": "DEMOGRAPHIC",
+      "human_label": "Nhóm tuổi"
+    },
+    {
+      "feature": "gender",
+      "feature_group": "DEMOGRAPHIC",
+      "human_label": "Giới tính"
+    },
+    {
+      "feature": "month",
+      "feature_group": "SEASONAL_CALENDAR",
+      "human_label": "Yếu tố mùa vụ theo tháng"
+    },
+    {
+      "feature": "season",
+      "feature_group": "SEASONAL_CALENDAR",
+      "human_label": "Mùa mưa / mùa khô"
+    },
+    {
+      "feature": "day_of_year_sin",
+      "feature_group": "SEASONAL_CALENDAR",
+      "human_label": "Thời điểm trong năm"
+    },
+    {
+      "feature": "day_of_year_cos",
+      "feature_group": "SEASONAL_CALENDAR",
+      "human_label": "Thời điểm trong năm"
+    },
+    {
+      "feature": "weather_code_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Trạng thái thời tiết — hiện tại"
+    },
+    {
+      "feature": "temperature_mean_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Nhiệt độ — hiện tại"
+    },
+    {
+      "feature": "temperature_max_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Nhiệt độ — hiện tại"
+    },
+    {
+      "feature": "temperature_min_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Nhiệt độ — hiện tại"
+    },
+    {
+      "feature": "humidity_mean_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Độ ẩm — hiện tại"
+    },
+    {
+      "feature": "humidity_max_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Độ ẩm — hiện tại"
+    },
+    {
+      "feature": "humidity_min_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Độ ẩm — hiện tại"
+    },
+    {
+      "feature": "wind_speed_mean_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Gió — hiện tại"
+    },
+    {
+      "feature": "wind_speed_max_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Gió — hiện tại"
+    },
+    {
+      "feature": "precipitation_sum_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Lượng mưa — hiện tại"
+    },
+    {
+      "feature": "rain_sum_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Lượng mưa — hiện tại"
+    },
+    {
+      "feature": "wind_gust_max_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Gió — hiện tại"
+    },
+    {
+      "feature": "rain_day_current",
+      "feature_group": "WEATHER_CURRENT",
+      "human_label": "Lượng mưa — hiện tại"
+    },
+    {
+      "feature": "temperature_mean_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Nhiệt độ — 3 ngày gần đây"
+    },
+    {
+      "feature": "temperature_max_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Nhiệt độ — 3 ngày gần đây"
+    },
+    {
+      "feature": "temperature_min_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Nhiệt độ — 3 ngày gần đây"
+    },
+    {
+      "feature": "humidity_mean_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Độ ẩm — 3 ngày gần đây"
+    },
+    {
+      "feature": "humidity_max_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Độ ẩm — 3 ngày gần đây"
+    },
+    {
+      "feature": "humidity_min_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Độ ẩm — 3 ngày gần đây"
+    },
+    {
+      "feature": "wind_speed_mean_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Gió — 3 ngày gần đây"
+    },
+    {
+      "feature": "wind_speed_max_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Gió — 3 ngày gần đây"
+    },
+    {
+      "feature": "precipitation_sum_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Lượng mưa — 3 ngày gần đây"
+    },
+    {
+      "feature": "rain_sum_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Lượng mưa — 3 ngày gần đây"
+    },
+    {
+      "feature": "rain_days_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Lượng mưa — 3 ngày gần đây"
+    },
+    {
+      "feature": "rain_max_daily_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Lượng mưa — 3 ngày gần đây"
+    },
+    {
+      "feature": "wind_gust_max_3d",
+      "feature_group": "WEATHER_3D",
+      "human_label": "Gió — 3 ngày gần đây"
+    },
+    {
+      "feature": "temperature_mean_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Nhiệt độ — 7 ngày gần đây"
+    },
+    {
+      "feature": "temperature_max_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Nhiệt độ — 7 ngày gần đây"
+    },
+    {
+      "feature": "temperature_min_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Nhiệt độ — 7 ngày gần đây"
+    },
+    {
+      "feature": "humidity_mean_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Độ ẩm — 7 ngày gần đây"
+    },
+    {
+      "feature": "humidity_max_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Độ ẩm — 7 ngày gần đây"
+    },
+    {
+      "feature": "humidity_min_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Độ ẩm — 7 ngày gần đây"
+    },
+    {
+      "feature": "wind_speed_mean_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Gió — 7 ngày gần đây"
+    },
+    {
+      "feature": "wind_speed_max_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Gió — 7 ngày gần đây"
+    },
+    {
+      "feature": "precipitation_sum_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Lượng mưa — 7 ngày gần đây"
+    },
+    {
+      "feature": "rain_sum_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Lượng mưa — 7 ngày gần đây"
+    },
+    {
+      "feature": "rain_days_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Lượng mưa — 7 ngày gần đây"
+    },
+    {
+      "feature": "rain_max_daily_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Lượng mưa — 7 ngày gần đây"
+    },
+    {
+      "feature": "wind_gust_max_7d",
+      "feature_group": "WEATHER_7D",
+      "human_label": "Gió — 7 ngày gần đây"
+    }
+  ]
+}

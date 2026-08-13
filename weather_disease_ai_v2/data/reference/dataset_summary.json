@@ -1,0 +1,39 @@
+{
+  "weather_file": "open-meteo-10.79N106.63E6m.csv",
+  "train_history_file": "train_history.xlsx",
+  "train_file": "weather_ai_train_dataset.csv",
+  "train_file_gzip": "weather_ai_train_dataset.csv.gz",
+  "negative_ratio": 1,
+  "weather_date_from": "2021-01-01",
+  "weather_date_to": "2025-04-30",
+  "patient_date_from": "2021-01-01",
+  "patient_date_to": "2025-04-26",
+  "raw_patient_rows": 257771,
+  "valid_patient_rows_after_date_icd_filter": 257771,
+  "mapped_patient_rows": 257769,
+  "unmapped_patient_rows": 2,
+  "positive_rows": 148779,
+  "positive_total_cases": 257769,
+  "positive_rows_after_weather_filter": 148779,
+  "dropped_positive_rows_outside_weather_range": 0,
+  "negative_rows": 148779,
+  "final_train_rows": 297558,
+  "total_case_count_train_file": 257769,
+  "disease_groups_used": 235,
+  "age_groups": [
+    "1-5 tuổi",
+    "11-15 tuổi",
+    "6-10 tuổi",
+    "Dưới 1 tuổi",
+    "Không rõ",
+    "Trên 15 tuổi"
+  ],
+  "genders": [
+    "Nam",
+    "Nữ"
+  ],
+  "missing_weather_rows": 0,
+  "duplicate_key_rows": 0,
+  "bad_month_rows": 0,
+  "bad_season_rows": 0
+}

@@ -1,0 +1,53 @@
+{
+  "benchmark_name": "lightgbm_ovr_h3_h7_h14",
+  "horizons": [3, 7, 14],
+  "objective": "binary",
+  "boosting_type": "gbdt",
+  "n_estimators": 200,
+  "learning_rate": 0.05,
+  "num_leaves": 15,
+  "max_depth": 4,
+  "min_child_samples": 20,
+  "subsample": 0.9,
+  "subsample_freq": 1,
+  "colsample_bytree": 0.9,
+  "reg_lambda": 1.0,
+  "reg_alpha": 0.0,
+  "random_state": 42,
+  "verbosity": -1,
+  "early_stopping_rounds": 20,
+  "classifier_n_jobs": 8,
+  "outer_parallel_diseases": 1,
+  "categorical_features": ["age_group", "gender", "season"],
+  "no_weather_features": [
+    "age_group",
+    "gender",
+    "month",
+    "season",
+    "day_of_year_sin",
+    "day_of_year_cos"
+  ],
+  "weather_practical_ndcg_delta": 0.005,
+  "weather_gain_ndcg10_floor": 0.0,
+  "baseline_competitive_tolerance": 0.005,
+  "algorithm_material_delta": 0.01,
+  "weather_gain_material_delta": 0.002,
+  "source_sha256": {
+    "data/raw/train_history.xlsx": "ae148fdadbcc901a3ade4bff9281bc856f34fc24906fa0c561a2cb09a3f28c78",
+    "data/raw/weather_hcm_history.csv": "d40d4931966e89778a959598ec5b4ecb701f8f67b0ae3356d89c6c164797ae82",
+    "data/processed/contexts.csv.gz": "6559eafc8a73809d509e712ed2b5744827c37beedfab8bde4c38b6349cfc0659",
+    "data/processed/daily_cases.csv.gz": "40a2ccbd5cc7767e22265d782a3af192f3d2686e65d9f195c15ba5a8421f0124",
+    "data/processed/dataset_metadata.json": "168c3e288a84d872b47bed5298d3b8d522af1229039423b85b5e837e217825df",
+    "data/processed/disease_catalog.csv": "734f99eb5fe6a4a7a90f7eb6118d2c3da9f90b076cdc96be0fd8d4cb4b17299a",
+    "data/processed/targets.csv.gz": "a05d8930cf77203fdf25141fb08613442b35cf7041c1b8bc0235ae6616c09895",
+    "data/splits/split_metadata.json": "bc90fbbe483ac73945806d176ecc285486a3a4d8a97d41ddc082d750704a4723",
+    "data/splits/train_query_ids.csv": "181a8a84be64b2fc64ceab744adefddd4877433da390c487fa4674067b8c4443",
+    "data/splits/validation_query_ids.csv": "f09171ac42c6b68efc1cb7b2ce4069a80d4db35d29ecba1d561a3ddf2c0a8bd8"
+  },
+  "catboost_validation_sha256": {
+    "experiments/h3_h14_full_train/metrics/h3_validation_metrics.csv": "63977d941bdd2b5b6c6a3a381fb7c38d8d61cb98467048273fdc348c74e8405b",
+    "experiments/h7_full_train/metrics/validation_metrics.csv": "92fa20fd2fe9601886a42853f9ff9f5a4e535cda9f9ddd3fa7e8f842c20bf463",
+    "experiments/h3_h14_full_train/metrics/h14_validation_metrics.csv": "189a942bdd7f185d7f4380875925a93accc8832b4467d35059a0d8b4d07d6ba8",
+    "experiments/h3_h14_full_train/metrics/horizon_comparison.csv": "9312d0dc22d35c83889818a8f4938c718e954deb9674f4b0aff0c643b36b4993"
+  }
+}

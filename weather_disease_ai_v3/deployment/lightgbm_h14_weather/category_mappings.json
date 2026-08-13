@@ -1,0 +1,18 @@
+{
+  "age_group": {
+    "1-5 tuổi": 0,
+    "11-15 tuổi": 1,
+    "6-10 tuổi": 2,
+    "Dưới 1 tuổi": 3,
+    "Không rõ": 4,
+    "Trên 15 tuổi": 5
+  },
+  "gender": {
+    "Nam": 0,
+    "Nữ": 1
+  },
+  "season": {
+    "Mùa khô": 0,
+    "Mùa mưa": 1
+  }
+}

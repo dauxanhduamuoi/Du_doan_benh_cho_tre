@@ -1,0 +1,48 @@
+{
+  "analysis_name": "paired_validation_weather_gain_bootstrap",
+  "horizons": [3, 7, 14],
+  "metrics": [
+    "precision_at_5",
+    "recall_at_5",
+    "ndcg_at_5",
+    "precision_at_10",
+    "recall_at_10",
+    "ndcg_at_10"
+  ],
+  "n_bootstrap": 5000,
+  "random_seed": 42,
+  "resampling_unit": "validation_query",
+  "confidence_interval": "paired_percentile_95",
+  "metric_tolerance": 1e-12,
+  "rounded_reference_tolerance": 1e-6,
+  "expected_validation_query_count": 2748,
+  "expected_disease_count": 221,
+  "validation_query_order_sha256": "3c4136abc46b516e745de03b8a976885457f4b75efdd44590152008358dad805",
+  "observed_ndcg_gain_references": {
+    "H3": {"ndcg_at_5": 0.005726, "ndcg_at_10": -0.002092},
+    "H7": {"ndcg_at_5": 0.003694, "ndcg_at_10": 0.001186},
+    "H14": {"ndcg_at_5": 0.012304, "ndcg_at_10": 0.007094}
+  },
+  "locked_files_sha256": {
+    "data/processed/targets.csv.gz": "a05d8930cf77203fdf25141fb08613442b35cf7041c1b8bc0235ae6616c09895",
+    "data/splits/validation_query_ids.csv": "f09171ac42c6b68efc1cb7b2ce4069a80d4db35d29ecba1d561a3ddf2c0a8bd8",
+    "experiments/h7_full_train/train_h7.py": "1c5b11c67a21ebfd4f418fa7517c2f8b63eb1b66b930532981c69b90d5a0ca23",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/benchmark_lightgbm_ovr.py": "0633beead247d9829249c4326e16752df8b5abaa84068f3cbcfaa46cf6385280",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/benchmark_results.csv": "9b32b60b07361422c59bab171e272542e3ef31c1f0b2e1fb372fb3535a7ed122",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h3_with_weather/validation_scores.npz": "b8004c149bc061b468f766cf1e004f6ef17539bb97624c066e5ea20ab6363c25",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h3_with_weather/run_metadata.json": "e4dceb41d9be8746b14edcd61bbbf8e0c92075ad837e6a73ef5ae6c6d09a58ee",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h3_no_weather/validation_scores.npz": "ddef15fa5766210a46e175ceb1d0cdf3c630716a78c9e8517e1b2478edec3484",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h3_no_weather/run_metadata.json": "53495b25daa69578549b6a147f42ebb3aefe80fe7c6407ba636546b4335ad641",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/metrics/h3_metrics.csv": "07cc892106c497eec1aea049adb0471186d3b99525c84eb2119b1f98cf362140",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h7_with_weather/validation_scores.npz": "f55636612dcb46aacb885ee7811be4c3fde451ec2edc8e4e94e683c79a3514c8",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h7_with_weather/run_metadata.json": "8b0ec243ff95a19b073ca1577d5dd6d055319be133ce837b1d09d9b3730c9de1",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h7_no_weather/validation_scores.npz": "c57221780828d0229dc127b2154a06298928f15977c793d261f7b20a199f6745",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h7_no_weather/run_metadata.json": "ad880f9037a5cb9e7a14dfca3047a3593e59e5b2ef32277aa620ff5551e4c581",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/metrics/h7_metrics.csv": "31444c9493410d449f3ec71a9298b338929479f5c1e9487ff3f7da664c6873a6",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h14_with_weather/validation_scores.npz": "b8a0a6618aab21c849bf28cef98521ddcb9729f76a2b1def05dbbb6b707dc904",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h14_with_weather/run_metadata.json": "043d192272d4762f6c23b7df853d68798426ef425a579c5a1a3aa370b63a4452",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h14_no_weather/validation_scores.npz": "61780e4478f82bfce689d6b25e7805940bd6b2f23d4d63ad3aeb7ffb78b10bc1",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/artifacts/h14_no_weather/run_metadata.json": "0adcb6075bcf969cd2c5e124961d38909e1a29db0fe284901a54aea4077a748f",
+    "benchmarks/lightgbm_ovr_h3_h7_h14/metrics/h14_metrics.csv": "d79e25b5755c3511a77be8bd02455c9fd2c57ede7053706c5e9722074f48838e"
+  }
+}

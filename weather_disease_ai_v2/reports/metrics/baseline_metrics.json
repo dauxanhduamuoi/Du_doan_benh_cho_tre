@@ -1,0 +1,43 @@
+{
+  "evaluation_split": "validation_full_including_unsupported_classes",
+  "metrics": {
+    "case_weighted": {
+      "macro_f1": 0.0035202689364865454,
+      "multiclass_log_loss": 4.42775641377626,
+      "top_10_accuracy": 0.5294459552031221,
+      "top_1_accuracy": 0.132024162912835,
+      "top_3_accuracy": 0.27195732049073135,
+      "top_5_accuracy": 0.3721379195815083,
+      "weighted_f1": 0.04843289575344391
+    },
+    "unweighted": {
+      "macro_f1": 0.0017336838737539262,
+      "multiclass_log_loss": 5.438814124464453,
+      "top_10_accuracy": 0.36528187825108954,
+      "top_1_accuracy": 0.045093490791508505,
+      "top_3_accuracy": 0.13478841557711232,
+      "top_5_accuracy": 0.2137986784760298,
+      "weighted_f1": 0.009656946890973638
+    }
+  },
+  "name": "hierarchical_train_frequency",
+  "ranking_hierarchy": [
+    "age_group+gender+month",
+    "age_group+month",
+    "month",
+    "global_train_frequency"
+  ],
+  "unsupported_classes": [
+    "114",
+    "15",
+    "158",
+    "16",
+    "2",
+    "280",
+    "295",
+    "298",
+    "35",
+    "61",
+    "67"
+  ]
+}

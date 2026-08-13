@@ -1,0 +1,13 @@
+{
+  "locked_model": "LightGBM One-vs-Rest H14 WITH WEATHER",
+  "model_count": 221,
+  "shap_sample_size": 512,
+  "random_seed": 42,
+  "model_output": "raw",
+  "reproduction_thresholds": {
+    "max_absolute_difference": 1e-07,
+    "rmse": 1e-08,
+    "ordered_top_k_agreement": 1.0
+  },
+  "shap_additivity_tolerance": 1e-06
+}

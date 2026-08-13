@@ -1,0 +1,19 @@
+2026-08-08 22:09:52 | GPU=NVIDIA GeForce RTX 5060 Laptop GPU; total=8151 MiB; initial used=1062 MiB
+2026-08-08 22:09:53 | with_weather: phase=setup
+2026-08-08 22:09:53 | with_weather: phase=ready
+2026-08-08 22:09:53 | with_weather: GPU memory before training=1065 MiB
+2026-08-08 22:09:54 | with_weather: phase=training
+2026-08-08 22:11:12 | with_weather: phase=done
+2026-08-08 22:11:13 | with_weather: status=success, time=78.93341429997236, before=1065.0, peak=7153.0, after=1057.0 MiB
+2026-08-08 22:11:14 | no_weather: phase=setup
+2026-08-08 22:11:15 | no_weather: phase=ready
+2026-08-08 22:11:15 | no_weather: GPU memory before training=1058 MiB
+2026-08-08 22:11:15 | no_weather: phase=training
+2026-08-08 22:11:25 | no_weather: status=success, time=9.099210399901494, before=1058.0, peak=7143.0, after=1059.0 MiB
+2026-08-08 22:11:26 | full_train_10iter: phase=setup
+2026-08-08 22:11:26 | full_train_10iter: phase=ready
+2026-08-08 22:11:26 | full_train_10iter: GPU memory before training=1062 MiB
+2026-08-08 22:11:27 | full_train_10iter: phase=training
+2026-08-08 22:11:33 | full_train_10iter: phase=done
+2026-08-08 22:11:34 | full_train_10iter: status=success, time=6.45293050003238, before=1062.0, peak=7155.0, after=1066.0 MiB
+2026-08-08 22:11:34 | {"with_weather": "success", "no_weather": "success", "full_train_10iter": "success", "decision": "WEATHER_SIGNAL_UNCLEAR", "integrity_pass": true, "full_train_performed": false, "report": "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\benchmarks\\final_weather_ablation\\FINAL_ABLATION_REPORT.md"}

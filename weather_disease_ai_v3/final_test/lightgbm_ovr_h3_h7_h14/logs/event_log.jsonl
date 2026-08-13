@@ -1,0 +1,59 @@
+{"event": "endpoint_lock_confirmed", "time_local": "2026-08-11 11:51:50", "primary_model": "LightGBM One-vs-Rest H14 WITH WEATHER", "primary_endpoint": "H14 WITH WEATHER minus NO WEATHER NDCG@5", "secondary_confirmatory": "H14 WITH WEATHER minus NO WEATHER NDCG@10", "horizon_selection": "H14"}
+{"event": "fit_started", "time_local": "2026-08-11 11:51:50", "run_name": "h3_with_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:51:53", "run_name": "h3_with_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:51:56", "run_name": "h3_with_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:51:59", "run_name": "h3_with_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:03", "run_name": "h3_with_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:04", "run_name": "h3_with_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:04", "run_name": "h3_with_weather", "classifier_count": 221, "feature_count": 45, "fit_query_count": 15612, "training_seconds": 13.663339799968526, "mean_locked_iteration": 58.497737556561084, "median_locked_iteration": 47.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "fit_started", "time_local": "2026-08-11 11:52:04", "run_name": "h3_no_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:05", "run_name": "h3_no_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:06", "run_name": "h3_no_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:08", "run_name": "h3_no_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:10", "run_name": "h3_no_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:10", "run_name": "h3_no_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:10", "run_name": "h3_no_weather", "classifier_count": 221, "feature_count": 6, "fit_query_count": 15612, "training_seconds": 6.206817399943247, "mean_locked_iteration": 60.07692307692308, "median_locked_iteration": 48.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "baseline_fit_completed", "time_local": "2026-08-11 11:52:10", "horizon": "H3", "training_seconds": 0.310397099936381}
+{"event": "fit_started", "time_local": "2026-08-11 11:52:10", "run_name": "h7_with_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:13", "run_name": "h7_with_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:17", "run_name": "h7_with_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:20", "run_name": "h7_with_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:24", "run_name": "h7_with_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:25", "run_name": "h7_with_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:25", "run_name": "h7_with_weather", "classifier_count": 221, "feature_count": 45, "fit_query_count": 15612, "training_seconds": 14.961662199813873, "mean_locked_iteration": 62.68325791855204, "median_locked_iteration": 51.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "fit_started", "time_local": "2026-08-11 11:52:25", "run_name": "h7_no_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:27", "run_name": "h7_no_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:28", "run_name": "h7_no_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:30", "run_name": "h7_no_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:31", "run_name": "h7_no_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:32", "run_name": "h7_no_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:32", "run_name": "h7_no_weather", "classifier_count": 221, "feature_count": 6, "fit_query_count": 15612, "training_seconds": 6.52919950010255, "mean_locked_iteration": 61.76470588235294, "median_locked_iteration": 54.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "baseline_fit_completed", "time_local": "2026-08-11 11:52:32", "horizon": "H7", "training_seconds": 0.4877595000434667}
+{"event": "fit_started", "time_local": "2026-08-11 11:52:32", "run_name": "h14_with_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:36", "run_name": "h14_with_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:39", "run_name": "h14_with_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:42", "run_name": "h14_with_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:46", "run_name": "h14_with_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:48", "run_name": "h14_with_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:48", "run_name": "h14_with_weather", "classifier_count": 221, "feature_count": 45, "fit_query_count": 15612, "training_seconds": 15.35908759990707, "mean_locked_iteration": 64.15837104072398, "median_locked_iteration": 53.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "fit_started", "time_local": "2026-08-11 11:52:48", "run_name": "h14_no_weather"}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:49", "run_name": "h14_no_weather", "classifiers": 50, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:50", "run_name": "h14_no_weather", "classifiers": 100, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:52", "run_name": "h14_no_weather", "classifiers": 150, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:54", "run_name": "h14_no_weather", "classifiers": 200, "total": 221}
+{"event": "fit_progress", "time_local": "2026-08-11 11:52:54", "run_name": "h14_no_weather", "classifiers": 221, "total": 221}
+{"event": "fit_completed", "time_local": "2026-08-11 11:52:54", "run_name": "h14_no_weather", "classifier_count": 221, "feature_count": 6, "fit_query_count": 15612, "training_seconds": 6.7512699998915195, "mean_locked_iteration": 63.37556561085973, "median_locked_iteration": 58.0, "min_locked_iteration": 1, "max_locked_iteration": 200}
+{"event": "baseline_fit_completed", "time_local": "2026-08-11 11:52:55", "horizon": "H14", "training_seconds": 0.5653414998669177}
+{"event": "all_training_and_baseline_fit_complete", "time_local": "2026-08-11 11:52:55", "final_experiments": 6, "classifiers": 1326, "baselines": 3, "test_data_parsed": false}
+{"event": "test_opened_once", "time_local": "2026-08-11 11:52:55", "training_allowed": false}
+{"event": "test_data_loaded", "time_local": "2026-08-11 11:52:55", "query_count": 2772}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:56", "run_name": "h3_with_weather", "prediction_seconds": 0.3386666001752019}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:56", "run_name": "h3_no_weather", "prediction_seconds": 0.27342010010033846}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:57", "run_name": "h7_with_weather", "prediction_seconds": 0.38023070013150573}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:57", "run_name": "h7_no_weather", "prediction_seconds": 0.2746496999170631}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:58", "run_name": "h14_with_weather", "prediction_seconds": 0.4041287999134511}
+{"event": "test_prediction_saved", "time_local": "2026-08-11 11:52:58", "run_name": "h14_no_weather", "prediction_seconds": 0.28684219997376204}
+{"event": "all_test_predictions_complete", "time_local": "2026-08-11 11:52:58", "score_matrices": 6}
+{"event": "test_metrics_computed", "time_local": "2026-08-11 11:52:59", "training_calls_after_test": 0}
+{"event": "test_bootstrap_complete", "time_local": "2026-08-11 11:53:00", "seconds": 0.7967232998926193, "iterations": 5000}
+{"event": "final_evaluation_complete", "time_local": "2026-08-11 11:53:00", "H3": "H3_SECONDARY_UNCERTAIN", "H7": "H7_SECONDARY_UNCERTAIN", "H14": "H14_FINAL_CONFIRMED", "total_seconds": 69.79703569994308}

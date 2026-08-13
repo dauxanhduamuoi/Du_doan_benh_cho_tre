@@ -1,0 +1,236 @@
+﻿disease_group_id,disease_group_name,report_group_code,train_rows,train_case_count,test_rows,test_case_count,data_support,catalog_support_level,model_supported,top1_recall,top5_recall,average_true_rank,predicted_top1_rows,predicted_top1_case_count,top1_prediction_share,actual_test_share,prediction_to_actual_ratio,adequate_support_for_ranking,relatively_good,very_weak_or_unsupported
+1,Tả - Cholera,A00,1,1,2,2,insufficient,insufficient,True,0.0,0.0,179.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+100,Một số rối loạn hệ miễn dịch - Certain disorders involving the immune mechanism,D80-D89,139,152,49,57,medium,medium,True,0.0,0.0,68.6140350877193,0,0,0.0,0.0012038269023633022,0.0,True,False,True
+101,Tổn thương tuyến giáp liên quan đến thiếu iod - Iodine deficiency- related thyroid disorders,E00-E02,2,2,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+102,Nhiễm độc do tuyến giáp (cường giáp) - Thyrotoxicosis,E05,39,39,3,3,low,low,True,0.0,0.0,84.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+103,Tổn thương khác của tuyến giáp - Other disorders of thyroid.,"E03-E04,E06-E07",78,81,24,24,low,low,True,0.0,0.0,94.16666666666667,0,0,0.0,0.000506874485205601,0.0,False,False,True
+104,Đái tháo đường - Diabetes mellitus.,E10-E14,346,369,95,101,medium,medium,True,0.0,0.0,39.56435643564357,0,0,0.0,0.002133096791906904,0.0,True,False,True
+105,Suy dinh dưỡng - Malnutrition,E40-E46,60,61,15,15,low,low,True,0.0,0.0,105.8,0,0,0.0,0.0003167965532535006,0.0,False,False,True
+107,Thiếu vitamin khác - Other vitamin deficiencies.,E51-E56,6,6,2,2,insufficient,insufficient,True,0.0,0.0,178.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+109,Béo phì - Obesity,E66,33,34,5,5,low,low,True,0.0,0.0,130.4,0,0,0.0,0.0001055988510845002,0.0,False,False,True
+111,"Bệnh khác về nội tiết, dinh dưỡng và chuyển hoá - Other endocrine, nutritional and metabolic disorders","E15-E35,E58-E63,E65,E67-E84,E85,E87,E88-E89,E90",563,676,225,243,high,high,True,0.0,0.0,41.251028806584365,0,0,0.0,0.005132104162706709,0.0,True,False,True
+114,Rối loạn tâm thần và ứng xử liên quan dùng các chất kích thích tâm lí khác - Mental and behavioural disorders due to other psychoactive substances use,F11-F19,0,0,0,0,unsupported,insufficient,False,,,,0,0,0.0,0.0,,False,False,False
+115,"Tâm thần phân liệt, rối loạn dạng phân liệt và hoang tưởng - Schizophrenia, schiztypal and delusional disorders",F20-F29,4,4,2,2,insufficient,insufficient,True,0.0,0.0,163.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+116,Rối loạn khí sắc - Mood ( affective) disorders.,F30-F39,6,6,2,2,insufficient,insufficient,True,0.0,0.0,158.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+117,"Loạn thần kinh, rối loạn gắn liền với các yếu tố stress và các rối loạn thuộc thân thể - Neurotic, sterss - related and somatoform disorders",F40-F48,73,74,25,26,low,low,True,0.0,0.0,76.53846153846153,0,0,0.0,0.000549114025639401,0.0,False,False,True
+118,Chậm phát triển tâm thần - Mental retardation,F70-F79,44,44,4,4,low,low,True,0.0,0.0,94.75,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+119,Rối loạn tâm thần và nhân cách khác - Other mental and behavioural disorders,"F04-F09,F50-F69,F80-F99",128,130,31,33,low,low,True,0.0,0.0,75.18181818181819,0,0,0.0,0.0006969524171577013,0.0,False,False,True
+120,Viêm hệ thần kinh trung ương - Inflamatory diseases of the central nervous system,G00-G09,614,661,252,281,high,high,True,0.0,0.0,40.59786476868327,0,0,0.0,0.005934655430948912,0.0,True,False,True
+123,Xơ cứng nhiều nơi - Multiple sclerosis,G35,10,10,2,2,insufficient,insufficient,True,0.0,0.0,117.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+124,Động kinh - Epilepsy,G40-G41,1394,1623,605,754,high,high,True,0.0,0.0,22.56763925729443,0,0,0.0,0.01592430674354263,0.0,True,False,True
+125,Đau nửa đầu và các hội chứng đau đầu khác - Migraine and other headache syndromes.,G43-G44,84,84,37,37,low,low,True,0.0,0.0,81.89189189189189,0,0,0.0,0.0007814314980253015,0.0,False,False,True
+126,Cơn thiếu máu não thoáng qua và các hội chứng tương tự - Transient cerebral ischaemic attacks and related syndromes,G45,6,6,1,1,insufficient,insufficient,True,0.0,0.0,154.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+127,"Tổn thương thần kinh, rễ và đám rối thần kinh - Nerve, nerve root and plexus disorders",G50-G59,73,75,14,14,low,low,True,0.0,0.0,96.92857142857143,0,0,0.0,0.00029567678303660055,0.0,False,False,True
+128,"Liệt não, hội chứng liệt khác - Cerebral palsy and other paralytic syndromes",G80-G83,20,20,3,3,low,low,True,0.0,0.0,145.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+129,Bệnh khác của hệ thần kinh - Other diseases of the nervous system,"G10-G14,G21-G26,G31-G32,G36-G37,G46-G47,G60-G73,G90-G99",544,568,120,123,medium,medium,True,0.0,0.0,45.53658536585366,0,0,0.0,0.002597731736678705,0.0,True,False,True
+13,Các dạng uốn ván khác - Other tetanus,A34-A35,3,3,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+130,Viêm mi mắt - Inflammation of eyelid,H00-H01,15,17,1,1,insufficient,insufficient,True,0.0,0.0,191.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+131,"Viêm kết mạc, tổn thương khác của kết mạc - Conjunctivitis and other disoders of conjunctiva",H10-H13,37,37,6,6,low,low,True,0.0,0.0,100.5,0,0,0.0,0.00012671862130140025,0.0,False,False,True
+132,"Viêm giác mạc, tổn thương khác của củng mạc và giác mạc - Keratitis and other disorders of sclera and cornea.",H15-H22,7,7,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+135,Glôcôm - Glaucoma,H40-H42,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+136,Lác mắt - Strabismus,H49-H50,20,20,4,4,low,low,True,0.0,0.0,150.5,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+137,"Tật khúc xạ, các rối loạn điều tiết - Disorders of refraction and accomodation",H52,1,1,2,2,insufficient,insufficient,True,0.0,0.0,214.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+139,Các bệnh khác của mắt và phần phụ mắt - Other diseases of the eye and adnexa,"H30-H32,H34-H36,H43-H48,H51,H53-H55,H57-H59",30,30,14,14,low,low,True,0.0,0.0,130.57142857142858,0,0,0.0,0.00029567678303660055,0.0,False,False,True
+140,"Viêm tai giữa, bệnh khác của tai giữa và xương chũm - Otitis media and other disorders of middle ear and mastoid",H65-H75,130,133,24,24,low,low,True,0.0,0.0,73.91666666666667,0,0,0.0,0.000506874485205601,0.0,False,False,True
+141,Mất thính giác - Hearing loss,H90-H91,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+142,Bệnh khác của tai và xương chũm - Other diseases of the ear and mastoid process,"H60-H62,H80-H83,H92-H95",20,20,12,12,low,low,True,0.0,0.0,136.91666666666666,0,0,0.0,0.0002534372426028005,0.0,False,False,True
+143,Thấp khớp cấp - Acute rheumatic heart disease,I00-I02,3,3,4,4,insufficient,insufficient,True,0.0,0.0,184.5,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+144,Bệnh thấp tim mãn - Chronic rheumatic disease,I05-I09,14,14,7,7,low,low,True,0.0,0.0,151.71428571428572,0,0,0.0,0.00014783839151830027,0.0,False,False,True
+145,Tăng huyết áp nguyên phát - Essential (primary) hypertension,I10,116,119,54,56,medium,medium,True,0.0,0.0,66.41071428571429,0,0,0.0,0.0011827071321464022,0.0,True,False,True
+146,Bệnh tăng huyết áp khác - Other hypertensive diseases,I11-I15,7,7,2,2,insufficient,insufficient,True,0.0,0.0,182.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+148,Bệnh tim thiếu máu cục bộ khác - Other ischaemic heart diseases,"I20,I23-I25",2,2,1,1,insufficient,insufficient,True,0.0,0.0,180.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+15,Ho gà - Whooping cough,A37,0,0,16,16,unsupported,low,False,0.0,0.0,,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+150,Rối loạn dẫn truyền và loạn nhịp tim - Conduction disorders and cardiac arrhythymias,I44-I49,131,131,44,45,medium,medium,True,0.0,0.0,81.11111111111111,0,0,0.0,0.0009503896597605018,0.0,True,False,True
+151,Suy tim - Heart failure,I50,17,17,15,15,low,low,True,0.0,0.0,140.13333333333333,0,0,0.0,0.0003167965532535006,0.0,False,False,True
+152,Bệnh tim khác - Other heart diseases,"I27-I43,I51-I52",109,113,39,40,low,low,True,0.0,0.0,81.425,0,0,0.0,0.0008447908086760016,0.0,False,False,True
+153,Chảy máu não - Intracerebral haemorrhage,I60-I62,42,43,21,21,low,low,True,0.0,0.0,110.47619047619048,0,0,0.0,0.0004435151745549008,0.0,False,False,True
+154,Nhồi máu não - Cerebral infarction,I63,38,38,10,10,low,low,True,0.0,0.0,105.9,0,0,0.0,0.0002111977021690004,0.0,False,False,True
+155,"Tai biến mạch máu não, không xác định rõ chảy máu hoặc do nhồi máu - Stroke, not specified as haemorrhage or infarction",I64,1,1,1,1,insufficient,insufficient,True,0.0,0.0,220.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+156,Bệnh mạch máu não khác - Other cerebrovascular diseases,I65-I69,81,82,19,21,low,low,True,0.0,0.0,88.0952380952381,0,0,0.0,0.0004435151745549008,0.0,False,False,True
+158,Bệnh mạch máu ngoại vi khác - Other peripheral vascular disease,I73,0,0,0,0,unsupported,insufficient,False,,,,0,0,0.0,0.0,,False,False,False
+159,Nghẽn và huyết khối động mạch - Arterial embolism and thrombosis,I74,5,5,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+16,Nhiễm khuẩn não mô cầu - Meningococcal infection,A39,0,0,1,1,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+160,"Bệnh khác của động mạch, tiểu động mạch và mao mạch - Other diseases of arteries, arterioles and capillaries",I71-I72,3,3,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+161,"Viêm tĩnh mạch, viêm tĩnh mạch huyết khối, nghẽn mạch và huyết khối tĩnh mạch - Phlebitis, thrombophlebitis,venous embolism and thrombosis",I80-I82,33,33,7,7,low,low,True,0.0,0.0,115.0,0,0,0.0,0.00014783839151830027,0.0,False,False,True
+164,Các bệnh khác của bộ máy tuần hoàn - Other diseases of the circulatory system,"I85-I99, I77-I79,I95-I99",126,128,35,37,medium,medium,True,0.0,0.0,86.21621621621621,0,0,0.0,0.0007814314980253015,0.0,True,False,True
+165,Viêm họng và viêm amidan cấp - Acute pharyngitis and acute tonsillitis,J02-J03,3213,7680,1016,2518,high,high,True,0.017077045274027005,0.8308181096108023,4.677124702144559,497,751,0.01586094743289193,0.0531795814061543,0.2982525814138205,True,True,False
+166,"Viêm thanh, khí quản cấp - Acute laryngitis and tracheitis",J04,644,762,232,279,high,high,True,0.0,0.0,31.555555555555557,0,0,0.0,0.005892415890515111,0.0,True,False,True
+167,Viêm cấp đường hô hấp trên khác - Other acute upper respiratory infections,"J00-J01,J05-J06",1337,1688,529,697,high,high,True,0.0,0.0,24.85222381635581,0,0,0.0,0.014720479841179327,0.0,True,False,True
+168,Cúm - Influenza,J09-J11,1,1,3,3,insufficient,insufficient,True,0.0,0.0,192.33333333333334,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+169,Các bệnh viêm phổi - Pneumonia,J12-J18,4727,26244,1363,7398,high,high,True,0.8152203298188699,0.9680994863476615,1.6040821843741553,15628,30783,0.6501298865868339,0.1562440600646265,4.160989456609895,True,True,False
+17,Nhiễm khuẩn huyết - Septicemia,A40-A41,313,324,54,54,medium,medium,True,0.0,0.0,54.53703703703704,0,0,0.0,0.0011404675917126021,0.0,True,False,True
+170,Viêm phế quản và viêm tiểu phế quản cấp - Acute bronchitis and acute bronchiolitis,J20-J21,3311,10004,1022,2775,high,high,True,0.06702702702702702,0.7124324324324325,5.558918918918919,634,1316,0.027793617605440454,0.05860736235189761,0.4742342342342342,True,True,False
+171,Viêm xoang mạn tính - Chronic sinusitis,J32,7,7,1,1,insufficient,insufficient,True,0.0,0.0,192.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+172,Bệnh của mũi và các xoang phụ của mũi - Other diseases of nose and nasal sinuses,"J30-J31,J33-J34",34,34,22,23,low,low,True,0.0,0.0,120.82608695652173,0,0,0.0,0.0004857547149887009,0.0,False,False,True
+173,Bệnh mạn tính của amidan và của VA - Chronic diseases of tonsils and adenoids,J35,1412,2683,409,733,high,high,True,0.005457025920873124,0.20327421555252387,15.33287858117326,39,58,0.0012249466725802022,0.01548079156898773,0.0791268758526603,True,False,False
+174,Bệnh khác đường hô hấp trên - Other diseases of upper respiratory tract,J36-J39,31,31,3,3,low,low,True,0.0,0.0,123.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+175,"Viêm phế quản tràn khí và các bệnh phổi tắc nghẽn mạn tính - Bronchitis, emphysema and other chronic obstructive diseases",J40-J44,25,28,2,2,low,low,True,0.0,0.0,186.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+176,Hen - Asthma,J45-J46,2207,4663,622,1162,high,high,True,0.0,0.1351118760757315,11.400172117039586,0,0,0.0,0.024541172992037848,0.0,True,False,False
+179,Bệnh khác của bộ máy hô hấp - Other diseases of respiratory system.,"J22,J61-J99",128,129,57,59,medium,medium,True,0.0,0.0,75.01694915254237,0,0,0.0,0.0012460664427971025,0.0,True,False,True
+18,Các bệnh do vi khuẩn khác - Other bacterial diseases,"A21-A22,A24-A28,A31-A32,A38,A42-A49",7,7,1,1,insufficient,insufficient,True,0.0,0.0,187.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+180,Sâu răng - Dental caries,K02,1,1,1,1,insufficient,insufficient,True,0.0,0.0,202.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+181,Tổn thương khác liên quan đến răng và mô quanh răng - Other disorders of teeth and supporting structures,"K03-K08,K00-K01",102,105,30,30,low,low,True,0.0,0.0,82.1,0,0,0.0,0.0006335931065070012,0.0,False,False,True
+182,"Bệnh khác của khoang miệng, tuyến nước bọt và hàm - Other diseases of the oral cavity, salivary glands and jaws",K09-K14,823,959,231,283,high,high,True,0.0,0.0,28.996466431095406,0,0,0.0,0.005976894971382711,0.0,True,False,True
+183,Loét dạ dày và tá tràng - Gastric and duodenal ulcer,K25-K27,217,234,62,66,medium,medium,True,0.0,0.0,40.96969696969697,0,0,0.0,0.0013939048343154026,0.0,True,False,True
+184,Viêm dạ dày và tá tràng - Gastritis and duodenitis,K29,1005,1347,392,584,high,high,True,0.0,0.17123287671232876,16.748287671232877,0,0,0.0,0.012333945806669624,0.0,True,False,False
+185,"Bệnh khác của thực quản, dạ dày và tá tràng - Other diseases of oesophagus, stomach, duodenum","K20-K23,K28,K30-K31",2051,2657,373,425,high,high,True,0.0,0.004705882352941176,15.047058823529412,0,0,0.0,0.008975902342182518,0.0,True,False,True
+186,Bệnh của ruột thừa - Diseases of appendix,K35-K38,1519,1877,373,457,high,high,True,0.015317286652078774,0.3916849015317287,9.820568927789934,193,225,0.004751948298802509,0.009651734989123318,0.4923413566739606,True,False,False
+187,Thoát vị bẹn - Inguinal hernia,K40,1669,2462,460,694,high,high,True,0.0,0.004322766570605188,15.812680115273775,0,0,0.0,0.014657120530528627,0.0,True,False,True
+188,Các thoát vị khác - Other hernia,K41-K46,130,131,22,22,low,low,True,0.0,0.0,72.27272727272727,0,0,0.0,0.0004646349447718009,0.0,False,False,True
+189,Bệnh Crohn (viêm ruột non từng vùng) và viêm loét đại tràng - Crohn’s disease and ulcerative colitis,K50-K51,118,120,49,50,medium,medium,True,0.0,0.0,71.26,0,0,0.0,0.001055988510845002,0.0,True,False,True
+19,Giang mai bẩm sinh - Congenital syphilis,A49,19,19,8,8,insufficient,insufficient,True,0.0,0.0,147.25,0,0,0.0,0.00016895816173520032,0.0,False,False,True
+190,"Tắc liệt ruột và tắc ruột không do thoát vị - Paralytic ileus, intestinal obstruction without hernia",K56,1714,2865,400,578,high,high,True,0.0,0.10726643598615918,14.141868512110726,34,59,0.0012460664427971025,0.012207227185368224,0.10207612456747404,True,False,False
+191,Bệnh túi thừa của ruột non - Diverticular disease of intestine,K57,4,4,4,4,insufficient,insufficient,True,0.0,0.0,172.5,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+192,Bệnh khác của ruột non và màng bụng - Other diseases of intestine peritoneum,"K52-K55,K58-K67",1047,1153,218,239,high,high,True,0.0,0.0,30.439330543933053,0,0,0.0,0.005047625081839109,0.0,True,False,True
+194,Các bệnh khác của gan - Other diseases of liver,K71-K77,969,1129,282,333,high,high,True,0.0,0.0,25.543543543543542,0,0,0.0,0.007032883482227714,0.0,True,False,True
+195,Sỏi mật và viêm túi mật - Cholelithiasis and cholecystitis,K80-K81,60,60,21,21,low,low,True,0.0,0.0,96.80952380952381,0,0,0.0,0.0004435151745549008,0.0,False,False,True
+196,Viêm tuỵ cấp và bệnh khác của tuỵ - Acute pancreatitis and other diseases of pancreas,K85-K86,285,292,82,84,medium,medium,True,0.0,0.0,52.45238095238095,0,0,0.0,0.0017740606982196033,0.0,True,False,True
+197,Bệnh khác của bộ máy tiêu hoá - Other diseases of the digestive system,"K87-K93,K82-K83",559,589,146,155,medium,medium,True,0.0,0.0,41.38709677419355,0,0,0.0,0.003273564383619506,0.0,True,False,True
+198,Bệnh nhiễm khuẩn da và mô tế bào dưới da - Infections of skin and subcutaneous tissue,L00-L08,1470,1694,372,413,high,high,True,0.0,0.0,21.28813559322034,0,0,0.0,0.008722465099579716,0.0,True,False,True
+199,Bệnh khác của da và mô tế bào dưới da - Other diseases of skin and subcutaneous tissue,L10-L99,1624,2015,506,628,high,high,True,0.0,0.0,18.823248407643312,0,0,0.0,0.013263215696213226,0.0,True,False,True
+2,"Thương hàn, phó thương hàn - Typhoid and paratyphoid fevers",A01,0,0,1,1,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+20,"Giang mai sớm (Giang mai I, II và kín) - Early syphilis",A50,23,23,11,11,low,low,True,0.0,0.0,74.9090909090909,0,0,0.0,0.00023231747238590045,0.0,False,False,True
+200,"Viêm khớp dạng thấp và viêm khớp khác - Rheumatoid arthritis, other inflamatory polyarthropaties",M05-M14,513,585,212,251,high,high,True,0.0,0.099601593625498,28.64541832669323,10,12,0.0002534372426028005,0.0053010623244419105,0.04780876494023904,True,False,True
+201,Bệnh thoái hoá khớp - Arthrosis,M15-M19,2,2,1,1,insufficient,insufficient,True,0.0,0.0,201.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+202,Biến dạng các chi mắc phải - Accquired deformities of limbs,M20-M21,24,25,9,9,low,low,True,0.0,0.0,127.66666666666667,0,0,0.0,0.00019007793195210037,0.0,False,False,True
+203,Bệnh khác của khớp - Other joint disorders,"M00-M03,M22-M25",201,207,42,42,medium,medium,True,0.0,0.0,68.21428571428571,0,0,0.0,0.0008870303491098016,0.0,True,False,True
+204,Bệnh của hệ thống tổ chức liên kết - Systematic connective tissue disorders,M30-M36,1202,1485,326,389,high,high,True,0.14910025706940874,0.4241645244215938,19.303341902313626,864,1007,0.02126760860841834,0.008215590614374116,2.588688946015424,True,False,False
+205,Trật đốt sống cổ và các đốt sống khác - Cervical and other interverbral disc disorders,M50-M51,8,8,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+206,Bệnh khác của cột sống - Other dorsopathies,"M40-M49,M53-M54",163,170,22,22,medium,medium,True,0.0,0.0,76.31818181818181,0,0,0.0,0.0004646349447718009,0.0,True,False,True
+207,Tổn thương các mô mềm - Soft tissue disorders,M60-M79,434,470,133,145,medium,medium,True,0.0,0.0,51.144827586206894,0,0,0.0,0.003062366681450506,0.0,True,False,True
+208,Di tật về mật độ và cấu trúc của xương - Disorders of bone density and structure,M80-M85,32,32,58,58,low,low,True,0.0,0.0,119.20689655172414,0,0,0.0,0.0012249466725802022,0.0,False,False,True
+209,Viêm xương tuỷ - Osteomyelitis,M86,154,158,34,34,medium,medium,True,0.0,0.0,70.38235294117646,0,0,0.0,0.0007180721873746013,0.0,True,False,True
+210,"Bệnh khác của hệ xương khớp, cơ và mô liên kết - Other diseases of the musculo-skeletal system and connective tissue",M87-M99,44,44,6,6,low,low,True,0.0,0.0,106.33333333333333,0,0,0.0,0.00012671862130140025,0.0,False,False,True
+211,Hội chứng viêm thận cấp và tiến triển nhanh - Acute and rapidly prograssive nephritis syndromes,N00-N01,70,71,38,39,low,low,True,0.0,0.0,82.46153846153847,0,0,0.0,0.0008236710384591016,0.0,False,False,True
+212,Bệnh cầu thận khác - Other glomerular diseases,N02-N08,710,788,249,282,high,high,True,0.0,0.0035460992907801418,31.74822695035461,0,0,0.0,0.005955775201165811,0.0,True,False,True
+213,Bệnh ống thận kẽ - Renal tubulo-interstitial diseases,N10-N16,71,71,10,10,low,low,True,0.0,0.0,95.4,0,0,0.0,0.0002111977021690004,0.0,False,False,True
+214,Suy thận - Renal failure,N17-N19,369,394,131,144,medium,medium,True,0.0,0.027777777777777776,28.73611111111111,0,0,0.0,0.003041246911233606,0.0,True,False,True
+215,Sỏi tiết niệu - Urolithiasis,N20-N23,138,138,36,37,medium,medium,True,0.0,0.0,82.37837837837837,0,0,0.0,0.0007814314980253015,0.0,True,False,True
+216,Viêm bàng quang - Cystitis,N30,46,46,5,5,low,low,True,0.0,0.0,119.0,0,0,0.0,0.0001055988510845002,0.0,False,False,True
+217,Bệnh khác của bộ máy tiết niệu - Other diseases of the urnary system,"N25-N29,N31-N39",941,1027,240,265,high,high,True,0.0,0.0,34.1811320754717,0,0,0.0,0.00559673910747851,0.0,True,False,True
+218,Quá sản tuyến tiền liệt - Hyperplasia of prostate,N40,2,2,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+219,Tổn thương khác của tuyến tiền liệt - Other disorders of prostate,N41-N42,0,0,2,2,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+220,"Tràn dịch tinh mạc, u nang tinh dịch - Hydrocele and spermatocele",N43,472,907,29,32,medium,medium,True,0.0,0.0,28.40625,0,0,0.0,0.0006758326469408013,0.0,True,False,True
+221,"Thừa bao qui đầu, hẹp và nghẹt bao qui đầu - Redundant prepuce, phimosis and paraphimosis",N47,757,1108,237,357,high,high,True,0.0,0.0896358543417367,19.759103641456583,0,0,0.0,0.007539757967433314,0.0,True,False,True
+222,Bệnh khác của cơ quan sinh dục nam - Other diseases of male genital organs,"N44-N46,N48,N49-N51",262,276,76,84,medium,medium,True,0.0,0.0,45.833333333333336,0,0,0.0,0.0017740606982196033,0.0,True,False,True
+223,Tổn thương của vú - Disorders of breast,N60-N64,12,12,2,2,low,low,True,0.0,0.0,112.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+224,Viêm vòi trứng và viêm buồng trứng - Salpingitis and oophoritis,N70,6,6,1,1,insufficient,insufficient,True,0.0,0.0,155.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+226,Tổn thương viêm khác của các cơ quan khung chậu nữ - Other inflamatory diseases of female pelvic organs,"N71,N73-N77",37,37,15,15,low,low,True,0.0,0.0,99.26666666666667,0,0,0.0,0.0003167965532535006,0.0,False,False,True
+229,"Tổn thương không viêm của buồng trứng, vòi fallope và dây chằng rộng - Noinflammatory disorders of ovary, fallopian tube and broad ligament",N83,297,333,90,102,medium,medium,True,0.0,0.06862745098039216,21.07843137254902,0,0,0.0,0.002154216562123804,0.0,True,False,True
+230,Rối loạn kinh nguyệt - Disorders of menstruation,N91-N92,11,11,1,1,insufficient,insufficient,True,0.0,0.0,100.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+233,Bệnh khác của bộ máy sinh dục tiết niệu - Other disorders of genitourinary tract,"N82,N84-N90,N93-N94,N96,N98-N99",70,71,16,16,low,low,True,0.0,0.0,72.8125,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+24,Nhiễm khuẩn khác lây truyền qua đường tình dục - Other infection with a predominantly sexual mode of transmission,A57-A64,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+242,Các biến chứng khác của chửa đẻ - Other complications pregnancy and delivery,"O20-O29,O60-O63,O67-O71,O73-O75,O81-O84",1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+245,"Bệnh lí thai nhi và sơ sinh do biến chứng thai nghén, chửa, đẻ - Fetus and newborn affected by maternal factors and by complications of pregnancy, labour and delivery",P00-P04,1,1,1,1,insufficient,insufficient,True,0.0,0.0,177.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+246,"Thai chậm phát triển, suy dinh dưỡng, rối loạn gắn liền với thai nghén và cân nặng không đủ khi sinh - Slow fetal growth, fetal malnutrition and disorders related to short gestation and low birth weight",P05-P07,116,127,34,36,medium,medium,True,0.0,0.0,35.72222222222222,0,0,0.0,0.0007603117278084015,0.0,True,False,True
+247,Các chấn thương sản khoa - Birth trauma,P10-P15,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+249,Các tổn thương hô hấp đặc hiệu khác của thời kỳ chu sinh - Other respiratory disorders originating in the perinatal period,P22-P28,10,10,7,7,low,low,True,0.0,0.0,120.14285714285714,0,0,0.0,0.00014783839151830027,0.0,False,False,True
+250,Nhiễm khuẩn và kí sinh vật bẩm sinh - Congenital infectious and parasitic diseases,P35-P37,304,341,109,136,medium,medium,True,0.0,0.0,20.24264705882353,0,0,0.0,0.0028722887494984054,0.0,True,False,True
+251,Nhiễm khuẩn đặc hiệu khác thời kỳ chu sinh - Other infectious specific to the perinatal period,P38-P39,50,51,15,15,low,low,True,0.0,0.0,52.666666666666664,0,0,0.0,0.0003167965532535006,0.0,False,False,True
+253,Tổn thương khác có nguồn gốc trong thời kỳ chu sinh - Other conditions originating in the perinatal period,"P08,P29,P50-P54,P56-P96",1187,1833,431,725,high,high,True,0.0,0.2772413793103448,18.958620689655174,8,17,0.00035903609368730067,0.015311833407252529,0.023448275862068966,True,False,False
+254,Gai đôi cột sống - Spina bifida,Q05,21,21,1,1,low,low,True,0.0,0.0,93.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+255,Dị tật bẩm sinh khác của hệ thần kinh - Other congenital malforma,"Q00-Q04,Q06-Q07",112,113,15,16,low,low,True,0.0,0.0,84.375,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+256,Dị tật bẩm sinh khác của bộ máy tuần hoàn - Congenital malfor-mation of the circulatory system,Q20-Q28,1121,1377,417,531,high,high,True,0.0,0.005649717514124294,23.065913370998118,0,0,0.0,0.011214597985173921,0.0,True,False,True
+257,Sứt môi và hở hàm ếch - Cleft lip and cleft palate,Q35-Q37,519,554,87,92,medium,medium,True,0.0,0.0,41.98913043478261,0,0,0.0,0.0019430188599548037,0.0,True,False,True
+258,"Không có, tịt hoặc hẹp ruột non - Absence, atresia and stenosis of small intestine",Q41,4,4,1,1,insufficient,insufficient,True,0.0,0.0,154.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+259,Dị tật bẩm sinh khác của bộ máy sinh dục tiết niệu - Other malformations of the genitourinary system,"Q38-Q40,Q42-Q45",3056,7524,830,2181,high,high,True,0.04126547455295736,0.597890875745071,6.016964695093994,939,1957,0.04133139031447338,0.046062218843058986,0.8972948188904173,True,True,False
+260,Tinh hoàn lạc chỗ - Undescended testicle,Q53,824,1211,202,273,high,high,True,0.0,0.0,22.54945054945055,0,0,0.0,0.0057656972692137105,0.0,True,False,True
+261,Dị dạng bẩm sinh của bộ máy sinh dục tiết niệu - Congenital malformations of genital organs,"Q50-Q52,Q54-Q64",1561,2259,367,511,high,high,True,0.0,0.0,16.418786692759294,0,0,0.0,0.01079220258083592,0.0,True,False,True
+262,Dị dạng bẩm sinh hông - Congenital deformities of hip,Q65,48,49,24,28,low,low,True,0.0,0.0,80.0,0,0,0.0,0.0005913535660732011,0.0,False,False,True
+263,Dị dạng bẩm sinh bàn chân - Congenital deformities of feet,Q66,47,59,8,8,low,low,True,0.0,0.0,99.625,0,0,0.0,0.00016895816173520032,0.0,False,False,True
+264,Dị dạng bẩm sinh khác của hệ xương và cơ - Other congenital malformations and deformations of the musculo skeletal system,Q67-Q79,553,602,146,161,medium,medium,True,0.0,0.0,45.04968944099379,0,0,0.0,0.0034002830049209066,0.0,True,False,True
+265,Dị dạng bẩm sinh khác - Other congenital malformations,"Q10-Q18,Q30-Q34,Q80-Q89",824,941,230,250,high,high,True,0.0,0.0,34.816,0,0,0.0,0.00527994255422501,0.0,True,False,True
+266,"Dị thường nhiễm sắc thể, chưa xếp ở chỗ khác - Chromosomal abnormalities, not elsewhere sclassified",Q90-Q99,11,11,4,4,low,low,True,0.0,0.0,149.25,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+267,Đau bụng và khung chậu - Abdominal and pelvic pain,R10,368,398,144,158,medium,medium,True,0.0,0.0,37.86708860759494,0,0,0.0,0.0033369236942702063,0.0,True,False,True
+268,Sốt không rõ nguyên nhân - Fever of unknown origin,R50,38,39,15,16,low,low,True,0.0,0.0,110.4375,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+27,Sốt Rickettsia - Typhus fever,A75,57,57,9,9,low,low,True,0.0,0.0,78.55555555555556,0,0,0.0,0.00019007793195210037,0.0,False,False,True
+270,"Các triệu chứng, dấu hiệu và kết quả bất thường về khám lâm sàng và xét nghiệm khác, chưa xếp ở chỗ khác - Other symptoms, signs and abnormal clinical and laboratory findings, not elsewhere classified","R00-R09,R11-R49,R51-R53,R55-R99",1967,2509,776,1132,high,high,True,0.0,0.0,14.242049469964664,0,0,0.0,0.023907579885530845,0.0,True,False,True
+271,Vỡ xương sọ và các xương mặt - Fracture of skull and facial bones,S02,323,334,116,121,medium,medium,True,0.0,0.0,56.553719008264466,0,0,0.0,0.002555492196244905,0.0,True,False,True
+272,"Gãy xương cổ, ngực, khung chậu - Fracture of neck, thorax or pelvis.","S12,S22,S32,T08",11,11,4,4,insufficient,insufficient,True,0.0,0.0,157.75,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+273,Gãy xương đùi - Fracture of femur,S72,326,345,159,168,medium,medium,True,0.0,0.0,48.857142857142854,0,0,0.0,0.0035481213964392065,0.0,True,False,True
+274,Gãy các phần khác của chi do lao động và giao thông - Fracture of other lim bones,"S42,S52,S62,S82,S92,T10,T12",2040,2712,646,907,high,high,True,0.03307607497243661,0.5446527012127894,8.117971334068358,506,601,0.012692981900356923,0.019155631586728335,0.6626240352811467,True,True,False
+276,"Sai khớp, bong gân, tổn thương khu trú và ở nhiều vùng cơ thể - Dislocations, sprains and strains of specified and multiple body regions","S03,S13,S23,S33,S43,S53,S63,S73,S83,S93,T03",19,19,8,8,low,low,True,0.0,0.0,115.0,0,0,0.0,0.00016895816173520032,0.0,False,False,True
+277,Thương tổn do chấn thương ở mắt và hốc mắt - Injury of eye and orbit,S05,3,3,1,1,insufficient,insufficient,True,0.0,0.0,220.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+278,Thương tổn do chấn thương trong sọ - Intracranial injury,S06,639,684,251,266,high,high,True,0.0,0.0,38.41353383458647,0,0,0.0,0.005617858877695411,0.0,True,False,True
+279,Thương tổn do chấn thương các nội tạng khác - Injury of other internal organs,"S26-S27,S36-S37",64,64,14,14,low,low,True,0.0,0.0,93.71428571428571,0,0,0.0,0.00029567678303660055,0.0,False,False,True
+280,Chấn thương dập nát và cắt cụt đã xác định và nhiều vùng trong cơ thể - Fracture of other lim bones,"S07-S08,S17-S18,S28,S38,S47-S48,S57-S58,S67-S68,S77-S78,S87-S88,S97-S98,T04-T05",0,0,0,0,unsupported,insufficient,False,,,,0,0,0.0,0.0,,False,False,False
+281,"Các tổn thương khác do chấn thương xác định và ở nhiều nơi - Other injuries of specified, unspecified and multiple body regions","S00-S01,S04,S09-S11,S14-S16,S19-S21,S24-S25,S29-S31,S34-S35,S39-S41,S44-S46,S49-S51,S54-S56,S59-S61,S64-S66,S69-S71,S74-S76,S79-S81,S84-S86,S89-S91,S94-S96,S99-T01,T06-T07,T09,T13-T14",1015,1141,324,361,high,high,True,0.0,0.0,27.678670360110804,0,0,0.0,0.007624237048300914,0.0,True,False,True
+282,Hậu quả do dị vật vào hốc tự nhiên - Effects of foreign body entert hrough natural orifice,T15-T19,373,382,119,121,medium,medium,True,0.0,0.0,49.34710743801653,0,0,0.0,0.002555492196244905,0.0,True,False,True
+283,Bỏng và sự ăn mòn - Burnss and corrosions,T20-T32,405,429,134,141,medium,medium,True,0.0,0.0,48.354609929078016,0,0,0.0,0.0029778876005829057,0.0,True,False,True
+284,Nhiễm độc thuốc và các sinh phẩm - Poisoning by drugs and biological substances,T36-T50,23,23,22,23,low,low,True,0.0,0.0,135.2608695652174,0,0,0.0,0.0004857547149887009,0.0,False,False,True
+285,Tác hại của các chất có nguồn gốc chủ yếu không phải thuốc - Toxic effects of substances chiefly nonmedical as to source,T51-T65,36,38,16,16,low,low,True,0.0,0.0,104.5,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+287,Hậu quả của các nguyên nhân bên ngoài khác và không xác định - Other and unspecified effects of external causes,"T33-T35,T66-T73,T75-T78",168,172,71,72,medium,medium,True,0.0,0.0,69.88888888888889,0,0,0.0,0.001520623455616803,0.0,True,False,True
+288,"Một số biến chứng sớm của chấn thương, của chăm sóc ngoại khoa và y học, chưa xếp ở nơi khác - Certain early complications of trauma and complications of surgical and medical care, not elsewhere classified",T79-T88,150,154,53,54,medium,medium,True,0.0,0.0,76.68518518518519,0,0,0.0,0.0011404675917126021,0.0,True,False,True
+289,"Di chứng, thương tổn do chấn thương, do ngộ độc và hậu quả khác do nguyên nhân bên ngoài - Sequalae of injuries, of poisoning and of other consequences of external causes",T90-T98,4,4,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+290,Tai nạn giao thông - Transport accidént,V01-V99,5,5,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+291,Tai nạn do các nguyên nhân sức mạnh cơ học và không cố ý - exposure to inanimate mechanical forces,W00-W64,32,32,12,12,low,low,True,0.0,0.0,119.58333333333333,0,0,0.0,0.0002534372426028005,0.0,False,False,True
+292,"Tai nạn chết đuối, chết chìm - Accident drowning and submersion",W65-W84,5,5,3,3,insufficient,insufficient,True,0.0,0.0,129.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+294,"Tai nạn do khói, lửa, đám cháy - expossure to smoke, fire and fpames",X00-X09,0,0,1,2,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+295,Tai nạn do tiếp xúc với các chất nóng - contact with heat and hot,X10-X19,0,0,1,1,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+296,Tai nạn do tiếp xúc với động vật và cây độc - Contact with venomous animals and plants,X20-X29,25,25,15,16,low,low,True,0.0,0.0,129.125,0,0,0.0,0.00033791632347040065,0.0,False,False,True
+297,Tai nạn ngộ độc do các chất độc - Accident poisoning by and exposure to noxious substances,X40-X49,8,8,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+298,Tự tử - Intentional self-harm,X60-X84,0,0,0,0,unsupported,insufficient,False,,,,0,0,0.0,0.0,,False,False,False
+299,Bạo lực đánh nhau - Assault,X85-Y09,21,21,4,4,low,low,True,0.0,0.0,120.75,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+30,Viêm não Virut - Viral encephalitis,A83-A86,39,39,18,19,low,low,True,0.0,0.0,115.47368421052632,0,0,0.0,0.00040127563412110077,0.0,False,False,True
+300,Tai biến của thuốc và các chất sinh học trong điều trị - Drugs medicament and biological substances causing adverseeffects in therapeutic use.,Y40-Y59,690,860,144,165,high,high,True,0.0,0.012121212121212121,19.53939393939394,0,0,0.0,0.0034847620857885067,0.0,True,False,True
+304,Người tiếp xúc với các dịch vụ y tế làm các khám xét và điều tra - Person encountering health services for examination and investigation,Z00-Z01,29,29,2,2,low,low,True,0.0,0.0,104.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+306,Người có nguy cơ liên quan đến bệnh truyền nhiễm - Other persons with potential health hazards related to communicable diseases,"Z20,Z22-Z29",1,1,20,21,low,low,True,0.0,0.0,206.47619047619048,0,0,0.0,0.0004435151745549008,0.0,False,False,True
+311,Bệnh do tiếp xúc với dịch vụ y tế phải chăm sóc và khám xét đặc biệt - Persons encountering health services for specific procedures and health care,Z40-Z54,737,811,256,292,high,high,True,0.0,0.0,37.07876712328767,0,0,0.0,0.006166972903334812,0.0,True,False,True
+312,Bệnh do tiếp xúc với dịch vụ y tế vì những lý do khác - Person encoutering health services for other reasons,"Z31-Z33,Z37,Z55-Z99",121,122,52,54,medium,medium,True,0.0,0.0,77.85185185185185,0,0,0.0,0.0011404675917126021,0.0,True,False,True
+313,COVID-19 * U07.1 là bệnh nhân COVID-19 có kết quả xét nghiệm SARS-CoV-2 dương tính cập nhật theo hướng dẫn chẩn đoán và điều trị của Bộ Y tế.,U07.1,1179,1947,2,2,high,high,True,0.0,0.0,45.5,369,382,0.008067752222855815,4.223954043380008e-05,191.0,False,False,True
+32,Sốt virut khác do tiết túc truyền và sốt virus xuất huyết - Other arthropod,"A90-A94,A96-A99",3080,5497,642,828,high,high,True,0.25120772946859904,0.6714975845410628,6.723429951690822,3162,3836,0.08101543855202856,0.017487169739593234,4.632850241545894,True,True,False
+33,Nhiễm virut Héc-pét - Herpesviral infections,B00,4,4,3,3,insufficient,insufficient,True,0.0,0.0,192.33333333333334,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+34,Thuỷ đậu và zôna - Varicella and Zoster,B01-B02,61,61,26,26,low,low,True,0.0,0.0,93.26923076923077,0,0,0.0,0.000549114025639401,0.0,False,False,True
+35,Sởi - Measles,B05,0,0,832,1547,unsupported,high,False,0.0,0.0,,0,0,0.0,0.03267228452554436,0.0,False,False,True
+37,Viêm gan B cấp - Acute hepatitis B,B16,3,3,3,3,insufficient,insufficient,True,0.0,0.0,192.66666666666666,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+38,Viêm gan virut khác - Other viral hepatitis,"B15,B17-B19",16,16,2,2,low,low,True,0.0,0.0,138.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+39,Nhiễm HIV - Human immuno deficiency virus disease,B20-B24,4,4,8,8,insufficient,insufficient,True,0.0,0.0,186.625,0,0,0.0,0.00016895816173520032,0.0,False,False,True
+4,Lỵ Amip - Amoebiasis,A06,19,19,1,1,low,low,True,0.0,0.0,117.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+40,Quai bị - Mumps,B26,0,0,2,2,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+41,Bệnh virut khác - Other viral diseases,"A81,A87-A89,B03-B04,B07-B09,B25,B27-B34",2806,6809,573,817,high,high,True,0.006119951040391677,0.34516523867809057,10.447980416156671,96,229,0.0048364273796701095,0.017254852267207334,0.2802937576499388,True,False,False
+42,Nấm - Mycoses,B35-B49,11,11,4,4,insufficient,insufficient,True,0.0,0.0,139.75,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+47,Các nhiễm khuẩn do sán lá - Other fluke infections,B66,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+48,Sán Echinococ - Echinococcosis,B67,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+5,"Ỉa chảy, viêm dạy dày, ruột non có nguồn gốc nhiễm khuẩn - Diarrhoea and gastroenteritis of presumed infectious origin.",A09,2222,3930,1090,2356,high,high,True,0.0008488964346349745,0.1298811544991511,11.595076400679117,19,37,0.0007814314980253015,0.049758178631016496,0.015704584040747028,True,False,False
+53,Bệnh giun sán khác - Other Helminthiases,"B68-B71,B75,B77-B83",12,12,2,2,insufficient,insufficient,True,0.0,0.0,145.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+57,Bệnh nhiễm khuẩn và kí sinh vật khác - Other infectious and parasitic diseases,"A65-A67,A69-A70,A74,A77-A79,B58-B64,B85-B89,B94-B99",181,185,26,26,medium,medium,True,0.0,0.0,70.76923076923077,0,0,0.0,0.000549114025639401,0.0,True,False,True
+58,"U ác môi, khoang miệng, họng - Malignant neoplasm of lip, oral cavity and pharynx",C00-C14,25,25,0,0,low,low,True,,,,0,0,0.0,0.0,,False,False,False
+6,Các bệnh nhiễm khuẩn ruột khác - Other intestinal infectious diseases,"A02,A04-A05,A07-A08",3387,7029,1035,2190,high,high,True,0.0013698630136986301,0.7424657534246575,6.576255707762557,25,48,0.001013748970411202,0.04625229677501109,0.021917808219178082,True,True,False
+60,U ác dạ dày - Malignant neoplasm of stomach,C16,1,1,1,1,insufficient,insufficient,True,0.0,0.0,212.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+61,U ác đại tràng - Malignant neoplasm of colon,C18,0,0,2,2,unsupported,insufficient,False,0.0,0.0,,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+62,"U ác chỗ nối trực tràng sigma, trực tràng, hậu môn và ống hậu môn - Malignant neoplasm of rectosigmoid function, rectum, anus and anal canal",C19-C21,6,6,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+63,U ác gan và đường mật trong gan - Malignant neoplasm of liver and intrahepatic bile ducts,C22,268,284,54,55,medium,medium,True,0.0,0.0,65.76363636363637,0,0,0.0,0.0011615873619295022,0.0,True,False,True
+64,U ác tụy - Malignant neoplasm of pancreas,C25,9,9,2,2,insufficient,insufficient,True,0.0,0.0,145.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+65,Các u khác cơ quan tiêu hoá - Other malignant neoplasms of digestive organs,"C17,C23-C24,C26",5,5,3,3,low,low,True,0.0,0.0,176.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+67,"U ác khí quản, phế quản và phổi - Malignant neoplasms of trachea, bronchus and lung",C33-C34,0,0,0,0,unsupported,insufficient,False,,,,0,0,0.0,0.0,,False,False,False
+68,Các u khác cơ quan hô hấp và lồng ngực - Other malignant neplasm of respiratory and intrathoracic,"C30-C31,C37-C39",240,243,47,47,medium,medium,True,0.0,0.0,66.85106382978724,0,0,0.0,0.000992629200194302,0.0,True,False,True
+69,U ác xương và sụn khớp - Malignant neoplasms of bone and articular cartilage,C40-C41,385,413,61,65,medium,medium,True,0.0,0.0,34.56923076923077,0,0,0.0,0.0013727850640985026,0.0,True,False,True
+7,Lao bộ máy hô hấp - Respiratory tuberculosis,A15-A16,35,35,4,4,low,low,True,0.0,0.0,112.0,0,0,0.0,8.447908086760016e-05,0.0,False,False,True
+70,U ác hắc tố da - Malignant melanoma of skin,C43,10,10,1,1,insufficient,insufficient,True,0.0,0.0,166.0,0,0,0.0,2.111977021690004e-05,0.0,False,False,True
+72,U ác mạc treo và các mô mềm - Malignantneoplasms of mesothelial and soft tissue,C45-C49,976,1167,162,190,high,high,True,0.0,0.0,28.736842105263158,0,0,0.0,0.0040127563412110075,0.0,True,False,True
+73,U ác vú - Malignant neoplasm of breast,C50,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+74,U ác khác cơ quan sinh dục nữ - Malignant neoplasms of female genital organs,"C51-C52,C57-C58",31,32,0,0,low,low,True,,,,0,0,0.0,0.0,,False,False,False
+76,U ác các phần khác và không xác định của tử cung - Malignant neoplasms of other and unspecified parts of uterus,C54-C55,248,273,66,73,medium,medium,True,0.0,0.0684931506849315,20.013698630136986,0,0,0.0,0.001541743225833703,0.0,True,False,True
+78,U ác khác của cơ quan sinh dục nam - Other malignant neoplasms of male genital organs,"C60,C62-C63",59,61,39,45,low,low,True,0.0,0.0,77.4,0,0,0.0,0.0009503896597605018,0.0,False,False,True
+79,U ác bàng quang - Malignant neoplasm of bladder,C67,47,48,2,2,low,low,True,0.0,0.0,172.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+8,Các dạng lao khác - Other tuberculosis,A17-A19,57,57,18,19,low,low,True,0.0,0.0,93.78947368421052,0,0,0.0,0.00040127563412110077,0.0,False,False,True
+80,U ác khác của đường tiết niệu - Other malignant neoplasms of uterinary tract,"C64-C66,C68",583,674,156,176,high,high,True,0.0,0.0,37.15340909090909,0,0,0.0,0.003717079558174407,0.0,True,False,True
+81,U ác mắt và các phần phụ - Malignant neoplasm of eye and adnexa,C69,12,12,2,2,insufficient,insufficient,True,0.0,0.0,126.5,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+82,U ác não - Malignant neoplasm of brain,C71,369,383,106,115,medium,medium,True,0.0,0.0,49.46086956521739,0,0,0.0,0.0024287735749435047,0.0,True,False,True
+83,U ác các phần khác của hệ thần kinh trung ương - Malignant neoplasm of other parts of central nervous system,"C70,C72",12,12,18,18,low,low,True,0.0,0.0,166.61111111111111,0,0,0.0,0.00038015586390420075,0.0,False,False,True
+84,"U ác các khu trú khác, khó định nghĩa, thứ phát, không xác định rõ và phức hợp - Malignant neoplasm of other and ill","C73-C80,C97",353,364,145,158,medium,medium,True,0.0,0.0,55.392405063291136,0,0,0.0,0.0033369236942702063,0.0,True,False,True
+85,Bệnh Hodgkin - Hodgkin disease,C81,143,147,26,28,medium,medium,True,0.0,0.0,49.714285714285715,0,0,0.0,0.0005913535660732011,0.0,True,False,True
+86,U bạch huyết không phải Hodgkin - Non-Hodgkin's lymphoma,C82-C85,736,820,180,198,high,high,True,0.0,0.0,25.252525252525253,0,0,0.0,0.004181714502946208,0.0,True,False,True
+87,Bệnh bạch cầu - Leukaemia,C91-C95,2967,6036,777,1577,high,high,True,0.21116043119847813,0.7393785668991757,4.201648700063411,4401,5872,0.12401529071363704,0.03330587763205136,3.7235256816740647,True,True,False
+88,"U ác limphô khác, cơ quan tạo máu và tổ chức có liên quan - Other malignant neoplasms of lymphoid, haematopoietic and related tissue","C86,C88-C90,C96",33,33,5,5,low,low,True,0.0,0.0,111.8,0,0,0.0,0.0001055988510845002,0.0,False,False,True
+9,Dịch hạch - Plague,A20,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+90,U da lành - Benign neoplasm of skin,D22-D23,341,364,91,94,medium,medium,True,0.0,0.0,61.797872340425535,0,0,0.0,0.001985258400388604,0.0,True,False,True
+91,U vú lành - Benign neoplasm of breast,D24,43,46,3,3,low,low,True,0.0,0.0,66.0,0,0,0.0,6.335931065070012e-05,0.0,False,False,True
+92,U cơ trơn tử cung - Leiomyoma of uterus,D25,1,1,0,0,insufficient,insufficient,True,,,,0,0,0.0,0.0,,False,False,False
+93,U buồng trứng lành - Benign neoplasm of ovary,D27,210,233,49,50,medium,medium,True,0.0,0.0,30.84,0,0,0.0,0.001055988510845002,0.0,True,False,True
+94,U lành cơ quan tiết niệu - Benign neoplasm of urinary organs,D30,5,5,2,2,insufficient,insufficient,True,0.0,0.0,187.0,0,0,0.0,4.223954043380008e-05,0.0,False,False,True
+95,U lành não và các phần khác của hệ thần kinh trung ương - Benign neoplasm of brain and other parts of central nervous system,D33,253,256,72,73,medium,medium,True,0.0,0.0,61.342465753424655,0,0,0.0,0.001541743225833703,0.0,True,False,True
+96,"U khác insitu, lành tính và các u tiến triển không chắc chắn hoặc chưa rõ - Other insitus and benign neoplasms and neoplasms of uncertain or unknown behaviour","D00-D05,D07-D21,D26,D28-D29,D31-D32,D34-D48",1912,2391,540,657,high,high,True,0.0,0.0487062404870624,16.604261796042618,0,0,0.0,0.013875689032503326,0.0,True,False,True
+97,Thiếu máu do thiếu sắt - Iron deficiency anaemia,D50,489,535,100,107,medium,medium,True,0.0,0.0,51.626168224299064,0,0,0.0,0.0022598154132083045,0.0,True,False,True
+98,Thiếu máu khác - Other anaemias,D51-D64,1567,2206,340,472,high,high,True,0.0,0.15889830508474576,17.970338983050848,83,89,0.0018796595493041036,0.00996853154237682,0.1885593220338983,True,False,False
+99,"Tổn thương chảy máu, bệnh khác của máu và cơ quan tạo máu - Haemorrhagic conditions and other diseases of blood, blood",D65-D77,2094,2722,644,901,high,high,True,0.005549389567147614,0.12319644839067703,11.804661487236404,59,70,0.0014783839151830027,0.019028912965426935,0.07769145394006659,True,False,False

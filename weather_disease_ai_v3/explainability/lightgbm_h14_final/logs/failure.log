@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3\explainability\lightgbm_h14_final\build_explainability.py", line 888, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3\explainability\lightgbm_h14_final\build_explainability.py", line 612, in main
+    booster = lgb.Booster(model_file=str(DEPLOY_DIR / item["model_path"]))
+  File "D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3\benchmarks\lightgbm_ovr_h3_h7_h14\artifacts\runtime_deps\lightgbm\basic.py", line 3799, in __init__
+    _safe_call(
+    ~~~~~~~~~~^
+        _LIB.LGBM_BoosterCreateFromModelfile(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        )
+        ^
+    )
+    ^
+  File "D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3\benchmarks\lightgbm_ovr_h3_h7_h14\artifacts\runtime_deps\lightgbm\basic.py", line 297, in _safe_call
+    raise LightGBMError(_LIB.LGBM_GetLastError().decode("utf-8"))
+lightgbm.basic.LightGBMError: Could not open D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3\deployment\lightgbm_h14_weather\models\disease_1.txt

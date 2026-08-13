@@ -1,0 +1,4 @@
+2026-08-08 23:16:03 | Locked model/source checksums verified before opening TEST
+2026-08-08 23:16:04 | Predicted TEST once for with_weather; rows=2772, seconds=0.0233
+2026-08-08 23:16:04 | Predicted TEST once for no_weather; rows=2772, seconds=0.0131
+2026-08-08 23:16:06 | {"decision": "H3_FINAL_MODEL_GOOD_WEATHER_WEAK", "test_query_count": 2772, "evaluated_queries": 2302, "integrity_pass": true, "models_retrained": false, "h7_h14_tested": false, "report": "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\experiments\\h3_final_test\\H3_FINAL_TEST_REPORT.md"}

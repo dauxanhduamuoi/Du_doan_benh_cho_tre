@@ -1,0 +1,13 @@
+2026-08-08 22:26:43 | GPU=NVIDIA GeForce RTX 5060 Laptop GPU; total=8151 MiB; initial used=1027 MiB
+2026-08-08 22:26:47 | with_weather: phase=setup
+2026-08-08 22:26:48 | with_weather: phase=ready
+2026-08-08 22:26:48 | with_weather: GPU memory before training=1027 MiB
+2026-08-08 22:26:49 | with_weather: phase=training
+2026-08-08 22:27:27 | with_weather: status=success, time=37.893465699860826, before=1027.0, peak=7114.0, after=1024.0 MiB
+2026-08-08 22:27:28 | no_weather: phase=setup
+2026-08-08 22:27:29 | no_weather: phase=ready
+2026-08-08 22:27:29 | no_weather: GPU memory before training=1024 MiB
+2026-08-08 22:27:29 | no_weather: phase=training
+2026-08-08 22:28:06 | no_weather: phase=done
+2026-08-08 22:28:06 | no_weather: status=success, time=36.81115209986456, before=1024.0, peak=7116.0, after=1025.0 MiB
+2026-08-08 22:28:08 | {"with_weather": "success", "no_weather": "success", "baseline": "success", "decision": "H7_MODEL_GOOD_BUT_WEATHER_WEAK", "integrity_pass": true, "test_used": false, "horizons_trained": [7], "report": "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\experiments\\h7_full_train\\H7_TRAINING_REPORT.md"}

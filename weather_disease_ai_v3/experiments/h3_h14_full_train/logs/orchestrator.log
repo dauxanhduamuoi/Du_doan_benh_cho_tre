@@ -1,0 +1,21 @@
+2026-08-08 22:56:48 | GPU=NVIDIA GeForce RTX 5060 Laptop GPU; total=8151 MiB; initial used=0 MiB
+2026-08-08 22:56:53 | h3_with_weather: phase=ready
+2026-08-08 22:56:54 | h3_with_weather: GPU memory before training=0 MiB
+2026-08-08 22:56:54 | h3_with_weather: phase=training
+2026-08-08 22:57:18 | h3_with_weather: status=success, time=22.39397700014524, before=0.0, peak=6086.0, after=0.0 MiB
+2026-08-08 22:57:20 | h3_no_weather: phase=ready
+2026-08-08 22:57:21 | h3_no_weather: GPU memory before training=0 MiB
+2026-08-08 22:57:22 | h3_no_weather: phase=training
+2026-08-08 22:57:38 | h3_no_weather: phase=done
+2026-08-08 22:57:39 | h3_no_weather: status=success, time=16.326553500024602, before=0.0, peak=6086.0, after=0.0 MiB
+2026-08-08 22:57:43 | h14_with_weather: phase=setup
+2026-08-08 22:57:44 | h14_with_weather: phase=ready
+2026-08-08 22:57:45 | h14_with_weather: GPU memory before training=0 MiB
+2026-08-08 22:57:45 | h14_with_weather: phase=training
+2026-08-08 22:58:04 | h14_with_weather: status=success, time=16.41185489995405, before=0.0, peak=6086.0, after=0.0 MiB
+2026-08-08 22:58:06 | h14_no_weather: phase=ready
+2026-08-08 22:58:07 | h14_no_weather: GPU memory before training=0 MiB
+2026-08-08 22:58:08 | h14_no_weather: phase=training
+2026-08-08 22:58:24 | h14_no_weather: phase=done
+2026-08-08 22:58:26 | h14_no_weather: status=success, time=17.048145999899134, before=0.0, peak=6086.0, after=0.0 MiB
+2026-08-08 22:58:28 | {"h3": "H3_WEATHER_PROMISING", "h14": "H14_MODEL_GOOD_BUT_WEATHER_WEAK", "recommended_horizon_for_final_test": "H3", "recommendation_reason": "Ch\u1ec9 horizon n\u00e0y \u0111\u1ea1t weather-gain gate, c\u1ea1nh tranh baseline v\u00e0 kh\u00f4ng c\u00f3 metric suy gi\u1ea3m nghi\u00eam tr\u1ecdng.", "integrity_pass": true, "h7_retrained": false, "test_used": false, "reports": ["D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\experiments\\h3_h14_full_train\\H3_H14_TRAINING_REPORT.md", "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\experiments\\h3_h14_full_train\\HORIZON_COMPARISON.md"]}

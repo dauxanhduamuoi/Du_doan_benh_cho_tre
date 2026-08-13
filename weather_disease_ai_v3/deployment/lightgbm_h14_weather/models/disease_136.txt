@@ -1,0 +1,258 @@
+tree
+version=v4
+num_class=1
+num_tree_per_iteration=1
+label_index=0
+max_feature_idx=44
+objective=binary sigmoid:1
+feature_names=age_group gender month season day_of_year_sin day_of_year_cos weather_code_current temperature_mean_current temperature_max_current temperature_min_current humidity_mean_current humidity_max_current humidity_min_current wind_speed_mean_current wind_speed_max_current precipitation_sum_current rain_sum_current wind_gust_max_current rain_day_current temperature_mean_3d temperature_max_3d temperature_min_3d humidity_mean_3d humidity_max_3d humidity_min_3d wind_speed_mean_3d wind_speed_max_3d precipitation_sum_3d rain_sum_3d rain_days_3d rain_max_daily_3d wind_gust_max_3d temperature_mean_7d temperature_max_7d temperature_min_7d humidity_mean_7d humidity_max_7d humidity_min_7d wind_speed_mean_7d wind_speed_max_7d precipitation_sum_7d rain_sum_7d rain_days_7d rain_max_daily_7d wind_gust_max_7d
+feature_infos=-1:0:1:2:3:4:5 -1:0:1 [1:12] -1:1:0 [-0.99999942202469239:0.99998555065071859] [-0.99997919295908244:0.9999907524084426] [0:61] [23.658332999999999:32.533332999999999] [25.899999999999999:39.200000000000003] [17.899999999999999:29.300000000000001] [48.958333000000003:91.625] [63:100] [23:86] [2.8541669999999999:19.695833] [6.4000000000000004:30.100000000000001] [0:63.100000000000001] [0:63.100000000000001] [14:56.899999999999999] [0:1] [23.766667000000002:32.427778000000004] [27.699999999999999:39.200000000000003] [17.899999999999999:28.100000000000001] [52.569443999999997:90.694444000000004] [73:100] [23:79] [4.125:17.329167000000002] [9.6999999999999993:30.100000000000001] [0:93.900000000000006] [0:93.900000000000006] [0:3] [0:63.100000000000001] [17.300000000000001:56.899999999999999] [24.365476000000001:32.235118999999997] [28.699999999999999:39.200000000000003] [17.899999999999999:27.5] [55.767856999999999:89.523809999999997] [77:100] [23:72] [4.5327380000000002:15.469643] [11.6:30.100000000000001] [0:163.90000000000001] [0:163.90000000000001] [0:7] [0:63.100000000000001] [23:56.899999999999999]
+tree_sizes=981 1010 1009 1009 1005
+
+Tree=0
+num_leaves=8
+num_cat=1
+split_feature=0 2 36 5 37 4 35
+split_gain=120.107 105.384 109.302 95.9881 56.86 7.16259 20.0955
+threshold=0 8.5000000000000018 99.500000000000014 -0.7614016681079937 30.500000000000004 -0.52766804058324157 81.586309500000013
+decision_type=1 2 2 2 2 2 2
+left_child=-1 2 4 -4 -2 -3 -7
+right_child=1 5 3 -5 -6 6 -8
+leaf_value=-3.9446456254087412 -3.7965992385851983 -3.9488396772397594 -3.635424916840531 -3.8876122388741954 -3.8866893367696953 -3.9448452661420257 -3.8167160239623463
+leaf_weight=90.402100142091513 20.493737664073706 37.075565289705992 9.011016655713318 6.2084542401134959 96.668941099196672 8.5633851587772352 3.5032030194997779
+leaf_count=4645 1053 1905 463 319 4967 440 180
+internal_value=-3.90071 -3.8774 -3.85308 -3.73124 -3.8702 -3.93819 -3.90418
+internal_weight=271.926 181.524 132.382 15.2195 117.163 49.1422 12.0666
+internal_count=13972 9327 6802 782 6020 2525 620
+cat_boundaries=0 1
+cat_threshold=48
+is_linear=0
+shrinkage=1
+
+
+Tree=1
+num_leaves=8
+num_cat=1
+split_feature=0 2 34 5 20 4 42
+split_gain=115.117 89.3875 82.6055 71.9382 19.3145 9.86582 28.0015
+threshold=0 8.5000000000000018 24.450000000000003 -0.77788789561442695 36.45000000000001 -0.54220184589352438 6.5000000000000009
+decision_type=1 2 2 2 2 2 2
+left_child=-1 2 3 -2 -4 -3 -7
+right_child=1 5 4 -5 -6 6 -8
+leaf_value=-0.04521647765764359 0.13189681039054851 -0.049550154219057979 -0.033262327227063578 0.038129185129862811 0.044666984359608697 -0.036985995880537602 0.12861156923428377
+leaf_weight=86.479620516300201 29.601345429196954 35.050012281164527 32.831028638407588 65.728560736402869 9.4574360493570548 9.7820073012262565 2.3450010251253834
+leaf_count=4642 1379 1889 1664 3257 466 515 113
+internal_value=-0.00088226 0.0212848 0.042724 0.0683124 -0.0152049 -0.0364253 0.00239373
+internal_weight=271.275 184.795 137.618 95.3299 42.2885 47.177 12.127
+internal_count=13925 9283 6766 4636 2130 2517 628
+cat_boundaries=0 1
+cat_threshold=48
+is_linear=0
+shrinkage=0.05
+
+
+Tree=2
+num_leaves=8
+num_cat=1
+split_feature=0 2 34 5 20 5 42
+split_gain=108.94 77.2969 66.466 51.3809 21.9942 10.7829 27.8051
+threshold=0 8.5000000000000018 24.450000000000003 -0.76696334127844745 36.45000000000001 0.83730377313544024 6.5000000000000009
+decision_type=1 2 2 2 2 2 2
+left_child=-1 2 3 -2 -4 -3 -7
+right_child=1 5 4 -5 -6 6 -8
+leaf_value=-0.045005698377921309 0.10942725248574925 -0.049436295463661697 -0.034217663505062716 0.034452204918058137 0.046995647293322625 -0.036935499051941059 0.12053125063163017
+leaf_weight=83.633662657812238 34.471874533221126 33.381302632391453 31.843936609104276 68.565976981073618 10.223697815090416 9.7683774475008232 2.791426856070756
+leaf_count=4689 1416 1887 1667 3278 482 533 119
+internal_value=-0.00078923 0.0200027 0.0388891 0.0603462 -0.0138475 -0.0349466 0.00436953
+internal_weight=274.68 191.047 145.105 103.038 42.0676 45.9411 12.5598
+internal_count=14071 9382 6843 4694 2149 2539 652
+cat_boundaries=0 1
+cat_threshold=48
+is_linear=0
+shrinkage=0.05
+
+
+Tree=3
+num_leaves=8
+num_cat=1
+split_feature=0 2 36 39 4 4 42
+split_gain=107.428 78.3338 60.1779 36.8395 30.3622 7.96841 18.5218
+threshold=0 8.5000000000000018 99.500000000000014 26.050000000000004 -0.66528616069191593 -0.54220184589352438 6.5000000000000009
+decision_type=1 2 2 2 2 2 2
+left_child=-1 2 3 -2 -4 -3 -7
+right_child=1 5 4 -5 -6 6 -8
+leaf_value=-0.044713558202462353 0.015439068896220485 -0.049323257508480885 -0.0366356947153531 0.097929258970838373 0.13472810568039706 -0.036421326353620324 0.091995116655002596
+leaf_weight=79.705386703833938 115.44892048090696 31.826466059312224 2.5365497805178192 14.434218063950537 19.140043755993247 9.4097387716174108 2.8454409241676322
+leaf_count=4667 5426 1887 123 656 681 532 108
+internal_value=0.000698206 0.0205608 0.0386287 0.0252846 0.113944 -0.0364779 -0.00191432
+internal_weight=275.347 195.641 151.56 129.883 21.6766 44.0816 12.2552
+internal_count=14080 9413 6886 6082 804 2527 640
+cat_boundaries=0 1
+cat_threshold=48
+is_linear=0
+shrinkage=0.05
+
+
+Tree=4
+num_leaves=8
+num_cat=1
+split_feature=0 2 34 39 22 4 22
+split_gain=91.6175 70.606 61.7119 50.721 18.2099 5.42839 14.1294
+threshold=0 8.5000000000000018 24.450000000000003 27.100000000000005 73.472222000000016 -0.54220184589352438 82.430555500000011
+decision_type=1 2 2 2 2 2 2
+left_child=-1 2 3 -2 -4 -3 -7
+right_child=1 5 4 -5 -6 6 -8
+leaf_value=-0.044438084771713564 0.043273957776433315 -0.04925304332229747 0.027844439647850085 0.18605186354805298 -0.040756541121838068 -0.040831366006923601 0.068888081375653595
+leaf_weight=76.28689780831337 107.91322985291481 31.213242201134562 13.572809744626282 5.7453736290335646 28.40814302675426 8.9800835717469436 3.1692017279565325
+leaf_count=4664 4484 1941 624 225 1493 507 128
+internal_value=-0.00148562 0.016516 0.0330395 0.052051 -0.0184454 -0.038476 -0.00914819
+internal_weight=275.289 199.002 155.64 113.659 41.981 43.3625 12.1493
+internal_count=14066 9402 6826 4709 2117 2576 635
+cat_boundaries=0 1
+cat_threshold=48
+is_linear=0
+shrinkage=0.05
+
+
+end of trees
+
+feature_importances:
+age_group=5
+month=5
+day_of_year_sin=5
+day_of_year_cos=4
+temperature_min_7d=3
+rain_days_7d=3
+temperature_max_3d=2
+humidity_mean_3d=2
+humidity_max_7d=2
+wind_speed_max_7d=2
+humidity_mean_7d=1
+humidity_min_7d=1
+
+parameters:
+[boosting: gbdt]
+[objective: binary]
+[metric: binary_logloss]
+[tree_learner: serial]
+[device_type: cpu]
+[data_sample_strategy: bagging]
+[data: ]
+[valid: ]
+[num_iterations: 5]
+[learning_rate: 0.05]
+[num_leaves: 15]
+[num_threads: 8]
+[seed: 42]
+[deterministic: 0]
+[force_col_wise: 0]
+[force_row_wise: 0]
+[histogram_pool_size: -1]
+[max_depth: 4]
+[min_data_in_leaf: 20]
+[min_sum_hessian_in_leaf: 0.001]
+[bagging_fraction: 0.9]
+[pos_bagging_fraction: 1]
+[neg_bagging_fraction: 1]
+[bagging_freq: 1]
+[bagging_seed: 400]
+[bagging_by_query: 0]
+[feature_fraction: 0.9]
+[feature_fraction_bynode: 1]
+[feature_fraction_seed: 30056]
+[extra_trees: 0]
+[extra_seed: 12879]
+[early_stopping_round: 0]
+[early_stopping_min_delta: 0]
+[first_metric_only: 0]
+[max_delta_step: 0]
+[lambda_l1: 0]
+[lambda_l2: 1]
+[linear_lambda: 0]
+[min_gain_to_split: 0]
+[drop_rate: 0.1]
+[max_drop: 50]
+[skip_drop: 0.5]
+[xgboost_dart_mode: 0]
+[uniform_drop: 0]
+[drop_seed: 17869]
+[top_rate: 0.2]
+[other_rate: 0.1]
+[min_data_per_group: 100]
+[max_cat_threshold: 32]
+[cat_l2: 10]
+[cat_smooth: 10]
+[max_cat_to_onehot: 4]
+[top_k: 20]
+[monotone_constraints: ]
+[monotone_constraints_method: basic]
+[monotone_penalty: 0]
+[feature_contri: ]
+[forcedsplits_filename: ]
+[refit_decay_rate: 0.9]
+[cegb_tradeoff: 1]
+[cegb_penalty_split: 0]
+[cegb_penalty_feature_lazy: ]
+[cegb_penalty_feature_coupled: ]
+[path_smooth: 0]
+[interaction_constraints: ]
+[verbosity: -1]
+[saved_feature_importance_type: 0]
+[use_quantized_grad: 0]
+[num_grad_quant_bins: 4]
+[quant_train_renew_leaf: 0]
+[stochastic_rounding: 1]
+[linear_tree: 0]
+[max_bin: 255]
+[max_bin_by_feature: ]
+[min_data_in_bin: 3]
+[bin_construct_sample_cnt: 200000]
+[data_random_seed: 175]
+[is_enable_sparse: 1]
+[enable_bundle: 1]
+[use_missing: 1]
+[zero_as_missing: 0]
+[feature_pre_filter: 1]
+[pre_partition: 0]
+[two_round: 0]
+[header: 0]
+[label_column: ]
+[weight_column: ]
+[group_column: ]
+[ignore_column: ]
+[categorical_feature: 0,1,3]
+[forcedbins_filename: ]
+[precise_float_parser: 0]
+[parser_config_file: ]
+[objective_seed: 16083]
+[num_class: 1]
+[is_unbalance: 0]
+[scale_pos_weight: 1]
+[sigmoid: 1]
+[boost_from_average: 1]
+[reg_sqrt: 0]
+[alpha: 0.9]
+[fair_c: 1]
+[poisson_max_delta_step: 0.7]
+[tweedie_variance_power: 1.5]
+[lambdarank_truncation_level: 30]
+[lambdarank_norm: 1]
+[label_gain: ]
+[lambdarank_position_bias_regularization: 0]
+[eval_at: ]
+[multi_error_top_k: 1]
+[auc_mu_weights: ]
+[num_machines: 1]
+[local_listen_port: 12400]
+[time_out: 120]
+[machine_list_filename: ]
+[machines: ]
+[gpu_platform_id: -1]
+[gpu_device_id: -1]
+[gpu_device_id_list: ]
+[gpu_use_dp: 0]
+[num_gpu: 1]
+
+end of parameters
+
+pandas_categorical:[]

@@ -1,0 +1,8 @@
+0:	learn: 0.5208295	test: 0.5243682	best: 0.5243682 (0)	total: 627ms	remaining: 1m 2s
+20:	learn: 0.1587631	test: 0.2200071	best: 0.2186443 (17)	total: 25.9s	remaining: 1m 37s
+40:	learn: 0.1407956	test: 0.2219504	best: 0.2186443 (17)	total: 48.3s	remaining: 1m 9s
+60:	learn: 0.1297315	test: 0.2254231	best: 0.2186443 (17)	total: 1m 6s	remaining: 42.6s
+80:	learn: 0.1207861	test: 0.2273805	best: 0.2186443 (17)	total: 1m 27s	remaining: 20.6s
+99:	learn: 0.1142255	test: 0.2292701	best: 0.2186443 (17)	total: 1m 47s	remaining: 0us
+bestTest = 0.2186442982
+bestIteration = 17

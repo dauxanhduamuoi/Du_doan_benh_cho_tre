@@ -1,0 +1,40 @@
+project:
+  name: weather_disease_ai_v3
+  random_seed: 42
+
+timezone: Asia/Ho_Chi_Minh
+
+data:
+  patient_file: data/raw/train_history.xlsx
+  weather_file: data/raw/weather_hcm_history.csv
+  original_patient_source: ../seasonal_disease_backend/Tool/weather/train_history.xlsx
+  original_weather_source: ../seasonal_disease_backend/Tool/weather/open-meteo-10.79N106.63E6m.csv
+  patient_sheet: DS-BenhNhan
+  disease_sheet: DS-MaBenh
+  output_format: csv.gz
+
+weather_lookback:
+  current: true
+  days:
+    - 3
+    - 7
+
+prediction_horizons:
+  - 3
+  - 7
+  - 14
+
+target_includes_anchor_day: true
+
+split:
+  train_ratio: 0.70
+  validation_ratio: 0.15
+  test_ratio: 0.15
+  purge_gap_days: 13
+  split_unit: unique_anchor_date
+
+support:
+  definition: summed_horizon_case_count_on_train_queries
+  high_min: 1000
+  medium_min: 200
+  low_min: 20

@@ -1,0 +1,13 @@
+2026-08-08 21:32:11 | GPU=NVIDIA GeForce RTX 5060 Laptop GPU; initial memory=905 MiB
+2026-08-08 21:32:11 | Reusing locked old sample: train=1296 validation=275
+2026-08-08 21:32:16 | LIGHT_A: phase=setup
+2026-08-08 21:32:17 | LIGHT_A: phase=smoke
+2026-08-08 21:32:36 | LIGHT_A: phase=full
+2026-08-08 21:34:24 | LIGHT_A: phase=done
+2026-08-08 21:34:25 | LIGHT_A: status=success, time=108.38189979991876, peak_total=7751.0 MiB
+2026-08-08 21:34:28 | LIGHT_B: phase=smoke
+2026-08-08 21:34:47 | LIGHT_B: phase=full
+2026-08-08 21:37:55 | LIGHT_B: phase=done
+2026-08-08 21:37:56 | LIGHT_B: status=success, time=188.10198900010437, peak_total=7861.0 MiB
+2026-08-08 21:37:56 | Weather ablation skipped: BEST_LIGHT_CONFIG exceeded resource-warning gate 7500 MiB
+2026-08-08 21:37:56 | {"light_a_status": "success", "light_b_status": "success", "best": "LIGHT_A", "no_weather_status": "not_run", "integrity_pass": true, "full_train_performed": false, "report": "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\benchmarks\\multilabel_lightweight\\BENCHMARK_LIGHTWEIGHT_REPORT.md"}

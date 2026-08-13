@@ -1,0 +1,21 @@
+2026-08-08 20:55:45,201 | INFO | Workspace: D:\OS_C\Bài học trên trường\Thực tập\Fullstack_2\ThucTap-main\weather_disease_ai_v3
+2026-08-08 20:55:45,202 | INFO | CatBoost 1.2.10; GPU=NVIDIA GeForce RTX 5060 Laptop GPU; initial memory=1575 MiB
+2026-08-08 20:55:45,638 | INFO | Model-supported disease count from TRAIN: 221
+2026-08-08 20:55:46,237 | INFO | Benchmark query counts: train=1296 validation=275
+2026-08-08 20:55:46,477 | INFO | Multi-label GPU smoke test: 300 train queries
+2026-08-08 20:58:53,337 | INFO | Multi-label benchmark: 100 GPU iterations
+2026-08-08 21:09:43,545 | INFO | Expanding Ranker benchmark candidates
+2026-08-08 21:09:44,248 | INFO | Ranker GPU smoke test: 66300 expanded rows
+2026-08-08 21:09:44,914 | INFO | Ranker benchmark: 100 GPU iterations
+2026-08-08 21:09:47,422 | INFO | Benchmark complete:
+{
+  "supported_disease": 221,
+  "train_queries": 1296,
+  "validation_queries": 275,
+  "multilabel_status": "success",
+  "ranker_status": "success",
+  "recommended_algorithm": "CatBoost Multi-label Classification (MultiLogloss)",
+  "processed_checksums_unchanged": true,
+  "full_train_performed": false,
+  "report": "D:\\OS_C\\B\u00e0i h\u1ecdc tr\u00ean tr\u01b0\u1eddng\\Th\u1ef1c t\u1eadp\\Fullstack_2\\ThucTap-main\\weather_disease_ai_v3\\benchmarks\\pretrain_model_selection\\BENCHMARK_REPORT.md"
+}

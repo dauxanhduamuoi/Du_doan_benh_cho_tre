@@ -1,0 +1,37 @@
+{
+  "evaluation_split": "test_once_after_validation_selection",
+  "metrics": {
+    "case_weighted": {
+      "macro_f1": 0.004024115029184278,
+      "multiclass_log_loss": 4.681423541743591,
+      "top_10_accuracy": 0.5380050265053116,
+      "top_1_accuracy": 0.14794399036938477,
+      "top_3_accuracy": 0.29204418255929376,
+      "top_5_accuracy": 0.38606939956493275,
+      "weighted_f1": 0.0649971914107682
+    },
+    "unweighted": {
+      "macro_f1": 0.0025662931816519676,
+      "multiclass_log_loss": 5.175278737010285,
+      "top_10_accuracy": 0.36784444605673655,
+      "top_1_accuracy": 0.05104113763331641,
+      "top_3_accuracy": 0.14253065370383805,
+      "top_5_accuracy": 0.21954581731118045,
+      "weighted_f1": 0.01596675379042326
+    }
+  },
+  "selected_experiment": "current_plus_3d_7d",
+  "test_used_for_selection": false,
+  "unsupported_test_classes": [
+    "15",
+    "16",
+    "2",
+    "219",
+    "294",
+    "295",
+    "35",
+    "40",
+    "61"
+  ],
+  "unsupported_test_rows": 858
+}

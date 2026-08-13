@@ -1,0 +1,14 @@
+{"event": "preflight_pass", "time_local": "2026-08-12 20:13:40", "fit_queries": 15612, "diseases": 221, "features": 45}
+{"event": "resume_from_persisted_models", "time_local": "2026-08-12 20:13:40", "models": 221, "additional_training": false}
+{"event": "reproduction_pass", "time_local": "2026-08-12 20:13:41", "max_absolute_difference": 0.0, "mean_absolute_difference": 0.0, "rmse": 0.0, "top5_agreement": 1.0, "top10_agreement": 1.0, "test_queries": 2772, "test_target_loaded": false, "purpose": "score reproduction only; no tuning or model selection", "decision": "REPRODUCTION_PASS"}
+{"event": "shap_started", "time_local": "2026-08-12 20:13:41", "shap_version": "0.52.0", "model_output": "raw"}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:42", "diseases": 25, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:42", "diseases": 50, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:43", "diseases": 75, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:43", "diseases": 100, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:44", "diseases": 125, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:45", "diseases": 150, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:45", "diseases": 175, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:46", "diseases": 200, "total": 221}
+{"event": "shap_progress", "time_local": "2026-08-12 20:13:47", "diseases": 221, "total": 221}
+{"event": "explainability_complete", "time_local": "2026-08-12 20:13:49", "reproduction": "REPRODUCTION_PASS", "shap_additivity": "PASS", "runtime_seconds": 10.15423120000196}

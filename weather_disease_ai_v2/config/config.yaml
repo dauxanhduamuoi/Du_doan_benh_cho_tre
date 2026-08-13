@@ -1,0 +1,31 @@
+project:
+  name: weather_disease_ai_v2
+  random_seed: 42
+
+data:
+  patient_file: data/raw/train_history.xlsx
+  weather_file: data/raw/weather_hcm_history.csv
+  patient_sheet: DS-BenhNhan
+  disease_sheet: DS-MaBenh
+
+weather:
+  windows:
+    - 1
+    - 3
+    - 7
+    - 14
+
+model:
+  type: CatBoostClassifier
+  target: disease_group_id
+  weight_column: case_count
+  device: GPU
+  gpu_id: "0"
+  loss_function: MultiClass
+  eval_metric: MultiClass
+  iterations: 1000
+  depth: 8
+  learning_rate: 0.05
+  early_stopping_rounds: 80
+  verbose: 50
+  allow_writing_files: false

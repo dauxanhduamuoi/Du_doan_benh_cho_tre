@@ -1,0 +1,86 @@
+[
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/train_history.xlsx",
+    "destination_path": "weather_disease_ai_v2/data/raw/train_history.xlsx",
+    "file_size": 11729304,
+    "sha256": "ae148fdadbcc901a3ade4bff9281bc856f34fc24906fa0c561a2cb09a3f28c78",
+    "purpose": "primary patient and disease source data"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/open-meteo-10.79N106.63E6m.csv",
+    "destination_path": "weather_disease_ai_v2/data/raw/weather_hcm_history.csv",
+    "file_size": 1760016,
+    "sha256": "d40d4931966e89778a959598ec5b4ecb701f8f67b0ae3356d89c6c164797ae82",
+    "purpose": "primary historical weather source data"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/output_weather_ai/weather_ai_positive_cases.csv",
+    "destination_path": "weather_disease_ai_v2/data/reference/weather_ai_positive_cases.csv",
+    "file_size": 21029986,
+    "sha256": "63dc375e2ba07918efc73f7625ac91656ca5e90e753d107c3cf051eb87e9e417",
+    "purpose": "legacy output for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/output_weather_ai/weather_daily_features.csv",
+    "destination_path": "weather_disease_ai_v2/data/reference/weather_daily_features.csv",
+    "file_size": 187778,
+    "sha256": "94c8c1ce56e843fb73745a7c6f491910fd3405ba5f1461853d25db8cfa9405f7",
+    "purpose": "legacy output for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/output_weather_ai/disease_group_catalog_from_ds_mabenh.csv",
+    "destination_path": "weather_disease_ai_v2/data/reference/disease_group_catalog_from_ds_mabenh.csv",
+    "file_size": 30273,
+    "sha256": "36274a2f2ff3b67958b3f817fb1bbe07e668f1fd6a0c52616ef87779333e267f",
+    "purpose": "legacy output for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/output_weather_ai/dataset_summary.json",
+    "destination_path": "weather_disease_ai_v2/data/reference/dataset_summary.json",
+    "file_size": 1134,
+    "sha256": "f8eafef5ad9ce570bbdf22c3eb1a17a3a3758f09f68b79116c0bfde4f4b3a902",
+    "purpose": "legacy output for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/scripts/build_weather_ai_dataset.py",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/build_weather_ai_dataset.py",
+    "file_size": 20153,
+    "sha256": "2bd0041861431df82bb44bc26f9a487fd610165aa5dd6d09f0facb896074ae11",
+    "purpose": "legacy implementation for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/Tool/weather/build_weather_ai_dataset_final.py",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/build_weather_ai_dataset_final.py",
+    "file_size": 20153,
+    "sha256": "2bd0041861431df82bb44bc26f9a487fd610165aa5dd6d09f0facb896074ae11",
+    "purpose": "legacy implementation for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/scripts/train_weather_ai_model.py",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/train_weather_ai_model.py",
+    "file_size": 12093,
+    "sha256": "34a0d484819bdcbe0385f4f4262b3e90422ee69ea803bd1a4f13ed36821bbb95",
+    "purpose": "legacy implementation for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/app/services/weather_ai_service.py",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/weather_ai_service.py",
+    "file_size": 17196,
+    "sha256": "e2b40a9cecb82d5ef84cda8dd937750a5385e12f6f2d2ba61096584516671be2",
+    "purpose": "legacy implementation for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/app/routers/weather_ai.py",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/weather_ai.py",
+    "file_size": 4630,
+    "sha256": "c1236401766eec159c17ca9b319214e6709ce531e171310454b56674a5295c1e",
+    "purpose": "legacy implementation for reference only"
+  },
+  {
+    "source_path": "seasonal_disease_backend/WEATHER_AI_API_README.md",
+    "destination_path": "weather_disease_ai_v2/legacy_reference/WEATHER_AI_API_README.md",
+    "file_size": 2123,
+    "sha256": "98a2148938a9eabe6709cc807a5d727155a66d71484fdefd664372047a9c6d5c",
+    "purpose": "legacy documentation for reference only"
+  }
+]

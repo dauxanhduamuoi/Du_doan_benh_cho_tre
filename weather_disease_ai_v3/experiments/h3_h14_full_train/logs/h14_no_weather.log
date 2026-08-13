@@ -1,0 +1,6 @@
+0:	learn: 0.5176230	test: 0.5203760	best: 0.5203760 (0)	total: 298ms	remaining: 1m 29s
+20:	learn: 0.1957559	test: 0.2431940	best: 0.2406127 (15)	total: 6.68s	remaining: 1m 28s
+40:	learn: 0.1846258	test: 0.2520666	best: 0.2406127 (15)	total: 14.5s	remaining: 1m 31s
+bestTest = 0.2406126686
+bestIteration = 15
+Shrink model to first 16 iterations.
