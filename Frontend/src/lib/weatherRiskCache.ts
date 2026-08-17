@@ -25,7 +25,8 @@ export interface CachedWeatherRiskState {
   savedAt: string;
 }
 
-const STORAGE_KEY = 'sd_weather_ai_result';
+const STORAGE_KEY = 'sd_weather_ai_v3_result';
+const LEGACY_STORAGE_KEY = 'sd_weather_ai_result';
 
 export function loadWeatherRiskCache(): CachedWeatherRiskState | null {
   if (typeof window === 'undefined') return null;
@@ -35,7 +36,14 @@ export function loadWeatherRiskCache(): CachedWeatherRiskState | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as Partial<CachedWeatherRiskState>;
-    if (!parsed.result || !parsed.ageGroup || !parsed.gender) return null;
+    const predictions = parsed.result?.predictions ?? parsed.result?.top_risks;
+    if (
+      !parsed.result ||
+      !parsed.ageGroup ||
+      !parsed.gender ||
+      !Array.isArray(predictions) ||
+      predictions.some((row) => typeof row?.rank !== 'number' || typeof row?.ranking_score !== 'number')
+    ) return null;
 
     return {
       result: parsed.result,
@@ -68,4 +76,5 @@ export function saveWeatherRiskCache(state: CachedWeatherRiskState) {
 export function clearWeatherRiskCache() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY);
 }

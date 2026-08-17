@@ -1,0 +1,73 @@
+{
+  "status": "PASS",
+  "model_count": 221,
+  "feature_count": 45,
+  "ranking_universe": 221,
+  "ranking_regression_pass": true,
+  "ranking_regression_tolerance": 1e-12,
+  "feature_regression_pass": true,
+  "tier1_tests_pass": true,
+  "tier2_gate_tests_pass": true,
+  "graceful_fallback_pass": true,
+  "backward_compatibility_pass": true,
+  "backward_compatibility_notes": [
+    "Existing status/options/predict-risk paths are preserved.",
+    "top_risks, input, disease_group_id and disease_group_name aliases are preserved.",
+    "Legacy probability/predicted_cases/risk_score/risk_level fields were intentionally removed because V3 is an uncalibrated ranking model.",
+    "Incomplete manual weather is rejected instead of being expanded into mathematically incorrect rolling windows."
+  ],
+  "tests": {
+    "framework": "pytest",
+    "passed": 16,
+    "failed": 0,
+    "warning_count": 1,
+    "warning": "FastAPI TestClient compatibility layer emits a Starlette httpx deprecation warning; runtime tests pass."
+  },
+  "integration_example": {
+    "input_scope": "TRAIN context; no target loaded",
+    "query_id": "Q20210107_C00",
+    "top_k": 5,
+    "top_disease_ids": ["6", "169", "41", "170", "165"],
+    "ranking_universe": 221,
+    "tier1_available_count": 5,
+    "tier2_available_count": 0,
+    "tier2_branch_verified_by_fixture": true
+  },
+  "performance": {
+    "measurement_runs": 7,
+    "startup_model_load_seconds": 0.773891,
+    "feature_preparation_median_ms": 10.917,
+    "ranking_221_models_median_ms": 224.641,
+    "tier1_top5_median_ms": 13.101,
+    "tier2_top5_median_ms": 0.020,
+    "total_runtime_median_ms": 255.624,
+    "total_runtime_min_ms": 240.909,
+    "total_runtime_max_ms": 315.343,
+    "network_weather_fetch_included": false
+  },
+  "integrity": {
+    "deployment_tree_before": "63eaf37d1cce2c736603697f70870676f1e3b34d910a325fde28881bd523f9e2",
+    "deployment_tree_after": "63eaf37d1cce2c736603697f70870676f1e3b34d910a325fde28881bd523f9e2",
+    "model_manifest_before": "1b6e0b4a3c2fb7313000c730738244e6126e24c0fb3c278d08059e72d0d95416",
+    "model_manifest_after": "1b6e0b4a3c2fb7313000c730738244e6126e24c0fb3c278d08059e72d0d95416",
+    "shap_tree_before": "72a95b7e9712c4ebfddf5c76d027b35cfb8d01d5788ae88daed18c22348ec6fb",
+    "shap_tree_after": "72a95b7e9712c4ebfddf5c76d027b35cfb8d01d5788ae88daed18c22348ec6fb",
+    "final_test_tree_before": "2ab4dcf0a31268da5c72928479a0aa8a01618c1cccc8758d4989b9664e452f92",
+    "final_test_tree_after": "2ab4dcf0a31268da5c72928479a0aa8a01618c1cccc8758d4989b9664e452f92",
+    "pre_tier2_tree_before": "7fa9a0c1eef6ef19182264a83458199e4ce094a01cacdc6c9d30ede4eece4421",
+    "pre_tier2_tree_after": "7fa9a0c1eef6ef19182264a83458199e4ce094a01cacdc6c9d30ede4eece4421",
+    "medical_knowledge_before": "4fc3cda83981bf7ecf0dc3bb113da3bcb786e4157cfae11202527bebba40a92c",
+    "medical_knowledge_after": "4fc3cda83981bf7ecf0dc3bb113da3bcb786e4157cfae11202527bebba40a92c"
+  },
+  "model_files_modified": false,
+  "model_manifest_modified": false,
+  "shap_files_modified": false,
+  "final_test_files_modified": false,
+  "pre_tier2_files_modified": false,
+  "medical_knowledge_modified": false,
+  "frontend_modified": false,
+  "training_performed": false,
+  "tuning_performed": false,
+  "model_selection_performed": false,
+  "test_target_used": false
+}

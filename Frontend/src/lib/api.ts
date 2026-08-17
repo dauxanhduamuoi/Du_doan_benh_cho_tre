@@ -17,6 +17,18 @@ export function setToken(token: string | null) {
 
 type RequestOptions = RequestInit & { skipAuth?: boolean };
 
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail || `Request failed: ${status}`);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { skipAuth, headers, ...rest } = options;
 
@@ -42,7 +54,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     } catch {
       // ignore parse error
     }
-    throw new Error(detail || `Request failed: ${res.status}`);
+    throw new ApiError(res.status, detail);
   }
 
   if (res.status === 204) {
@@ -608,20 +620,22 @@ export function getDiseaseBilingual(): Promise<Record<string, string>> {
 
 export interface WeatherAIStatus {
   ready: boolean;
-  model_path?: string;
+  model_count?: number;
+  expected_model_count?: number;
   model_type?: string;
-  description?: string;
   age_groups?: string[];
   genders?: string[];
   disease_groups?: number;
-  training_summary?: Record<string, unknown>;
-  training_weather_scope?: string;
-  runtime_weather_note?: string;
-  predicted_cases_unit?: string;
+  medical_knowledge_ready?: boolean;
+  medical_knowledge_records?: number;
+  medical_knowledge_error?: string | null;
+  error?: string;
   message?: string;
 }
 
 export interface WeatherAIDiseaseCatalogItem {
+  disease_id: string;
+  disease_name: string;
   disease_group_id: string;
   report_group_code?: string | null;
   disease_group_name: string;
@@ -631,59 +645,107 @@ export interface WeatherAIOptions {
   age_groups: string[];
   genders: string[];
   disease_catalog: WeatherAIDiseaseCatalogItem[];
+  ranking_universe: number;
 }
 
-export interface ManualWeatherPayload {
-  temperature?: number;
-  humidity?: number;
-  rain?: number;
-  weather_code?: number;
-  wind_speed?: number;
-  wind_gusts?: number;
+export type WeatherAIFactorCategory = 'DEMOGRAPHIC' | 'SEASONAL_CALENDAR' | 'WEATHER';
+export type WeatherAIFactorWindow = 'CURRENT' | '3D' | '7D' | 'NONE';
+
+export interface WeatherAITier1Factor {
+  feature: string;
+  label_vi: string;
+  category: WeatherAIFactorCategory;
+  window: WeatherAIFactorWindow;
+  input_value: unknown;
+  shap_value: number;
+  direction: 'UP' | 'DOWN';
+  weather_factor?: string | null;
 }
 
-export interface WeatherAIRiskItem {
+export interface WeatherAITier1 {
+  available: boolean;
+  summary_vi?: string | null;
+  positive_factors: WeatherAITier1Factor[];
+  negative_factors: WeatherAITier1Factor[];
+  base_value_raw?: number | null;
+  additivity_max_abs_error?: number | null;
+  error?: string | null;
+}
+
+export interface WeatherAIMedicalSource {
+  title: string;
+  organization: string;
+  url: string;
+  year?: number | null;
+}
+
+export interface WeatherAITier2 {
+  available: boolean;
+  reason?: string | null;
+  evidence_status?: 'SUPPORTED' | 'LIMITED_OR_INDIRECT' | string | null;
+  relationship_type?: string | null;
+  matched_weather_factor?: string | null;
+  explanation_short_vi?: string | null;
+  limitations_vi?: string | null;
+  sources: WeatherAIMedicalSource[];
+}
+
+export interface WeatherAIDiseaseRanking {
+  rank: number;
+  disease_id: string;
+  disease_name: string;
   disease_group_id: string;
   report_group_code?: string | null;
   disease_group_name: string;
-  probability: number;
-  predicted_cases: number;
-  predicted_cases_unit?: string;
-  risk_score: number;
-  risk_level: string;
-}
-
-export interface WeatherAIDailySeriesPoint {
-  date: string | null;
-  temp_mean_today?: number | null;
-  humidity_mean_today?: number | null;
-  rain_sum_today?: number | null;
-  precipitation_sum_today?: number | null;
+  ranking_score: number;
+  tier1: WeatherAITier1;
+  tier2: WeatherAITier2;
 }
 
 export interface WeatherAIPredictResponse {
   message: string;
+  context: {
+    age_group: string;
+    gender: string;
+    anchor_date: string;
+    horizon: string;
+    top_k: number;
+    ranking_universe: number;
+    [key: string]: unknown;
+  };
   input: {
     age_group: string;
     gender: string;
     top_k: number;
   };
   weather: {
-    meta?: Record<string, unknown> & {
-      daily_series?: WeatherAIDailySeriesPoint[];
-    };
-    features: Record<string, number>;
-    month: number;
-    season: string;
+    meta?: Record<string, unknown>;
+    features: Record<string, unknown>;
   };
-  top_risks: WeatherAIRiskItem[];
-  model?: {
-    model_type?: string;
-    training_summary?: Record<string, unknown>;
-    training_weather_scope?: string;
+  predictions: WeatherAIDiseaseRanking[];
+  top_risks: WeatherAIDiseaseRanking[];
+  model: {
+    model_type: string;
+    horizon: string;
+    with_weather: boolean;
+    model_count: number;
+    score_semantics: string;
     runtime_weather_note?: string;
-    predicted_cases_unit?: string;
+    [key: string]: unknown;
   };
+  runtime_ms: Record<string, number>;
+  disclaimer: string;
+}
+
+export function weatherAIErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 422) return 'Thông tin đầu vào chưa hợp lệ.';
+    if (error.status === 503) return 'Hệ thống dự đoán tạm thời chưa sẵn sàng.';
+    if (error.status >= 500) return 'Đã có lỗi khi xử lý. Vui lòng thử lại.';
+    if (error.status === 400) return 'Không thể xử lý yêu cầu. Vui lòng kiểm tra thông tin và vị trí rồi thử lại.';
+  }
+  if (error instanceof TypeError) return 'Không thể kết nối hệ thống dự đoán. Vui lòng kiểm tra mạng và thử lại.';
+  return error instanceof Error ? error.message : 'Đã có lỗi khi xử lý. Vui lòng thử lại.';
 }
 
 export function getWeatherAIStatus(): Promise<WeatherAIStatus> {
@@ -701,7 +763,6 @@ export function predictWeatherAIRisk(payload: {
   latitude?: number;
   longitude?: number;
   timezone?: string;
-  weather?: ManualWeatherPayload;
 }): Promise<WeatherAIPredictResponse> {
   return request<WeatherAIPredictResponse>('/api/weather-ai/predict-risk', {
     method: 'POST',
@@ -721,7 +782,6 @@ export function predictPublicParentRisk(payload: {
   latitude?: number;
   longitude?: number;
   timezone?: string;
-  weather?: ManualWeatherPayload;
 }): Promise<WeatherAIPredictResponse> {
   return request<WeatherAIPredictResponse>('/api/public/parent-risk', {
     method: 'POST',

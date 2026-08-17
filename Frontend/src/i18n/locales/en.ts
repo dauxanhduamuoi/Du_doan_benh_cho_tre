@@ -431,7 +431,6 @@ const en: LocaleMessages = {
   'parent.note.title': 'Small note',
   'parent.note.body':
     'This page helps parents watch early area-based risks. If your child has danger signs, take them to a medical facility for examination.',
-  'parent.risk.aiEstimate': 'AI estimate from current weather: about {{cases}} cases/day',
   'parent.risk.areaCases': 'Recorded in area: {{cases}} ({{period}})',
   'parent.risk.caseCount': '{{count}} cases',
   'parent.risk.noLocalData': 'no data',

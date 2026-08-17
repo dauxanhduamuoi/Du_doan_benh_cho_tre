@@ -25,6 +25,11 @@ import {
 } from './ParentPortalDecor';
 import * as api from '@/lib/api';
 import { fuzzyMatch, splitDiseaseLabel } from '@/lib/disease';
+import {
+  WeatherAIDisclaimer,
+  WeatherAIExplanationSections,
+  WeatherAILoadingNotice,
+} from './weather-ai/WeatherAIResults';
 
 const RISK_STYLE: Record<string, string> = {
   Cao: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -80,11 +85,6 @@ function findKnowledge(diseaseName: string, rows: api.DiseaseKnowledgeRow[], t: 
 function formatNum(v: unknown, digits = 1) {
   if (typeof v !== 'number' || Number.isNaN(v)) return '-';
   return v.toFixed(digits).replace(/\.0$/, '');
-}
-
-function formatApproxCases(v: unknown) {
-  if (typeof v !== 'number' || Number.isNaN(v)) return '-';
-  return Math.max(0, Math.round(v)).toLocaleString('vi-VN');
 }
 
 function formatPeriodRange(from: string | null | undefined, to: string | null | undefined, t: TFunction) {
@@ -210,7 +210,7 @@ export default function ParentPortal() {
         setAgeGroup(optionRows.age_groups?.[0] ?? '');
         setGender(optionRows.genders?.includes('Nam') ? 'Nam' : optionRows.genders?.[0] ?? '');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .catch((e) => setError(api.weatherAIErrorMessage(e)))
       .finally(() => {
         if (alive) setInitialLoading(false);
       });
@@ -322,7 +322,7 @@ export default function ParentPortal() {
         top_k: topK,
         latitude: weatherLatitude,
         longitude: weatherLongitude,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
+        timezone: 'Asia/Ho_Chi_Minh',
       });
 
       const [risks, rec] = await Promise.all([
@@ -333,7 +333,7 @@ export default function ParentPortal() {
       setLocalRisks(risks);
       setRecommendations(rec?.recommendations ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(api.weatherAIErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -341,15 +341,15 @@ export default function ParentPortal() {
 
   const combinedRisks = useMemo(() => {
     const areaMap = new Map(localRisks.map((row) => [normalize(row.disease_group), row]));
-    return (aiResult?.top_risks ?? []).map((row) => {
-      const area = areaMap.get(normalize(row.disease_group_name));
+    return (aiResult?.predictions ?? aiResult?.top_risks ?? []).map((row) => {
+      const area = areaMap.get(normalize(row.disease_name));
       return {
         ...row,
         localCases: area?.recent_cases ?? null,
-        localRisk: area?.risk_level ?? null,
+        localRisk: area?.['risk_level'] ?? null,
         localPeriodFrom: area?.period_from ?? null,
         localPeriodTo: area?.period_to ?? null,
-        knowledge: findKnowledge(row.disease_group_name, knowledge, t),
+        knowledge: findKnowledge(row.disease_name, knowledge, t),
       };
     });
   }, [aiResult, localRisks, knowledge, t]);
@@ -562,6 +562,7 @@ export default function ParentPortal() {
                 <span>{error}</span>
               </div>
             )}
+            {loading && <WeatherAILoadingNotice />}
           </div>
         </section>
 
@@ -581,7 +582,11 @@ export default function ParentPortal() {
                 <div className="flex flex-wrap gap-2 text-xs font-bold">
                   <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-700">{t('parent.results.weatherAi')}</span>
                   <span className="rounded-full bg-teal-100 px-3 py-1 text-teal-700">{t('parent.results.areaData')}</span>
-                  {aiResult?.weather?.season && <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">{aiResult.weather.season}</span>}
+                  {Boolean(aiResult?.weather?.features?.season) && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">
+                      {String(aiResult?.weather?.features?.season)}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -593,10 +598,11 @@ export default function ParentPortal() {
                   {otherRisks.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-2">
                       {otherRisks.map((row, index) => (
-                        <RiskCard key={`${row.disease_group_id}-${row.disease_group_name}`} row={row} index={index + 1} />
+                        <RiskCard key={row.disease_id} row={row} index={index + 1} />
                       ))}
                     </div>
                   )}
+                  <WeatherAIDisclaimer disclaimer={aiResult?.disclaimer} />
                 </div>
               )}
             </section>
@@ -753,7 +759,7 @@ function EmptyState({ loading }: { loading: boolean }) {
   );
 }
 
-type RiskCardRow = api.WeatherAIRiskItem & {
+type RiskCardRow = api.WeatherAIDiseaseRanking & {
   localCases: number | null;
   localRisk: string | null;
   localPeriodFrom: string | null;
@@ -776,7 +782,7 @@ const RISK_CARD_COLORS = [
 
 function RiskCard({ row, index, featured = false }: { row: RiskCardRow; index: number; featured?: boolean }) {
   const t = useVietnameseT();
-  const label = splitDiseaseLabel(row.disease_group_name).vi;
+  const label = splitDiseaseLabel(row.disease_name).vi;
   const cardColor = RISK_CARD_COLORS[index % RISK_CARD_COLORS.length];
   const areaPeriod = formatPeriodRange(row.localPeriodFrom, row.localPeriodTo, t);
   return (
@@ -784,13 +790,13 @@ function RiskCard({ row, index, featured = false }: { row: RiskCardRow; index: n
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-black text-sky-700 shadow-md shadow-sky-100">
-            {index + 1}
+            <span aria-label={`Xếp hạng ${row.rank}`}>#{row.rank}</span>
           </div>
           <div className="min-w-0">
             <h3 className={`${featured ? 'text-xl' : 'text-base'} font-black leading-7 text-slate-900`}>{label}</h3>
             <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-white px-2.5 py-1 text-sky-700 shadow-sm">
-                {t('parent.risk.aiEstimate', { cases: formatApproxCases(row.predicted_cases) })}
+                {row.rank === 1 ? 'Nhóm bệnh đáng lưu ý nhất hiện tại' : `Được xếp thứ ${row.rank} trong bối cảnh hiện tại`}
               </span>
               <span className="rounded-full bg-white px-2.5 py-1 text-teal-700 shadow-sm">
                 {t('parent.risk.areaCases', {
@@ -801,10 +807,14 @@ function RiskCard({ row, index, featured = false }: { row: RiskCardRow; index: n
             </div>
           </div>
         </div>
-        <span className={`w-fit shrink-0 rounded-full border px-3 py-1 text-xs font-black ${riskStyle(row.risk_level)}`}>
-          {riskText(row.risk_level, t)}
-        </span>
+        {row.localRisk && (
+          <span className={`w-fit shrink-0 rounded-full border px-3 py-1 text-xs font-black ${riskStyle(row.localRisk)}`}>
+            Dữ liệu khu vực: {riskText(row.localRisk, t)}
+          </span>
+        )}
       </div>
+
+      <WeatherAIExplanationSections prediction={row} variant="parent" />
 
       <div className={`mt-4 grid gap-3 ${featured ? 'lg:grid-cols-2' : ''}`}>
         <TextBlock title={t('parent.risk.commonSymptoms')} rows={row.knowledge.symptoms} />

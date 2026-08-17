@@ -1,0 +1,267 @@
+{
+  "access_date": "2026-08-14",
+  "verification_method": "Each URL was returned by web search or directly opened during the Tier 2 research session.",
+  "source_count": 26,
+  "sources": [
+    {
+      "source_id": "S01",
+      "title": "Seasonal variation in the frequency of venous thromboembolism: An updated result of a meta-analysis and systemic review",
+      "organization": "PubMed / Phlebology",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/32036737/",
+      "year": 2020,
+      "evidence_type": "systematic_review_meta_analysis",
+      "note_vi": "Tổng hợp 23 nghiên cứu cho thấy VTE cao hơn vào mùa đông, nhưng chính bài báo ghi nhận các nghiên cứu trước có kết quả mâu thuẫn và cơ chế còn chưa rõ.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S02",
+      "title": "Oral Cavity, Oropharyngeal, Hypopharyngeal, and Laryngeal Cancers Prevention (PDQ®)",
+      "organization": "U.S. National Cancer Institute",
+      "url": "https://www.cancer.gov/types/head-and-neck/patient/oral-prevention-pdq",
+      "year": 2024,
+      "evidence_type": "government_evidence_summary",
+      "note_vi": "Nguồn NCI mô tả các nguy cơ chính như thuốc lá, rượu, trầu và HPV; không thiết lập cơ chế cho nhiệt độ, mưa, ẩm hoặc gió ngắn hạn của cả nhóm C00-C14.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S03",
+      "title": "Hepatitis E",
+      "organization": "World Health Organization",
+      "url": "https://www.who.int/news-room/fact-sheets/detail/hepatitis-e",
+      "year": 2026,
+      "evidence_type": "official_fact_sheet",
+      "note_vi": "WHO xác nhận hepatitis E chủ yếu lây qua đường phân-miệng, đặc biệt nước uống nhiễm bẩn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S04",
+      "title": "Waterborne outbreaks of hepatitis E: recognition, investigation and control",
+      "organization": "World Health Organization",
+      "url": "https://www.who.int/publications/i/item/waterborne-outbreaks-of-hepatitis-e-recognition-investigation-and-control",
+      "year": 2014,
+      "evidence_type": "official_technical_report",
+      "note_vi": "Tài liệu WHO ghi nhận một số đợt bùng phát hepatitis E liên quan lũ sau mưa lớn làm chất thải nhiễm vào nguồn nước.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S05",
+      "title": "Association between meteorological factors and COVID-19: a systematic review",
+      "organization": "PubMed / International Journal of Environmental Health Research",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/35674116/",
+      "year": 2023,
+      "evidence_type": "systematic_review",
+      "note_vi": "28 nghiên cứu cho kết quả không hoàn toàn nhất quán; khác biệt có thể do khí hậu, thiết kế, can thiệp chính sách và điều kiện xã hội.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S06",
+      "title": "Effects of climate variables on the transmission of COVID-19: a systematic review of 62 ecological studies",
+      "organization": "PubMed / Environmental Science and Pollution Research",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/34398375/",
+      "year": 2021,
+      "evidence_type": "systematic_review",
+      "note_vi": "Bằng chứng được đánh giá độ chắc chắn thấp; biến khí hậu không giải thích được phần lớn biến thiên dịch và chính sách y tế quan trọng hơn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S07",
+      "title": "Intraocular (Eye) Melanoma Treatment (PDQ®)",
+      "organization": "U.S. National Cancer Institute",
+      "url": "https://www.cancer.gov/types/eye/hp/intraocular-melanoma-treatment-pdq",
+      "year": 2025,
+      "evidence_type": "government_evidence_summary",
+      "note_vi": "NCI nhận định bằng chứng giữa ánh nắng/UV và u hắc tố màng bồ đào yếu hoặc mâu thuẫn; model hiện không có feature UV.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S08",
+      "title": "Impacts of High Environmental Temperatures on Congenital Anomalies: A Systematic Review",
+      "organization": "PubMed / International Journal of Environmental Research and Public Health",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/34063033/",
+      "year": 2021,
+      "evidence_type": "systematic_review",
+      "note_vi": "Một số nghiên cứu liên hệ nhiệt môi trường cao trong thai kỳ với dị tật, trong đó có spina bifida, nhưng kết quả dị hợp và cửa sổ phơi nhiễm thai kỳ là yếu tố cốt lõi.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S09",
+      "title": "Maternal factors for neural tube defects in offspring: An umbrella review",
+      "organization": "PubMed / Open Medicine",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/39434859/",
+      "year": 2024,
+      "evidence_type": "umbrella_review",
+      "note_vi": "Umbrella review xếp maternal hyperthermia vào nhóm bằng chứng gợi ý mạnh đối với dị tật ống thần kinh; không đồng nghĩa thời tiết tại ngày khám gây dị tật.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S10",
+      "title": "Otitis externa—climatic associations and evidence-based management strategies for Australian practice",
+      "organization": "PubMed / Australian Journal of Rural Health",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31199041/",
+      "year": 2019,
+      "evidence_type": "observational_review",
+      "note_vi": "Nghiên cứu ghi nhận tương quan giữa mưa/nhiệt độ tối thiểu và otitis externa trong một khu vực; không đại diện cho toàn nhóm H60-H95.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S11",
+      "title": "Amebiasis",
+      "organization": "U.S. Centers for Disease Control and Prevention",
+      "url": "https://www.cdc.gov/amebiasis/about/index.html",
+      "year": 2025,
+      "evidence_type": "official_fact_sheet",
+      "note_vi": "CDC xác nhận amebiasis do Entamoeba histolytica và lây khi nuốt nước/thức ăn nhiễm bẩn; không xác nhận một chiều weather cụ thể.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S12",
+      "title": "HPV and Cancer",
+      "organization": "U.S. National Cancer Institute",
+      "url": "https://www.cancer.gov/about-cancer/causes-prevention/risk/infectious-agents/hpv-and-cancer",
+      "year": 2025,
+      "evidence_type": "government_evidence_summary",
+      "note_vi": "NCI xác nhận HPV gây phần lớn một số ung thư âm hộ/âm đạo; không thiết lập liên hệ với weather ngắn hạn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S13",
+      "title": "Untangling the Impacts of Climate Change on Waterborne Diseases: a Systematic Review of Relationships between Diarrheal Diseases and Temperature, Rainfall, Flooding, and Drought",
+      "organization": "PubMed / Environmental Science & Technology",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/27058059/",
+      "year": 2016,
+      "evidence_type": "systematic_review",
+      "note_vi": "141 nghiên cứu cho thấy các điểm nhất quán gồm liên hệ dương giữa nhiệt độ và nhiều bệnh tiêu chảy, cùng tăng bệnh sau mưa lớn/lũ; hiệu ứng phụ thuộc tác nhân và bối cảnh WASH.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S14",
+      "title": "Technical series on adapting to climate-sensitive health impacts: diarrhoeal diseases",
+      "organization": "World Health Organization",
+      "url": "https://www.who.int/publications/i/item/9789240064591",
+      "year": 2022,
+      "evidence_type": "official_technical_guidance",
+      "note_vi": "WHO coi bệnh tiêu chảy là climate-sensitive và mô tả các đường tác động qua nhiệt độ, mưa, lũ, chất lượng nước và vệ sinh.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S15",
+      "title": "What is the effect of the weather on trauma workload? A systematic review of the literature",
+      "organization": "PubMed / Injury",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/25816705/",
+      "year": 2015,
+      "evidence_type": "systematic_review",
+      "note_vi": "28 nghiên cứu cho thấy weather có thể ảnh hưởng trauma admissions, fractures và tai nạn giao thông, nhưng khác biệt phương pháp hạn chế khả năng khái quát và chiều hiệu ứng phụ thuộc bối cảnh.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S16",
+      "title": "Weather as a risk factor for epileptic seizures: A case-crossover study",
+      "organization": "PubMed / Epilepsia",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28480567/",
+      "year": 2017,
+      "evidence_type": "case_crossover_study",
+      "note_vi": "Một nghiên cứu bệnh viện ghi nhận liên hệ với áp suất, độ ẩm và nhiệt độ, đồng thời yêu cầu tái lập ở vùng khí hậu/quần thể khác.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S17",
+      "title": "Low ambient temperature as the only meteorological risk factor of seizure occurrence: A multivariate study",
+      "organization": "PubMed / Epilepsy & Behavior",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31525555/",
+      "year": 2019,
+      "evidence_type": "population_registry_study",
+      "note_vi": "Nghiên cứu tại Đài Loan liên hệ nhiệt độ thấp với số lượt cấp cứu động kinh, trong khi mưa và độ ẩm không có liên hệ sau điều chỉnh.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S18",
+      "title": "D Codes: in situ, benign, uncertain and unspecified behavior neoplasms",
+      "organization": "U.S. National Cancer Institute SEER Training",
+      "url": "https://training.seer.cancer.gov/icd10cm/neoplasm/d-codes.html",
+      "year": "",
+      "evidence_type": "official_classification_reference",
+      "note_vi": "Nguồn xác nhận D00-D48 là tập rất rộng gồm u tại chỗ, lành tính và chưa rõ hành vi ở nhiều cơ quan; không thể gán một cơ chế weather duy nhất.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S19",
+      "title": "Central Nervous System Tumors Treatment (PDQ®)",
+      "organization": "U.S. National Cancer Institute",
+      "url": "https://www.cancer.gov/types/brain/hp/adult-brain-treatment-pdq",
+      "year": 2025,
+      "evidence_type": "government_evidence_summary",
+      "note_vi": "NCI cho biết có ít quan sát chắc chắn về nguyên nhân môi trường/nghề nghiệp của u CNS nguyên phát; không nêu cơ chế weather ngắn hạn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S20",
+      "title": "Primary Bone Cancer",
+      "organization": "U.S. National Cancer Institute",
+      "url": "https://www.cancer.gov/types/bone/bone-fact-sheet",
+      "year": 2018,
+      "evidence_type": "government_evidence_summary",
+      "note_vi": "NCI mô tả nguy cơ u xương nguyên phát chủ yếu liên quan điều trị trước đó, bệnh xương và hội chứng di truyền; không thiết lập weather ngắn hạn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S21",
+      "title": "Tuberculosis and climate change: analytical framework and knowledge gaps",
+      "organization": "World Health Organization",
+      "url": "https://www.who.int/publications/i/item/9789240109940",
+      "year": 2025,
+      "evidence_type": "official_analytical_framework",
+      "note_vi": "WHO mô tả đường liên hệ gián tiếp qua thiếu dinh dưỡng, di dời/quá tải nơi ở và gián đoạn chăm sóc, đồng thời nhấn mạnh khoảng trống tri thức.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S22",
+      "title": "The impact of climate change on the risk factors for tuberculosis: A systematic review",
+      "organization": "PubMed / Environmental Research",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/35550808/",
+      "year": 2022,
+      "evidence_type": "systematic_review",
+      "note_vi": "Review tập trung vào climate ảnh hưởng các yếu tố nguy cơ TB như suy dinh dưỡng, quá tải và nghèo đói, không chứng minh weather 7 ngày trực tiếp gây A17-A19.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S23",
+      "title": "Rheumatic heart disease",
+      "organization": "World Health Organization",
+      "url": "https://www.who.int/news-room/fact-sheets/detail/rheumatic-heart-disease",
+      "year": 2025,
+      "evidence_type": "official_fact_sheet",
+      "note_vi": "WHO xác nhận RHD là tổn thương van tim mạn sau một hoặc nhiều đợt thấp tim do đáp ứng miễn dịch với nhiễm liên cầu nhóm A.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S24",
+      "title": "Group A Strep Disease Surveillance and Trends",
+      "organization": "U.S. Centers for Disease Control and Prevention",
+      "url": "https://www.cdc.gov/group-a-strep/php/surveillance/index.html",
+      "year": 2024,
+      "evidence_type": "official_surveillance_summary",
+      "note_vi": "CDC ghi nhận GAS lưu hành quanh năm nhưng thường gặp hơn tháng 12-4 tại Hoa Kỳ; không đủ để suy ra weather HCM 7 ngày làm tăng RHD mạn.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S25",
+      "title": "Ambient humidity and the skin: the impact of air humidity in healthy and diseased states",
+      "organization": "PubMed / Journal of the European Academy of Dermatology and Venereology",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/27306376/",
+      "year": 2016,
+      "evidence_type": "narrative_evidence_review",
+      "note_vi": "Review cho thấy độ ẩm ảnh hưởng hàng rào da và một số dermatoses nhưng bằng chứng dị hợp, không thể thực hiện systematic review chính thức.",
+      "url_verified": true
+    },
+    {
+      "source_id": "S26",
+      "title": "Climate Conditions, Weather Changes, and Air Pollutants and Atopic Dermatitis: A Meta-Analysis",
+      "organization": "PubMed / JAMA Dermatology",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/40560568/",
+      "year": 2025,
+      "evidence_type": "systematic_review_meta_analysis",
+      "note_vi": "Meta-analysis hỗ trợ liên hệ ở atopic dermatitis với nhiệt độ cực đoan, độ ẩm và có thể mưa, nhưng L10-L99 rộng hơn rất nhiều so với atopic dermatitis.",
+      "url_verified": true
+    }
+  ]
+}

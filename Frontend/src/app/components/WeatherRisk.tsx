@@ -15,41 +15,14 @@ import {
   Thermometer,
   Wind,
 } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import * as api from '@/lib/api';
-import { useMinimalTheme } from '@/lib/useMinimalTheme';
 import { clearWeatherRiskCache, loadWeatherRiskCache, saveWeatherRiskCache } from '@/lib/weatherRiskCache';
+import { WeatherAILoadingNotice, WeatherAIPredictionList } from './weather-ai/WeatherAIResults';
 
 type LocationMode = 'geo' | 'manual';
 type ProvinceOption = api.AreaOption & {
   latitude: number;
   longitude: number;
-};
-
-type RiskChartRow = api.WeatherAIRiskItem & {
-  shortName: string;
-};
-
-const RISK_BADGE: Record<string, string> = {
-  Cao: 'bg-red-100 text-red-700 border-red-200',
-  'Trung bình': 'bg-amber-100 text-amber-700 border-amber-200',
-  Thấp: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-};
-
-const RISK_BAR_COLOR: Record<string, string> = {
-  Cao: '#ef4444',
-  'Trung bình': '#f59e0b',
-  Thấp: '#10b981',
 };
 
 const VIETNAM_PROVINCES: ProvinceOption[] = [
@@ -133,11 +106,6 @@ function num(value: unknown, digits = 2): string {
   return value.toFixed(digits).replace(/\.00$/, '');
 }
 
-function shortDiseaseName(value: string, maxLength = 34): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1).trim()}…`;
-}
-
 function clampInt(value: string, min: number, max: number, fallback: number): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return fallback;
@@ -195,7 +163,6 @@ function pageCount(total: number, pageSize: number): number {
 }
 
 export default function WeatherRisk() {
-  const isMinimalTheme = useMinimalTheme();
   const [cachedRiskState] = useState(() => loadWeatherRiskCache());
   const [status, setStatus] = useState<api.WeatherAIStatus | null>(null);
   const [options, setOptions] = useState<api.WeatherAIOptions | null>(null);
@@ -237,7 +204,7 @@ export default function WeatherRisk() {
         setAgeGroup((current) => current || (opt.age_groups?.includes('1-5 tuổi') ? '1-5 tuổi' : (opt.age_groups?.[0] ?? '')));
         setGender((current) => current || (opt.genders?.includes('Nam') ? 'Nam' : (opt.genders?.[0] ?? '')));
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : String(e));
+        if (alive) setError(api.weatherAIErrorMessage(e));
       } finally {
         if (alive) setInitialLoading(false);
       }
@@ -270,24 +237,15 @@ export default function WeatherRisk() {
     ];
   }, [result]);
 
-  const totalRiskPages = pageCount(result?.top_risks.length ?? 0, riskPageSize);
+  const predictions = useMemo(() => result?.predictions ?? result?.top_risks ?? [], [result]);
+  const totalRiskPages = pageCount(predictions.length, riskPageSize);
   const currentRiskPage = Math.min(riskPage, totalRiskPages);
-  const visibleRisks = useMemo(() => {
-    const rows = result?.top_risks ?? [];
+  const visiblePredictions = useMemo(() => {
+    const rows = predictions;
     const safePage = Math.min(riskPage, pageCount(rows.length, riskPageSize));
     const start = (safePage - 1) * riskPageSize;
     return rows.slice(start, start + riskPageSize);
-  }, [result, riskPage, riskPageSize]);
-
-  const riskChartData = useMemo<RiskChartRow[]>(() => {
-    if (!result) return [];
-    return result.top_risks
-      .map((row) => ({
-        ...row,
-        shortName: shortDiseaseName(row.disease_group_name),
-      }))
-      .reverse();
-  }, [result]);
+  }, [predictions, riskPage, riskPageSize]);
 
   const resetResult = () => {
     setResult(null);
@@ -358,7 +316,7 @@ export default function WeatherRisk() {
         age_group: ageGroup,
         gender,
         top_k: topK,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok',
+        timezone: 'Asia/Ho_Chi_Minh',
       };
 
       if (locationMode === 'geo') {
@@ -379,7 +337,7 @@ export default function WeatherRisk() {
       setResult(res);
       setRiskPage(1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(api.weatherAIErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -394,14 +352,14 @@ export default function WeatherRisk() {
               <CloudSun size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-800">Dự đoán nguy cơ bệnh theo thời tiết</h2>
+              <h2 className="text-xl font-semibold text-slate-800">Xếp hạng nhóm bệnh đáng lưu ý theo thời tiết</h2>
               <p className="text-sm text-slate-500">
-                Chọn vị trí, nhóm tuổi và giới tính. Backend sẽ lấy thời tiết realtime rồi chạy model AI thời tiết.
+                Chọn vị trí, nhóm tuổi và giới tính. Hệ thống dùng thời tiết realtime để xếp hạng tương đối các nhóm bệnh.
               </p>
             </div>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:max-w-md">
-            Đây là cảnh báo thống kê theo dữ liệu lịch sử, không phải chẩn đoán y tế cho từng trẻ.
+            Kết quả là thứ hạng hỗ trợ theo dõi, không phải xác suất mắc bệnh hay chẩn đoán cho từng trẻ.
           </div>
         </div>
       </div>
@@ -569,7 +527,7 @@ export default function WeatherRisk() {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCcw size={16} />}
-                  {loading ? 'Đang dự đoán...' : 'Dự đoán nguy cơ'}
+                  {loading ? 'Đang xếp hạng...' : 'Xem nhóm đáng lưu ý'}
                 </button>
               </div>
             </div>
@@ -580,11 +538,12 @@ export default function WeatherRisk() {
                 <span>{error}</span>
               </div>
             )}
+            {loading && <WeatherAILoadingNotice />}
           </div>
 
           {!result ? (
             <div className="relative z-0 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">
-              Chưa có kết quả. Chọn vị trí, nhóm tuổi, giới tính rồi bấm dự đoán nguy cơ.
+              Chưa có kết quả. Chọn vị trí, nhóm tuổi, giới tính rồi xem các nhóm bệnh đáng lưu ý.
             </div>
           ) : (
             <>
@@ -593,7 +552,7 @@ export default function WeatherRisk() {
                   <div>
                     <h3 className="font-semibold text-slate-800">Thời tiết dùng cho dự đoán</h3>
                     <p className="text-xs text-slate-500">
-                      Nguồn: Open-Meteo realtime · Tháng {result.weather.month} · {result.weather.season}
+                      Nguồn: Open-Meteo realtime · Tháng {String(result.weather.features.month ?? '-')} · {String(result.weather.features.season ?? '-')}
                     </p>
                   </div>
                   {status && (
@@ -619,9 +578,9 @@ export default function WeatherRisk() {
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
                   <div>
-                    <h3 className="font-semibold text-slate-800">Top nhóm bệnh nguy cơ cao</h3>
+                    <h3 className="font-semibold text-slate-800">Các nhóm bệnh đáng lưu ý</h3>
                     <p className="text-sm text-slate-500">
-                      Hiển thị {(riskPage - 1) * riskPageSize + 1}-{Math.min(riskPage * riskPageSize, result.top_risks.length)} / {result.top_risks.length} nhóm.
+                      Hiển thị {(riskPage - 1) * riskPageSize + 1}-{Math.min(riskPage * riskPageSize, predictions.length)} / {predictions.length} nhóm theo thứ hạng tương đối.
                     </p>
                   </div>
                   <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -641,47 +600,12 @@ export default function WeatherRisk() {
                   </label>
                 </div>
 
-                <div className="space-y-3">
-                  {visibleRisks.map((row, idx) => {
-                    const absoluteIndex = (riskPage - 1) * riskPageSize + idx + 1;
-                    return (
-                      <div key={`${row.disease_group_id}-${idx}`} className="rounded-xl border border-slate-100 p-4 hover:bg-slate-50">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 text-sm font-bold text-sky-700">
-                                {absoluteIndex}
-                              </span>
-                              <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${RISK_BADGE[row.risk_level] ?? 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                                {row.risk_level}
-                              </span>
-                            </div>
-                            <p className="mt-2 font-semibold text-slate-800">{row.disease_group_name}</p>
-                            <p className="mt-1 text-xs text-slate-500">
-                              ID nhóm: {row.disease_group_id} · Mã báo cáo: {row.report_group_code || '-'}
-                            </p>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-center md:w-[330px]">
-                            <div className="rounded-xl bg-slate-50 p-2">
-                              <p className="text-[11px] text-slate-500">Xác suất</p>
-                              <p className="font-semibold text-slate-800">{num(row.probability * 100, 1)}%</p>
-                            </div>
-                            <div className="rounded-xl bg-slate-50 p-2">
-                              <p className="text-[11px] text-slate-500">Ước tính ca/ngày</p>
-                              <p className="font-semibold text-slate-800">{num(row.predicted_cases, 2)}</p>
-                            </div>
-                            <div className="rounded-xl bg-slate-50 p-2">
-                              <p className="text-[11px] text-slate-500">Điểm nguy cơ</p>
-                              <p className="font-semibold text-slate-800">{num(row.risk_score, 3)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <WeatherAIPredictionList
+                  predictions={visiblePredictions}
+                  disclaimer={result.disclaimer}
+                />
 
-                {result.top_risks.length > riskPageSize && (
+                {predictions.length > riskPageSize && (
                   <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-4 sm:flex-row">
                     <span className="text-sm text-slate-500">Trang {currentRiskPage} / {totalRiskPages}</span>
                     <div className="flex items-center gap-2">
@@ -708,72 +632,6 @@ export default function WeatherRisk() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <h3 className="font-semibold text-slate-800">Biểu đồ top nhóm bệnh nguy cơ cao</h3>
-                    <p className="text-sm text-slate-500">
-                      Trực quan hóa số ca ước tính trong ngày cho các nhóm bệnh model xếp nguy cơ cao. Màu cột thể hiện mức nguy cơ.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold">
-                    <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-700">Cao</span>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">Trung bình</span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Thấp</span>
-                  </div>
-                </div>
-
-                <ResponsiveContainer width="100%" height={Math.max(340, riskChartData.length * 54 + 80)}>
-                  <BarChart
-                    data={riskChartData}
-                    layout="vertical"
-                    margin={{ top: 12, right: 44, left: 22, bottom: 8 }}
-                    barCategoryGap={12}
-                  >
-                    <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: '#64748b', fontSize: 12 }}
-                      label={{ value: 'Số ca ước tính trong ngày', position: 'insideBottom', offset: -4, fill: '#64748b', fontSize: 12 }}
-                    />
-                    <YAxis
-                      dataKey="shortName"
-                      type="category"
-                      width={230}
-                      tick={{ fill: '#64748b', fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 12, borderColor: '#e2e8f0' }}
-                      formatter={(value) => {
-                        return [`khoảng ${num(value, 2)} ca/ngày`, 'Số ca ước tính'];
-                      }}
-                      labelFormatter={(_, payload) => {
-                        const row = payload?.[0]?.payload as RiskChartRow | undefined;
-                        return row?.disease_group_name ?? '';
-                      }}
-                    />
-                    <Bar
-                      dataKey="predicted_cases"
-                      name="Số ca ước tính"
-                      radius={[0, 10, 10, 0]}
-                      isAnimationActive={!isMinimalTheme}
-                    >
-                      {riskChartData.map((row) => (
-                        <Cell key={row.disease_group_id} fill={RISK_BAR_COLOR[row.risk_level] ?? '#3b82f6'} />
-                      ))}
-                      <LabelList
-                        dataKey="predicted_cases"
-                        position="right"
-                        formatter={(value: unknown) => `${num(value, 2)} ca/ngày`}
-                        style={{ fill: '#334155', fontSize: 12, fontWeight: 700 }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <p className="mt-3 text-xs text-slate-500">
-                  “Ca/ngày” là số ca model ước tính trong một ngày với thời tiết và thông tin đầu vào hiện tại, không phải mức tăng so với kỳ trước.
-                </p>
-              </div>
             </>
           )}
         </div>

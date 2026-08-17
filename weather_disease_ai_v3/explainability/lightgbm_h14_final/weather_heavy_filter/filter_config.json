@@ -1,0 +1,79 @@
+{
+  "purpose": "Post-process existing disease-level SHAP results before Tier 2 medical/epidemiological explanation.",
+  "generated_at_utc": "2026-08-13T16:16:58.550129+00:00",
+  "inputs": {
+    "disease_shap_summary": {
+      "path": "weather_disease_ai_v3/explainability/lightgbm_h14_final/disease_shap_summary.csv",
+      "sha256": "5a0de8277eedc6e6fed40939a64cd876a14f2c64fd019b80c5dd8ffba7c6b385"
+    },
+    "model_manifest": {
+      "path": "weather_disease_ai_v3/deployment/lightgbm_h14_weather/model_manifest.json",
+      "sha256": "1b6e0b4a3c2fb7313000c730738244e6126e24c0fb3c278d08059e72d0d95416"
+    }
+  },
+  "join": {
+    "key": "disease_id",
+    "expected_count": 221,
+    "shap_count": 221,
+    "manifest_model_count": 221,
+    "joined_count": 221,
+    "shap_duplicate_disease_ids": [],
+    "manifest_duplicate_disease_ids": [],
+    "shap_only_disease_ids": [],
+    "manifest_only_disease_ids": [],
+    "status": "PASS"
+  },
+  "positive_fit_queries_definition": "Number of TRAIN + VALIDATION queries with a positive target for the disease; this is not a patient count.",
+  "support_tiers": {
+    "LOW": "positive_fit_queries < 100",
+    "MODERATE": "100 <= positive_fit_queries < 200",
+    "BETTER": "200 <= positive_fit_queries < 500",
+    "STRONG": "positive_fit_queries >= 500",
+    "note": "Project-level heuristic; not a medical standard or formal statistical threshold."
+  },
+  "model_complexity_flags": {
+    "VERY_SIMPLE_MODEL": "n_estimators_locked <= 2",
+    "SIMPLE_MODEL": "3 <= n_estimators_locked <= 5",
+    "NORMAL_MODEL": "n_estimators_locked > 5",
+    "hard_filter": false
+  },
+  "filters": {
+    "weather_heavy_eligible": "positive_fit_queries >= 200, sorted by weather_importance descending",
+    "tier2_weather_candidates": "top 20 weather_heavy_eligible",
+    "strong_support_weather_ranking": "positive_fit_queries >= 500, sorted by weather_importance descending",
+    "low_support_high_weather": "positive_fit_queries < 200, sorted by weather_importance descending",
+    "weather_importance_threshold": null
+  },
+  "counts": {
+    "all_diseases": 221,
+    "weather_heavy_eligible": 164,
+    "tier2_weather_candidates_top20": 20,
+    "strong_support": 139,
+    "low_or_moderate_support": 57,
+    "support_tiers": {
+      "LOW": 39,
+      "MODERATE": 18,
+      "BETTER": 25,
+      "STRONG": 139
+    },
+    "model_complexity_flags": {
+      "VERY_SIMPLE_MODEL": 32,
+      "SIMPLE_MODEL": 9,
+      "NORMAL_MODEL": 180
+    }
+  },
+  "model_file_integrity": {
+    "checked": 221,
+    "errors": [],
+    "status": "PASS"
+  },
+  "execution_guards": {
+    "shap_recomputed": false,
+    "training_performed": false,
+    "tuning_performed": false,
+    "model_selection_performed": false,
+    "test_target_used": false,
+    "medical_or_causal_explanation_performed": false,
+    "global_shap_modified": false
+  }
+}

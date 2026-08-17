@@ -1,0 +1,101 @@
+{
+  "status": "PASS",
+  "validation_date": "2026-08-15",
+  "scope": "frontend presentation only",
+  "tier1_ui": {
+    "actual_input_values_rendered": true,
+    "human_labels_pass": true,
+    "time_of_year_deduplicated": true,
+    "month_season_grouped": true,
+    "weather_feature_grouping_pass": true,
+    "weather_windows_preserved": true,
+    "mixed_direction_safe": true,
+    "missing_value_fallback_pass": true,
+    "raw_shap_hidden": true,
+    "raw_feature_names_hidden": true,
+    "causal_wording_absent": true,
+    "tier1_disclaimer_rendered": true,
+    "raw_factor_response_mutated": false,
+    "shap_sum_or_average_created": false
+  },
+  "presentation_rules": {
+    "demographic_groups": [
+      "AGE",
+      "GENDER"
+    ],
+    "seasonal_group": "TIME_OF_YEAR",
+    "weather_families": [
+      "TEMPERATURE",
+      "HUMIDITY",
+      "PRECIPITATION",
+      "WIND",
+      "WEATHER_CONDITION"
+    ],
+    "weather_windows": [
+      "CURRENT",
+      "3D",
+      "7D"
+    ],
+    "mixed_direction_section": "Các yếu tố có tác động theo nhiều chiều",
+    "weather_code_behavior": "human fallback without raw code"
+  },
+  "regression": {
+    "tier2_unchanged": true,
+    "tier2_render_test_pass": true,
+    "disclaimer_unchanged": true,
+    "disclaimer_test_pass": true,
+    "frontend_tests_pass": true,
+    "frontend_tests_passed": 30,
+    "frontend_tests_failed": 0,
+    "typecheck_pass": true,
+    "production_build_pass": true,
+    "production_build_modules": 2293,
+    "git_diff_check_pass": true
+  },
+  "ui_review": {
+    "static_review": "PASS",
+    "mobile_single_column": true,
+    "desktop_two_column_up_down": true,
+    "text_wrap_pass": true,
+    "duplicate_labels_removed": true,
+    "overflow_risk_found": false,
+    "visual_browser_qa": "NOT_AVAILABLE",
+    "screenshots_created": 0
+  },
+  "files": {
+    "modified": [
+      "Frontend/src/app/components/weather-ai/WeatherAIResults.tsx",
+      "Frontend/src/app/components/weather-ai/WeatherAIResults.test.tsx"
+    ],
+    "added": [
+      "Frontend/src/app/components/weather-ai/tier1Presentation.ts",
+      "weather_disease_ai_v3/tier1_ui_improvement/TIER1_UI_IMPROVEMENT_REPORT.md",
+      "weather_disease_ai_v3/tier1_ui_improvement/tier1_ui_validation.json"
+    ]
+  },
+  "integrity": {
+    "backend_modified": false,
+    "model_modified": false,
+    "ranking_modified": false,
+    "backend_contract_modified": false,
+    "shap_logic_modified": false,
+    "tier2_logic_modified": false,
+    "medical_knowledge_modified": false,
+    "training_run": false,
+    "tuning_run": false,
+    "model_selection_run": false,
+    "test_target_used": false,
+    "hashes_before_after": {
+      "backend_tree": "edea4e8735e97fc502dd9d9ed37aab150ac8eae58982292b1ea3071e6d8227a6",
+      "model_deployment_tree": "17947271573c995e6bbfc9c187027ea86ef24ba51a7876f4cb1b430b4f862274",
+      "shap_tree": "8964b4352ab6ee61c4b9bf5d609d6e7df5f799e2224b6633ee37e7c74e517ac5",
+      "medical_tree": "08b7c1ad342f4d17a62ed40e20640071506078b2675f4bacea3950d41008222b"
+    }
+  },
+  "remaining_limitations": [
+    "Actual values are shown only for Tier 1 factors returned by the backend.",
+    "Missing input values use human-readable text without fabricated numbers.",
+    "Weather codes use a human fallback because no locked frontend WMO mapping exists.",
+    "Visual browser QA was unavailable; static responsive review was used."
+  ]
+}

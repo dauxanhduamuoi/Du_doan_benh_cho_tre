@@ -1,65 +1,22 @@
 from __future__ import annotations
 
-from datetime import date
-from typing import Any
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from app.models import User
 from app.security import require_permission
 from app.services.weather_ai_service import (
-    DEFAULT_TIMEZONE,
     get_model_status,
     get_weather_ai_options,
     predict_weather_risk,
 )
+from app.services.weather_ai_runtime import ModelRuntimeError
+from app.weather_ai_schemas import WeatherAIPredictRequest, WeatherAIPredictResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/weather-ai", tags=["Weather AI"])
-
-
-class WeatherAIPredictRequest(BaseModel):
-    # Ví dụ mẫu HIỂN THỊ trực tiếp đúng body cần gửi.
-    # Không dùng dạng {"summary": ..., "value": ...} vì Swagger có thể copy nhầm
-    # cả wrapper đó vào request body, làm API báo thiếu age_group/gender.
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "age_group": "1-5 tuổi",
-                "gender": "Nam",
-                "top_k": 5,
-            }
-        }
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def unwrap_swagger_example_value(cls, data):
-        """
-        Chống lỗi khi người dùng lỡ copy nguyên ví dụ Swagger dạng:
-        {"summary": "...", "value": {"age_group": "1-5 tuổi", ...}}
-        Khi gặp dạng này, tự lấy phần value để API vẫn chạy.
-        """
-        if isinstance(data, dict) and "value" in data and isinstance(data["value"], dict):
-            return data["value"]
-        return data
-
-    age_group: str = Field(..., description="Nhóm tuổi. Ví dụ: 1-5 tuổi", examples=["1-5 tuổi"])
-    gender: str = Field(..., description="Giới tính. Ví dụ: Nam hoặc Nữ", examples=["Nam"])
-    top_k: int = Field(5, ge=1, le=20, description="Số nhóm bệnh muốn lấy ở kết quả top")
-
-    # Nếu không gửi weather hoặc gửi weather={} thì backend tự lấy Open-Meteo realtime.
-    # Nếu muốn test không cần internet, gửi weather thủ công.
-    weather: dict[str, Any] | None = Field(
-        default=None,
-        description="Bỏ trống để backend tự lấy weather realtime. Chỉ gửi khi muốn test thủ công.",
-    )
-
-    latitude: float | None = Field(None, description="Tọa độ latitude dùng khi tự lấy Open-Meteo")
-    longitude: float | None = Field(None, description="Tọa độ longitude dùng khi tự lấy Open-Meteo")
-    timezone: str = Field(DEFAULT_TIMEZONE, description="Timezone dùng khi tự lấy Open-Meteo")
-    target_date: date | None = Field(default=None, description="Để trống để dùng ngày mới nhất từ Open-Meteo")
-
 
 @router.get("/status")
 def weather_ai_status(current_user: User = Depends(require_permission("feature.weather_risk"))):
@@ -76,20 +33,20 @@ def weather_ai_options(current_user: User = Depends(require_permission("feature.
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/predict-risk")
+@router.post("/predict-risk", response_model=WeatherAIPredictResponse)
 def predict_risk(
     payload: WeatherAIPredictRequest,
     current_user: User = Depends(require_permission("feature.weather_risk")),
 ):
     """
-    Dự đoán top nhóm bệnh có nguy cơ ghi nhận ca cao theo thời tiết.
+    Xếp hạng tương đối các nhóm bệnh đáng lưu ý trong context hiện tại.
 
     Cách dùng đơn giản từ frontend:
     - Gửi age_group + gender + latitude + longitude.
     - Không gửi weather: backend tự lấy weather realtime từ Open-Meteo theo tọa độ đã gửi.
 
-    Cách test không cần internet:
-    - Gửi thêm weather thủ công gồm temperature/humidity/rain...
+    Manual mode phải gửi đủ locked weather features hoặc lịch sử daily 7 ngày.
+    Response giữ `top_risks` làm alias tương thích và bổ sung `predictions`, Tier 1, Tier 2.
     """
     try:
         if payload.weather is None and (payload.latitude is None or payload.longitude is None):
@@ -106,5 +63,10 @@ def predict_risk(
         )
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelRuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Weather AI request failed")
+        raise HTTPException(status_code=500, detail="Weather AI runtime error.") from exc

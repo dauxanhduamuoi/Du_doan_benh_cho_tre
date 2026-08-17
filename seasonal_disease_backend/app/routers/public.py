@@ -1,5 +1,7 @@
 ﻿from typing import Any
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -11,6 +13,9 @@ from app.services.weather_ai_service import (
     get_weather_ai_options,
     predict_weather_risk,
 )
+from app.services.weather_ai_runtime import ModelRuntimeError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/public", tags=["Public"])
 
@@ -58,7 +63,7 @@ def parent_risk(payload: ParentRiskRequest):
     try:
         if payload.weather is None and (payload.latitude is None or payload.longitude is None):
             raise HTTPException(
-                status_code=400,
+                status_code=422,
                 detail="Thiếu tọa độ để lấy thời tiết realtime. Hãy bật định vị hoặc chọn tỉnh/thành phố có tọa độ.",
             )
         return predict_weather_risk(
@@ -72,5 +77,10 @@ def parent_risk(payload: ParentRiskRequest):
         )
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelRuntimeError as exc:
+        raise HTTPException(status_code=503, detail="Weather AI model service is unavailable.") from exc
+    except Exception as exc:
+        logger.exception("Public parent Weather AI request failed")
+        raise HTTPException(status_code=500, detail="Weather AI runtime error.") from exc

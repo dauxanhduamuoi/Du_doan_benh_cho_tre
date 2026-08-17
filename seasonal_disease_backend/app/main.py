@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, SessionLocal, engine
 from app.routers import auth, admin, import_data, dashboard, forecast, public, reports, weather_ai, areas
 from app.services.area_service import ensure_area_schema, seed_default_areas
+from app.config import WEATHER_AI_V3_PRELOAD
+from app.services.weather_ai_service import initialize_weather_ai_runtime
 
 
 @asynccontextmanager
@@ -15,6 +17,10 @@ async def lifespan(_: FastAPI):
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)
+    if WEATHER_AI_V3_PRELOAD:
+        status = initialize_weather_ai_runtime()
+        if not status.get("ready"):
+            raise RuntimeError(f"Weather AI V3 preload failed: {status.get('error')}")
     yield
 
 app = FastAPI(

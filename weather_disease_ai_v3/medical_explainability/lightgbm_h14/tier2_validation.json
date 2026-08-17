@@ -1,0 +1,75 @@
+{
+  "status": "PASS",
+  "validated_at_utc": "2026-08-13T17:19:41.259820+00:00",
+  "research_completed": "20/20",
+  "record_count": 20,
+  "evidence_status_counts": {
+    "CONFLICTING": 2,
+    "INSUFFICIENT": 7,
+    "LIMITED_OR_INDIRECT": 10,
+    "SUPPORTED": 1
+  },
+  "checks": {
+    "research_completed_20_of_20": true,
+    "candidate_ids_match_exactly": true,
+    "candidate_ids_unique": true,
+    "knowledge_base_has_20_records": true,
+    "evidence_status_valid": true,
+    "relationship_type_valid": true,
+    "icd_and_name_match_catalog": true,
+    "broad_groups_explicitly_marked": true,
+    "supported_records_have_sources": true,
+    "all_referenced_sources_resolve": true,
+    "all_source_urls_verified": true,
+    "no_disallowed_primary_source_type": true,
+    "no_direction_from_mean_abs_shap": true,
+    "weather_importance_not_causal_percent": true,
+    "model_score_not_probability": true,
+    "insufficient_and_conflicting_not_runtime_eligible": true,
+    "report_has_required_safety_language": true,
+    "model_files_unchanged": true,
+    "final_test_unchanged": true,
+    "pre_tier2_filter_unchanged": true,
+    "shap_files_unchanged": true,
+    "no_tracked_file_modified": true,
+    "test_target_not_used": true,
+    "no_training_tuning_or_model_selection": true
+  },
+  "protected_tree_sha256_before": {
+    "model_files_tree": "63eaf37d1cce2c736603697f70870676f1e3b34d910a325fde28881bd523f9e2",
+    "final_test_tree": "2ab4dcf0a31268da5c72928479a0aa8a01618c1cccc8758d4989b9664e452f92",
+    "pre_tier2_filter_tree": "7fa9a0c1eef6ef19182264a83458199e4ce094a01cacdc6c9d30ede4eece4421",
+    "tier1_shap_files_tree": "c797d497d7d94fd1844c3f06dd00a48b35261d4e7a585e57733202f9904c06a4"
+  },
+  "protected_tree_sha256_after": {
+    "model_files_tree": "63eaf37d1cce2c736603697f70870676f1e3b34d910a325fde28881bd523f9e2",
+    "final_test_tree": "2ab4dcf0a31268da5c72928479a0aa8a01618c1cccc8758d4989b9664e452f92",
+    "pre_tier2_filter_tree": "7fa9a0c1eef6ef19182264a83458199e4ce094a01cacdc6c9d30ede4eece4421",
+    "tier1_shap_files_tree": "c797d497d7d94fd1844c3f06dd00a48b35261d4e7a585e57733202f9904c06a4"
+  },
+  "output_sha256": {
+    "TIER2_MEDICAL_EXPLANATION_REPORT.md": "a70ccc6dd373a060e76510d01b19fa0b06b08b2a7c72a0fb232fa3dad9c4bb22",
+    "medical_evidence_matrix.csv": "8cdea2482b397a36319948d9a217176ed863066bf6215781b702471144ce72b8",
+    "medical_knowledge_base.json": "4fc3cda83981bf7ecf0dc3bb113da3bcb786e4157cfae11202527bebba40a92c",
+    "sources/source_index.json": "d122a4205707b9a0846820a629b42b401bc04be2f7ed5814d5bb872c129791da"
+  },
+  "source_audit": {
+    "source_count": 26,
+    "referenced_source_count": 26,
+    "verification_method": "Each URL was returned by web search or directly opened during the Tier 2 research session."
+  },
+  "execution_guards": {
+    "training_performed": false,
+    "tuning_performed": false,
+    "model_selection_performed": false,
+    "test_target_used": false,
+    "model_modified": false,
+    "shap_modified": false,
+    "final_test_modified": false,
+    "unsourced_causal_claims_allowed": false
+  },
+  "git_status_short": [
+    "?? weather_disease_ai_v3/explainability/lightgbm_h14_final/weather_heavy_filter/",
+    "?? weather_disease_ai_v3/medical_explainability/"
+  ]
+}

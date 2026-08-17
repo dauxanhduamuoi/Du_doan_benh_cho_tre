@@ -1,0 +1,131 @@
+{
+  "status": "PASS",
+  "validation_date": "2026-08-14",
+  "scope": "timezone consistency and public parent API HTTP error semantics",
+  "environment": {
+    "conda_environment": "seasonal_backend",
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_version": "3.11.15",
+    "global_python_used": false,
+    "dependencies_installed": false
+  },
+  "timezone": {
+    "status": "PASS",
+    "observed_before": {
+      "frontend": "browser/OS resolved timezone with Asia/Bangkok fallback",
+      "public_api_default": "Asia/Bangkok",
+      "internal_api_default": "Asia/Bangkok",
+      "open_meteo_parameter": "explicit request timezone, not auto",
+      "feature_local_date_source": "Open-Meteo hourly local timestamps grouped to daily dates",
+      "calendar_feature_date_source": "selected local anchor_date"
+    },
+    "provider_audit": {
+      "asia_ho_chi_minh_response_timezone": "Asia/Ho_Chi_Minh",
+      "asia_bangkok_response_timezone": "Asia/Bangkok",
+      "auto_response_timezone": "Asia/Ho_Chi_Minh",
+      "utc_offset_seconds": 25200
+    },
+    "application_convention_after": "Asia/Ho_Chi_Minh",
+    "frontend_explicit_timezone": true,
+    "backend_default_timezone": "Asia/Ho_Chi_Minh",
+    "provider_timezone_field_added": false,
+    "provider_timezone_field_reason": "not required because Open-Meteo returns the explicit Asia/Ho_Chi_Minh label",
+    "external_timezone_override_preserved_for_compatibility": true,
+    "feature_regression_pass": true,
+    "feature_count": 45,
+    "feature_tolerance": 1e-12,
+    "ranking_regression_pass": true,
+    "ranking_model_count": 221,
+    "top5_regression_pass": true,
+    "calendar_local_date_pass": true
+  },
+  "public_error_semantics": {
+    "status": "PASS",
+    "root_cause": "catch-all exception handler normalized runtime exceptions to HTTP 400",
+    "invalid_input_422_pass": true,
+    "model_unavailable_503_pass": true,
+    "unexpected_runtime_error_500_pass": true,
+    "success_200_pass": true,
+    "medical_kb_graceful_fallback_200_pass": true,
+    "successful_response_contract_unchanged": true,
+    "filesystem_path_not_exposed_in_error_response": true
+  },
+  "regression": {
+    "backend": {
+      "command": "python -m pytest -q",
+      "environment": "seasonal_backend",
+      "passed": 24,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "frontend": {
+      "tests_passed": 17,
+      "tests_failed": 0,
+      "tests_status": "PASS",
+      "typecheck_status": "PASS",
+      "production_build_status": "PASS",
+      "production_build_modules": 2292
+    },
+    "required_cases": {
+      "a_application_timezone": "PASS",
+      "b_locked_feature_pipeline": "PASS",
+      "c_public_invalid_input_422": "PASS",
+      "d_public_model_unavailable_503": "PASS",
+      "e_public_unexpected_error_500": "PASS",
+      "f_medical_kb_graceful_fallback": "PASS",
+      "g_success_contract_unchanged": "PASS",
+      "h_ranking_regression": "PASS"
+    }
+  },
+  "files_modified": {
+    "application_source": [
+      "seasonal_disease_backend/app/services/weather_ai_features.py",
+      "seasonal_disease_backend/app/routers/public.py",
+      "Frontend/src/app/components/WeatherRisk.tsx",
+      "Frontend/src/app/components/ParentPortal.tsx"
+    ],
+    "tests": [
+      "seasonal_disease_backend/tests/test_weather_ai_runtime.py",
+      "seasonal_disease_backend/tests/test_weather_ai_release_readiness.py"
+    ],
+    "outputs": [
+      "weather_disease_ai_v3/release_readiness/RELEASE_READINESS_REPORT.md",
+      "weather_disease_ai_v3/release_readiness/release_readiness_validation.json"
+    ]
+  },
+  "integrity": {
+    "status": "PASS",
+    "model_file_count": 221,
+    "model_files_unchanged": true,
+    "model_manifest_unchanged": true,
+    "final_test_artifacts_unchanged": true,
+    "shap_artifacts_unchanged": true,
+    "pre_tier2_artifacts_unchanged": true,
+    "medical_knowledge_unchanged": true,
+    "development_database_unchanged": true,
+    "git_diff_check_pass": true,
+    "hashes_before_after": {
+      "deployment_tree": "17947271573c995e6bbfc9c187027ea86ef24ba51a7876f4cb1b430b4f862274",
+      "model_manifest": "1b6e0b4a3c2fb7313000c730738244e6126e24c0fb3c278d08059e72d0d95416",
+      "final_test_tree": "316bcf4bb5c2581bd60cd43fd274bbf43b620a88b2d08766c58d403c798df32f",
+      "shap_tree": "49e0efa5e5adb6bd81432f95c47b945631358cc537a2d036e8b02cc0053a449b",
+      "pre_tier2_tree": "1b0bc5949530c780469d876c9791c18f6c3d61cb0f370e04beb2f8a4fd523636",
+      "medical_tree": "08b7c1ad342f4d17a62ed40e20640071506078b2675f4bacea3950d41008222b",
+      "medical_knowledge_base": "4fc3cda83981bf7ecf0dc3bb113da3bcb786e4157cfae11202527bebba40a92c",
+      "development_database": "5998c4ea105b67fb0f098a69f07a45675aa399ff54f35f471a9245465abc2dae"
+    },
+    "training_run": false,
+    "tuning_run": false,
+    "model_selection_run": false,
+    "test_target_used": false,
+    "model_modified": false,
+    "shap_modified": false,
+    "medical_knowledge_modified": false
+  },
+  "visual_browser_qa": "NOT_AVAILABLE",
+  "remaining_limitations": [
+    "Realtime weather remains dependent on Open-Meteo availability and response.",
+    "External API clients may still send an explicit timezone for backward compatibility.",
+    "Scientific FINAL TEST was not rerun because no scientific artifact or feature definition changed."
+  ]
+}

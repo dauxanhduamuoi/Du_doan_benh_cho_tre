@@ -1,0 +1,178 @@
+{
+  "status": "PASS",
+  "environment": {
+    "conda_environment": "seasonal_backend",
+    "conda_environment_pass": true,
+    "conda_prefix": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend",
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_version": "3.11.15",
+    "backend_working_directory": "isolated temporary copy of seasonal_disease_backend",
+    "frontend_working_directory": "D:\\OS_C\\Bài học trên trường\\Thực tập\\Fullstack_2\\ThucTap-main\\Frontend",
+    "node_version": "v24.15.0",
+    "npm_version": "11.12.1",
+    "minimal_packages_installed": {
+      "lightgbm": "4.7.0",
+      "pytest": "8.4.2"
+    }
+  },
+  "startup": {
+    "backend_started": true,
+    "backend_health_pass": true,
+    "model_preload_pass": true,
+    "frontend_started": true,
+    "frontend_health_pass": true,
+    "created_processes_stopped": true,
+    "ports_cleared_after_validation": true
+  },
+  "database_isolation": {
+    "pass": true,
+    "method": "backend workspace and SQLite copy outside repository; WEATHER_AI_V3_ROOT points to existing read-only artifacts",
+    "development_database_sha256_before": "5998c4ea105b67fb0f098a69f07a45675aa399ff54f35f471a9245465abc2dae",
+    "development_database_sha256_after": "5998c4ea105b67fb0f098a69f07a45675aa399ff54f35f471a9245465abc2dae",
+    "temporary_workspace_removed": true
+  },
+  "real_e2e": {
+    "public_parent_flow_pass": true,
+    "internal_weather_ai_flow_pass": true,
+    "open_meteo_real_request": true,
+    "reasonable_context_count": 3,
+    "weather_history_days": 7,
+    "timezone": "Asia/Bangkok",
+    "feature_count": 45,
+    "response_weather_feature_count": 43,
+    "demographic_feature_count": 2,
+    "model_count": 221,
+    "ranking_universe": 221,
+    "prediction_count": 5,
+    "ranks": [1, 2, 3, 4, 5],
+    "unique_disease_ids": true,
+    "scores_sorted_desc": true,
+    "scores_finite": true,
+    "disease_names_present": true,
+    "legacy_prediction_keys_absent": true,
+    "disclaimer_present": true
+  },
+  "tier1": {
+    "pass": true,
+    "real_available_per_request": [5, 5, 5],
+    "positive_sign_direction_pass": true,
+    "negative_sign_direction_pass": true,
+    "human_labels_pass": true,
+    "additivity_max_abs_error_observed": 6.661338147750939e-15
+  },
+  "tier2": {
+    "pass": true,
+    "real_available_per_request": [0, 0, 1],
+    "real_branch": {
+      "disease_id": "274",
+      "rank": 5,
+      "evidence_status": "LIMITED_OR_INDIRECT",
+      "matched_weather_factor": "wind",
+      "explanation_present": true,
+      "limitations_present": true,
+      "https_sources_pass": true
+    },
+    "fixture_positive_branch_pass": true,
+    "insufficient_gate_pass": true,
+    "conflicting_gate_pass": true,
+    "disease_outside_kb_gate_pass": true,
+    "negative_weather_shap_gate_pass": true,
+    "factor_mismatch_gate_pass": true,
+    "runtime_display_gate_pass": true,
+    "medical_kb_error_graceful_pass": true,
+    "frontend_fixture_render_pass": true
+  },
+  "frontend": {
+    "ranking_render_pass": true,
+    "tier1_render_pass": true,
+    "tier2_render_pass": true,
+    "disclaimer_pass": true,
+    "no_probability_semantics_pass": true,
+    "cache_v3_hydrate_pass": true,
+    "legacy_v2_cache_rejected": true,
+    "stale_contract_cache_rejected": true,
+    "static_responsive_review": "PASS",
+    "visual_browser_qa": "NOT_AVAILABLE",
+    "screenshots_created": 0
+  },
+  "error_flow": {
+    "invalid_input_422_pass": true,
+    "model_unavailable_503_pass": true,
+    "weather_or_server_error_500_pass": true,
+    "stack_trace_not_exposed": true,
+    "filesystem_path_not_exposed": true,
+    "medical_kb_raw_object_not_exposed": true,
+    "frontend_error_messages_pass": true
+  },
+  "security_privacy": {
+    "source_links_https_pass": true,
+    "source_links_noopener_pass": true,
+    "payload_logging_not_found": true,
+    "prediction_response_local_path_absent": true,
+    "status_response_local_path_absent_after_fix": true,
+    "internal_model_path_absent_after_fix": true
+  },
+  "performance_observed_ms": {
+    "request_count": 3,
+    "frontend_proxy_total": [1035.516, 1005.959, 1177.408],
+    "frontend_proxy_total_mean": 1072.961,
+    "backend_total": [1003.077, 981.18, 1154.739],
+    "backend_total_mean": 1046.332,
+    "weather_feature_preparation_mean": 875.825,
+    "ranking_221_models_mean": 161.708,
+    "tier1_top5_mean": 8.697,
+    "tier2_top5_mean": 0.05,
+    "internal_authenticated_proxy_total": 1067.554,
+    "render_completion": null,
+    "render_completion_reason": "browser automation unavailable"
+  },
+  "regression": {
+    "backend_environment": "seasonal_backend",
+    "backend_tests_pass": true,
+    "backend_tests_passed": 16,
+    "backend_tests_failed": 0,
+    "frontend_tests_pass": true,
+    "frontend_tests_passed": 17,
+    "frontend_tests_failed": 0,
+    "typecheck_pass": true,
+    "production_build_pass": true
+  },
+  "bugs": {
+    "found": 1,
+    "fixed": 1,
+    "items": [
+      {
+        "bug": "Weather AI status exposed local manifest_path",
+        "root_cause": "LightGBMModelRegistry.status serialized the absolute manifest path",
+        "fix": "replace manifest_path with manifest_verified=true",
+        "regression_test_pass": true
+      }
+    ]
+  },
+  "integrity": {
+    "scientific_artifacts_unchanged": true,
+    "training_run": false,
+    "tuning_run": false,
+    "model_selection_run": false,
+    "test_target_used": false,
+    "final_model_modified": false,
+    "shap_modified": false,
+    "pre_tier2_modified": false,
+    "medical_knowledge_modified": false,
+    "v2_modified": false,
+    "hashes_before_after": {
+      "deployment_tree": "cd60c0fb1df7da3f966454543d5b60c7f1dee2ca12447b4f2467e2a96261accb",
+      "model_manifest": "1b6e0b4a3c2fb7313000c730738244e6126e24c0fb3c278d08059e72d0d95416",
+      "final_test_tree": "c03d354d6fe3d5fe98eed526e48a538b61f332848629eb585a3249d9022fd6bf",
+      "shap_tree": "f245bf6ef8670a428cebef26aac7d0eb4c2af569e01eb93b9858b782459e1c23",
+      "pre_tier2_tree": "e9f08fe103166a0c6751227f8b455a33116ab5b0583778fd6b033b4d2e5a96f9",
+      "medical_tree": "ae8367adf537ca684ce2ac629ae0a054e3a4fd03afcb42e064b8503902d5fd4b",
+      "medical_kb": "4fc3cda83981bf7ecf0dc3bb113da3bcb786e4157cfae11202527bebba40a92c",
+      "v2_tree": "60418e399ea32e26ea1a4427fff7f0cbe60bd8c7ff761e52a1246953bfdfc5ef"
+    },
+    "minimal_application_source_fix": [
+      "seasonal_disease_backend/app/services/weather_ai_runtime.py",
+      "seasonal_disease_backend/tests/test_weather_ai_runtime.py"
+    ]
+  }
+}

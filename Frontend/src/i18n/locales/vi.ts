@@ -449,7 +449,6 @@ const vi: LocaleMessages = {
   'parent.note.title': 'Lưu ý nhỏ',
   'parent.note.body':
     'Trang này giúp phụ huynh theo dõi sớm nguy cơ theo khu vực. Khi trẻ có triệu chứng nguy hiểm, hãy đưa trẻ đến cơ sở y tế để được kiểm tra.',
-  'parent.risk.aiEstimate': 'AI ước tính theo thời tiết hiện tại: khoảng {{cases}} ca/ngày',
   'parent.risk.areaCases': 'Khu vực ghi nhận: {{cases}} ({{period}})',
   'parent.risk.caseCount': '{{count}} ca',
   'parent.risk.noLocalData': 'chưa có dữ liệu',
