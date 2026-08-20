@@ -1,0 +1,165 @@
+from __future__ import annotations
+
+import logging
+from collections.abc import Generator
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.config import (
+    GROQ_API_KEY,
+    GROQ_MODEL,
+    GROQ_TIMEOUT_SECONDS,
+    MEDICAL_KNOWLEDGE_LLM_PROVIDER,
+    MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS,
+    OLLAMA_BASE_URL,
+    OLLAMA_MODEL,
+    OLLAMA_TIMEOUT_SECONDS,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
+)
+from app.database import get_db
+from app.medical_knowledge_draft_schemas import (
+    DraftGenerationRequest,
+    DraftRevisionPatch,
+    DraftRevisionResponse,
+    DraftTopicHistoryResponse,
+)
+from app.models import User
+from app.security import require_staff_or_admin
+from app.services.medical_knowledge_draft_generator import (
+    DraftGeneratorConfigurationError,
+    DraftGeneratorOutputError,
+    DraftGeneratorRateLimitError,
+    DraftGeneratorTimeoutError,
+    DraftGeneratorUnavailableError,
+    OllamaModelNotInstalledError,
+    OllamaModelNotSelectedError,
+    create_medical_knowledge_draft_generator,
+)
+from app.services.medical_knowledge_draft_service import (
+    DraftNotEditableError,
+    DraftPersistenceError,
+    DraftWorkflowNotFoundError,
+    DraftWorkflowValidationError,
+    MedicalKnowledgeDraftService,
+)
+from app.services.medical_knowledge_pubmed_service import DiseaseUniverseConfigurationError
+
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/medical-knowledge", tags=["Medical Knowledge Drafts"])
+
+
+def get_draft_service(db: Session = Depends(get_db)) -> Generator[MedicalKnowledgeDraftService, None, None]:
+    try:
+        generator = create_medical_knowledge_draft_generator(
+            provider=MEDICAL_KNOWLEDGE_LLM_PROVIDER,
+            openai_api_key=OPENAI_API_KEY,
+            openai_model=OPENAI_MODEL,
+            openai_timeout_seconds=MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS,
+            ollama_base_url=OLLAMA_BASE_URL,
+            ollama_model=OLLAMA_MODEL,
+            ollama_timeout_seconds=OLLAMA_TIMEOUT_SECONDS,
+            groq_api_key=GROQ_API_KEY,
+            groq_model=GROQ_MODEL,
+            groq_timeout_seconds=GROQ_TIMEOUT_SECONDS,
+        )
+    except DraftGeneratorConfigurationError as exc:
+        raise HTTPException(
+            status_code=503, detail="AI draft generation provider is not configured correctly"
+        ) from exc
+    try:
+        yield MedicalKnowledgeDraftService(db, generator)
+    finally:
+        generator.close()
+
+
+def _map_draft_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, DraftNotEditableError):
+        return HTTPException(status_code=409, detail="Only DRAFT revisions can be edited")
+    if isinstance(exc, DraftWorkflowNotFoundError):
+        return HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, DraftWorkflowValidationError):
+        return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, OllamaModelNotSelectedError):
+        return HTTPException(status_code=503, detail="No local Ollama model is selected")
+    if isinstance(exc, OllamaModelNotInstalledError):
+        return HTTPException(status_code=503, detail="The selected Ollama model is not installed")
+    if isinstance(exc, DraftGeneratorTimeoutError):
+        return HTTPException(status_code=504, detail="Local AI response timed out")
+    if isinstance(exc, DraftGeneratorRateLimitError):
+        return HTTPException(
+            status_code=429,
+            detail="Đã đạt giới hạn sử dụng nhà cung cấp AI. Hãy thử lại sau.",
+        )
+    if isinstance(exc, (DraftGeneratorConfigurationError, DiseaseUniverseConfigurationError)):
+        return HTTPException(
+            status_code=503,
+            detail="AI draft generation is not configured on the server",
+        )
+    if isinstance(exc, DraftGeneratorUnavailableError):
+        return HTTPException(
+            status_code=502,
+            detail="AI draft generation is temporarily unavailable",
+        )
+    if isinstance(exc, DraftGeneratorOutputError):
+        return HTTPException(
+            status_code=502,
+            detail="AI could not produce a valid structured medical draft",
+        )
+    if isinstance(exc, DraftPersistenceError):
+        logger.exception("Medical Knowledge draft persistence failed")
+        return HTTPException(status_code=500, detail="Medical Knowledge draft could not be saved")
+    logger.exception("Medical Knowledge draft operation failed")
+    return HTTPException(status_code=500, detail="Medical Knowledge draft operation failed")
+
+
+@router.post("/drafts/generate", response_model=DraftRevisionResponse)
+def generate_medical_knowledge_draft(
+    payload: DraftGenerationRequest,
+    current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgeDraftService = Depends(get_draft_service),
+):
+    try:
+        return service.generate(payload, created_by=current_user.id)
+    except Exception as exc:
+        raise _map_draft_error(exc) from exc
+
+
+@router.get("/topics", response_model=DraftTopicHistoryResponse)
+def get_medical_knowledge_topic_history(
+    disease_group_id: str = Query(min_length=1, max_length=100),
+    weather_factor: str = Query(min_length=1, max_length=32),
+    _current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgeDraftService = Depends(get_draft_service),
+):
+    try:
+        return service.get_history(disease_group_id, weather_factor)
+    except Exception as exc:
+        raise _map_draft_error(exc) from exc
+
+
+@router.get("/revisions/{revision_id}", response_model=DraftRevisionResponse)
+def get_medical_knowledge_revision(
+    revision_id: int,
+    _current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgeDraftService = Depends(get_draft_service),
+):
+    try:
+        return service.get_revision(revision_id)
+    except Exception as exc:
+        raise _map_draft_error(exc) from exc
+
+
+@router.patch("/revisions/{revision_id}", response_model=DraftRevisionResponse)
+def update_medical_knowledge_draft(
+    revision_id: int,
+    payload: DraftRevisionPatch,
+    _current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgeDraftService = Depends(get_draft_service),
+):
+    try:
+        return service.update_draft(revision_id, payload)
+    except Exception as exc:
+        raise _map_draft_error(exc) from exc

@@ -5,7 +5,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, SessionLocal, engine
-from app.routers import auth, admin, import_data, dashboard, forecast, public, reports, weather_ai, areas
+from app import medical_knowledge_models  # noqa: F401 - register tables in Base metadata
+from app.routers import (
+    admin,
+    areas,
+    auth,
+    dashboard,
+    forecast,
+    import_data,
+    medical_knowledge_drafts,
+    medical_knowledge_pubmed,
+    medical_knowledge_service_status,
+    public,
+    reports,
+    weather_ai,
+)
 from app.services.area_service import ensure_area_schema, seed_default_areas
 from app.config import WEATHER_AI_V3_PRELOAD
 from app.services.weather_ai_service import initialize_weather_ai_runtime
@@ -63,3 +77,7 @@ app.include_router(public.router)
 app.include_router(reports.router)
 app.include_router(weather_ai.router)
 app.include_router(areas.router)
+app.include_router(medical_knowledge_pubmed.router)
+app.include_router(medical_knowledge_pubmed.options_router)
+app.include_router(medical_knowledge_drafts.router)
+app.include_router(medical_knowledge_service_status.router)

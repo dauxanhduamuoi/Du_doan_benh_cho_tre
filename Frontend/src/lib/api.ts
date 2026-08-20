@@ -29,7 +29,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { skipAuth, headers, ...rest } = options;
 
   const finalHeaders: Record<string, string> = {

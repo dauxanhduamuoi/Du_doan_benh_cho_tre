@@ -53,6 +53,7 @@ const en: LocaleMessages = {
   'sidebar.genderAnalysis': 'Gender analysis',
   'sidebar.diseaseTrend': 'Disease trend',
   'sidebar.weatherRisk': 'Weather AI',
+  'sidebar.medicalKnowledge': 'Medical knowledge',
   'sidebar.areas': 'Areas',
   'sidebar.forecast': 'Disease case forecast',
   'sidebar.reports': 'Reports',

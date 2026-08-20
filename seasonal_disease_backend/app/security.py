@@ -104,6 +104,15 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_staff_or_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in {"admin", "staff"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Chỉ admin hoặc nhân viên được thực hiện chức năng này.",
+        )
+    return current_user
+
+
 def get_user_permissions(db: Session, user: User) -> list[str]:
     rows = (
         db.query(UserPermission.permission_code)

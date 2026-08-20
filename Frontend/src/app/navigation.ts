@@ -1,6 +1,7 @@
 import {
   Activity,
   BarChart3,
+  BookOpenText,
   CloudSun,
   FileText,
   LayoutDashboard,
@@ -24,6 +25,7 @@ export type TabType =
   | 'disease-trend-analysis'
   | 'forecast'
   | 'weather-risk'
+  | 'medical-knowledge'
   | 'areas'
   | 'reports'
   | 'notifications'
@@ -50,11 +52,22 @@ export const TAB_PERMISSIONS: Partial<Record<TabType, string>> = {
   reports: 'feature.reports',
 };
 
+export const TAB_ROLES: Partial<Record<TabType, readonly string[]>> = {
+  'medical-knowledge': ['admin', 'staff'],
+};
+
 export function canUse(user: CurrentUser | null | undefined, permission?: string): boolean {
   if (!permission) return true;
   if (!user) return false;
   if (user.role === 'admin') return true;
   return user.permissions.includes(permission);
+}
+
+export function canAccessTab(user: CurrentUser | null | undefined, tab: TabType): boolean {
+  if (!user) return false;
+  const roles = TAB_ROLES[tab];
+  if (roles && !roles.includes(user.role)) return false;
+  return canUse(user, TAB_PERMISSIONS[tab]);
 }
 
 export function getMainNavItems(t: (key: string) => string): NavItem[] {
@@ -68,6 +81,7 @@ export function getMainNavItems(t: (key: string) => string): NavItem[] {
     { id: 'disease-trend-analysis', label: t('sidebar.diseaseTrend'), icon: Activity },
     { id: 'forecast', label: t('sidebar.forecast'), icon: Activity },
     { id: 'weather-risk', label: t('sidebar.weatherRisk'), icon: CloudSun },
+    { id: 'medical-knowledge', label: t('sidebar.medicalKnowledge'), icon: BookOpenText },
     { id: 'areas', label: t('sidebar.areas'), icon: MapPin },
     { id: 'reports', label: t('sidebar.reports'), icon: FileText },
   ];

@@ -57,6 +57,7 @@ const vi: LocaleMessages = {
   'sidebar.genderAnalysis': 'Phân tích giới tính',
   'sidebar.diseaseTrend': 'Xu hướng nhóm bệnh',
   'sidebar.weatherRisk': 'AI thời tiết',
+  'sidebar.medicalKnowledge': 'Kho kiến thức y khoa',
   'sidebar.areas': 'Khu vực',
   'sidebar.forecast': 'Dự báo số ca bệnh',
   'sidebar.reports': 'Báo cáo',

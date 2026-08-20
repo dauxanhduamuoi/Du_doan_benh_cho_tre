@@ -1,0 +1,133 @@
+{
+  "status": "PASS",
+  "completed_at": "2026-08-19T12:48:47.7334626+07:00",
+  "environment": {
+    "conda_environment": "seasonal_backend",
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_version": "3.11.15",
+    "project_venv_used": false
+  },
+  "dotenv": {
+    "supported": true,
+    "dependency": "python-dotenv==1.2.2",
+    "canonical_file": "seasonal_disease_backend/.env",
+    "example_file": "seasonal_disease_backend/.env.example",
+    "env_ignored_by_git": true,
+    "example_committable": true,
+    "os_environment_has_priority": true,
+    "working_directory_independent": true,
+    "single_loader": true,
+    "missing_file_startup_safe": true,
+    "restart_required": true
+  },
+  "service_status": {
+    "endpoint": "/api/medical-knowledge/service-status",
+    "protected": true,
+    "anonymous_status_code": 401,
+    "unauthorized_role_blocked": true,
+    "admin_allowed": true,
+    "staff_allowed": true,
+    "pubmed_status": true,
+    "llm_status": true,
+    "secret_values_exposed": false,
+    "model_identifier_visible": true,
+    "absolute_env_path_exposed": false
+  },
+  "connection_tests": {
+    "pubmed_endpoint": true,
+    "openai_endpoint": true,
+    "production_pubmed_client_reused": true,
+    "production_openai_client_reused": true,
+    "auto_called_on_page_load": false,
+    "pubmed_retmax": 1,
+    "openai_structured_output": true,
+    "openai_store_false": true,
+    "openai_tools_enabled": false,
+    "patient_data_used": false,
+    "database_mutated": false,
+    "pubmed_live": "NOT_RUN",
+    "openai_live": "NOT_RUN"
+  },
+  "admin_ui": {
+    "panel_rendered": true,
+    "configured_states": true,
+    "missing_config_states": true,
+    "model_name_displayed": true,
+    "connection_loading_states": true,
+    "connection_success_states": true,
+    "connection_failure_states": true,
+    "openai_cost_notice_visible": true,
+    "restart_instruction_visible": true,
+    "secret_editor_present": false,
+    "interactive_browser_check": "UNAVAILABLE"
+  },
+  "security": {
+    "openai_key_in_frontend": false,
+    "ncbi_key_in_frontend": false,
+    "ncbi_email_value_in_frontend": false,
+    "secret_returned_by_api": false,
+    "secret_stored_in_database": false,
+    "secret_stored_in_local_storage": false,
+    "secret_logged": false,
+    "secret_in_reports": false
+  },
+  "tests": {
+    "focused_backend_passed": 78,
+    "focused_backend_failed": 0,
+    "backend_passed": 134,
+    "backend_failed": 0,
+    "focused_frontend_passed": 40,
+    "focused_frontend_failed": 0,
+    "frontend_passed": 72,
+    "frontend_failed": 0,
+    "parent_weather_ai_frontend_passed": 30,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "compile_pass": true,
+    "startup_import_pass": true,
+    "git_diff_check_pass": true
+  },
+  "integrity": {
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "parent_runtime_modified": false,
+    "tier2_runtime_modified": false,
+    "training_run": false,
+    "tuning_run": false,
+    "approval_run": false,
+    "publish_run": false,
+    "protected_file_count": 239,
+    "protected_aggregate_sha256_before": "827A3255DD2D6631A8B01BE5711D8042AA808E82B54D777E26FF9C7548C8E021",
+    "protected_aggregate_sha256_after": "827A3255DD2D6631A8B01BE5711D8042AA808E82B54D777E26FF9C7548C8E021",
+    "development_server_reload_observed": true
+  },
+  "dependency_changes": [
+    "python-dotenv==1.2.2"
+  ],
+  "files_added": [
+    "seasonal_disease_backend/.env (local, git-ignored)",
+    "seasonal_disease_backend/.env.example",
+    "seasonal_disease_backend/app/routers/medical_knowledge_service_status.py",
+    "seasonal_disease_backend/tests/test_service_configuration.py",
+    "Frontend/src/app/components/medical-knowledge/ServiceConfigurationPanel.tsx",
+    "Frontend/src/app/components/medical-knowledge/ServiceConfigurationPanel.test.tsx",
+    "weather_disease_ai_v3/service_configuration_v1/SERVICE_CONFIGURATION_V1_REPORT.md",
+    "weather_disease_ai_v3/service_configuration_v1/service_configuration_v1_validation.json"
+  ],
+  "files_modified": [
+    ".gitignore",
+    "seasonal_disease_backend/requirements.txt",
+    "seasonal_disease_backend/app/config.py",
+    "seasonal_disease_backend/app/main.py",
+    "seasonal_disease_backend/app/services/medical_knowledge_draft_generator.py",
+    "Frontend/src/lib/medicalKnowledgeApi.ts",
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.tsx",
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.test.tsx"
+  ],
+  "remaining_limitations": [
+    "Live PubMed and OpenAI connectivity remains unverified until real values are added to the local .env and an authorized user explicitly runs each test.",
+    "Backend restart is required after changing .env values.",
+    "Interactive in-app browser inspection was unavailable; automated UI tests, typecheck, and production build passed."
+  ]
+}

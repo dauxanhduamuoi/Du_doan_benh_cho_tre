@@ -14,6 +14,7 @@ const Reports = lazy(() => import('./components/Reports'));
 const NotificationsPanel = lazy(() => import('./components/NotificationsPanel'));
 const SettingsPanel = lazy(() => import('./components/Settings'));
 const Account = lazy(() => import('./components/Account'));
+const MedicalKnowledgeResearchPage = lazy(() => import('./components/medical-knowledge/MedicalKnowledgeResearchPage'));
 
 export const ParentPortalPage = lazy(() => import('./components/ParentPortal'));
 
@@ -29,6 +30,7 @@ export default function AppPages({ activeTab }: { activeTab: TabType }) {
       {activeTab === 'disease-trend-analysis' && <AdvancedAnalytics mode="trend" />}
       {activeTab === 'forecast' && <Forecast />}
       {activeTab === 'weather-risk' && <WeatherRisk />}
+      {activeTab === 'medical-knowledge' && <MedicalKnowledgeResearchPage />}
       {activeTab === 'areas' && <AreaInsights />}
       {activeTab === 'reports' && <Reports />}
       {activeTab === 'notifications' && <NotificationsPanel />}

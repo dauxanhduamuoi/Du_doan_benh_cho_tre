@@ -14,7 +14,7 @@ import LoginPage from './components/LoginPage';
 import LoadingFallback from './components/LoadingFallback';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUnreadNotifications } from './hooks/useUnreadNotifications';
-import { canUse, getBottomNavItems, getMainNavItems, TAB_PERMISSIONS, type TabType } from './navigation';
+import { canAccessTab, getBottomNavItems, getMainNavItems, type TabType } from './navigation';
 import { useI18n, useT } from '@/lib/i18n';
 
 function initialsOf(name: string): string {
@@ -29,7 +29,7 @@ function AppShell() {
   const t = useT();
   const { lang } = useI18n();
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +38,7 @@ function AppShell() {
   const allMenuItems = useMemo(() => getMainNavItems(t), [t]);
 
   const menuItems = useMemo(
-    () => allMenuItems.filter((item) => canUse(user, TAB_PERMISSIONS[item.id])),
+    () => allMenuItems.filter((item) => canAccessTab(user, item.id)),
     [allMenuItems, user],
   );
 
@@ -54,7 +54,7 @@ function AppShell() {
 
   useEffect(() => {
     if (activeTab === 'settings' || activeTab === 'account' || activeTab === 'notifications') return;
-    if (!canUse(user, TAB_PERMISSIONS[activeTab])) {
+    if (!canAccessTab(user, activeTab)) {
       setActiveTab(menuItems[0]?.id ?? 'settings');
     }
   }, [activeTab, menuItems, user]);
@@ -184,7 +184,7 @@ function AppShell() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="relative z-50 bg-white border-b border-slate-200 px-6 py-3 shrink-0">
+        <header className="relative z-50 bg-white border-b border-slate-200 px-3 sm:px-6 py-3 shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-800">{pageTitle}</h2>
@@ -264,7 +264,7 @@ function AppShell() {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-3 sm:p-6">
           <AppPages activeTab={activeTab} />
         </div>
       </main>

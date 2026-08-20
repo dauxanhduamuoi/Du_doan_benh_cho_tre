@@ -1,0 +1,76 @@
+{
+  "status": "PASS",
+  "provider": {
+    "name": "NCBI PubMed E-utilities",
+    "esearch_implemented": true,
+    "efetch_implemented": true,
+    "batch_fetch": true,
+    "live_smoke_test": "NOT_RUN"
+  },
+  "security": {
+    "admin_protected": true,
+    "staff_protected": true,
+    "anonymous_blocked": true,
+    "api_key_not_exposed": true
+  },
+  "validation": {
+    "disease_group_validation": "Lightweight cached validation against disease_order/model_count in the deployed 221-group model_manifest.json; no model registry or LightGBM booster loading",
+    "weather_factor_validation": true,
+    "search_terms_validation": true
+  },
+  "retrieval": {
+    "query_builder_pass": true,
+    "xml_parser_pass": true,
+    "multiple_abstract_sections_pass": true,
+    "missing_fields_safe": true,
+    "zero_results_safe": true,
+    "timeout_safe": true,
+    "rate_limit_safe": true
+  },
+  "database": {
+    "pubmed_source_import_pass": true,
+    "duplicate_pmid_reuse_pass": true,
+    "raw_metadata_saved": true
+  },
+  "tests": {
+    "new_tests_passed": 33,
+    "new_tests_failed": 0,
+    "full_backend_tests_pass": true
+  },
+  "integrity": {
+    "weather_ai_runtime_modified": false,
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "frontend_modified": false,
+    "tier2_runtime_modified": false,
+    "llm_added": false,
+    "training_run": false,
+    "tuning_run": false
+  },
+  "files_added": [
+    "seasonal_disease_backend/app/pubmed_schemas.py",
+    "seasonal_disease_backend/app/routers/medical_knowledge_pubmed.py",
+    "seasonal_disease_backend/app/services/pubmed_query_builder.py",
+    "seasonal_disease_backend/app/services/pubmed_client.py",
+    "seasonal_disease_backend/app/services/medical_knowledge_pubmed_service.py",
+    "seasonal_disease_backend/tests/test_pubmed_client.py",
+    "seasonal_disease_backend/tests/test_pubmed_api_service.py",
+    "weather_disease_ai_v3/medical_knowledge_v1_pubmed/PUBMED_RETRIEVAL_V1_REPORT.md",
+    "weather_disease_ai_v3/medical_knowledge_v1_pubmed/pubmed_retrieval_v1_validation.json"
+  ],
+  "files_modified": [
+    "seasonal_disease_backend/app/config.py",
+    "seasonal_disease_backend/app/security.py",
+    "seasonal_disease_backend/app/repositories/medical_knowledge_repository.py",
+    "seasonal_disease_backend/app/main.py"
+  ],
+  "remaining_limitations": [
+    "rate limiting is process-local and should become shared for a multi-worker high-volume deployment",
+    "PMID deduplication is application-level lookup/reuse and cannot eliminate a concurrent multi-process insertion race without a database constraint",
+    "V1 search/import is bounded to 25 records and has no background jobs, complex cache, or pagination",
+    "staff must provide verified disease search terms; the backend does not translate Vietnamese disease names",
+    "rare malformed records missing PMID or title are skipped safely",
+    "live smoke test was not run because NCBI_EMAIL was not configured"
+  ]
+}

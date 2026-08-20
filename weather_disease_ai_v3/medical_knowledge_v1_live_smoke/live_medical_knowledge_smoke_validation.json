@@ -1,0 +1,113 @@
+{
+  "status": "BLOCKED",
+  "decision": "NEEDS_CORRECTION_BEFORE_APPROVAL",
+  "preflight_completed_at": "2026-08-19T11:32:09.6727099+07:00",
+  "environment": {
+    "timezone": "Asia/Ho_Chi_Minh",
+    "required_conda_environment": "seasonal_backend",
+    "conda_command_on_path": false,
+    "conda_executable": "D:\\Users\\LENOVO\\anaconda3\\Scripts\\conda.exe",
+    "conda_version": "26.1.1",
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_prefix": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend",
+    "python_version": "3.11.15",
+    "seasonal_backend_verified": true,
+    "used_project_venv": false,
+    "used_global_or_other_python": false
+  },
+  "config": {
+    "checked_via_production_config": true,
+    "values_logged": false,
+    "ncbi_email_configured": false,
+    "ncbi_api_key_configured": false,
+    "openai_api_key_configured": false,
+    "openai_model_configured": false
+  },
+  "stop_condition": {
+    "triggered": true,
+    "reason": "NCBI_EMAIL, OPENAI_API_KEY, and OPENAI_MODEL are absent from the seasonal_backend production configuration."
+  },
+  "pubmed": {
+    "live_smoke": "BLOCKED",
+    "planned_case": "A09 / gastroenteritis / precipitation",
+    "canonical_group_confirmed": false,
+    "query": null,
+    "search_requests": 0,
+    "result_count": 0,
+    "import_requests": 0,
+    "imported_source_count": 0,
+    "selected_pmids": []
+  },
+  "llm": {
+    "live_smoke": "BLOCKED",
+    "provider": "openai",
+    "model": null,
+    "production_service_invoked": false,
+    "production_prompt_used": false,
+    "main_generation_requests": 0,
+    "secondary_review_requests": 0,
+    "structured_output_received": false,
+    "store_false": null,
+    "store_false_live_verified": false,
+    "tools_or_web_search_used": false,
+    "patient_data_sent": false
+  },
+  "actual_output": {
+    "evidence_level": null,
+    "evidence_scope": null,
+    "short_explanation_vi": null,
+    "detailed_explanation_vi": null,
+    "limitations_vi": null,
+    "source_assessments": []
+  },
+  "quality_review": {
+    "performed": false,
+    "manual_abstract_comparison_performed": false,
+    "grounding": "NOT_RUN",
+    "causal_overclaim": "NOT_RUN",
+    "unsupported_mechanism": "NOT_RUN",
+    "fabricated_numbers": "NOT_RUN",
+    "fabricated_citations": "NOT_RUN",
+    "subtype_to_group_overgeneralization": "NOT_RUN"
+  },
+  "draft": {
+    "temporary_database_created": false,
+    "created": false,
+    "status": null,
+    "parent_display_allowed": null,
+    "published_revision_id_unchanged": null,
+    "readback_performed": false,
+    "edit_performed": false,
+    "provider_called_again_on_edit": false,
+    "approved": false,
+    "published": false
+  },
+  "integrity": {
+    "production_database_path": "seasonal_disease_backend/database.db",
+    "production_database_sha256_before": "D076B8BFDDFE870794A3308B62019E8E2EE31EB58FF8C6CFDDDEF0C5ECF48714",
+    "production_database_sha256_after": "D076B8BFDDFE870794A3308B62019E8E2EE31EB58FF8C6CFDDDEF0C5ECF48714",
+    "production_database_size_bytes_before": 188575744,
+    "production_database_size_bytes_after": 188575744,
+    "production_database_mtime_utc_before": "2026-08-15T09:38:27.9239926Z",
+    "production_database_mtime_utc_after": "2026-08-15T09:38:27.9239926Z",
+    "production_database_modified": false,
+    "source_fingerprint_excludes_python_cache": true,
+    "source_file_count": 119,
+    "source_aggregate_sha256_before": "A3C596E02EA6D12A3BC80621B741AFF4931BB77251EBD2704AE4F11BF4100FC1",
+    "source_aggregate_sha256_after": "A3C596E02EA6D12A3BC80621B741AFF4931BB77251EBD2704AE4F11BF4100FC1",
+    "production_source_code_modified": false,
+    "parent_runtime_modified": false,
+    "worktree_dirty_before_validation": true,
+    "only_requested_report_artifacts_rewritten": true
+  },
+  "request_counts": {
+    "pubmed_search": 0,
+    "pubmed_import": 0,
+    "openai_generation": 0,
+    "secondary_llm_review": 0
+  },
+  "artifacts": [
+    "LIVE_MEDICAL_KNOWLEDGE_SMOKE_REPORT.md",
+    "live_medical_knowledge_smoke_validation.json"
+  ]
+}
