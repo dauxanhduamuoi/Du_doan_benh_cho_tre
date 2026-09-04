@@ -220,14 +220,13 @@ export function ParentBrandFooter() {
 
 export function DecorativeBackground() {
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute -left-16 top-20 h-72 w-72 rounded-full bg-sky-200/70 blur-3xl" />
-      <div className="absolute right-0 top-8 h-80 w-80 rounded-full bg-amber-200/70 blur-3xl" />
-      <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-teal-200/65 blur-3xl" />
-      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-rose-200/55 blur-3xl" />
-      <div className="absolute left-1/2 top-1/3 h-80 w-80 -translate-x-1/2 rounded-full bg-fuchsia-100/50 blur-3xl" />
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden opacity-30" aria-hidden="true">
+      <div className="absolute -left-16 top-20 h-72 w-72 rounded-full bg-sky-200/50 blur-3xl" />
+      <div className="absolute right-0 top-8 h-80 w-80 rounded-full bg-amber-200/45 blur-3xl" />
+      <div className="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-teal-200/40 blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-rose-200/35 blur-3xl" />
 
-      {DECORATIVE_ITEMS.map((item, index) => (
+      {DECORATIVE_ITEMS.slice(0, 4).map((item, index) => (
         <div
           key={`${item.icon}-${index}`}
           className={`absolute hidden select-none drop-shadow-[0_16px_26px_rgba(15,23,42,0.20)] 2xl:block ${item.className}`}
@@ -238,7 +237,7 @@ export function DecorativeBackground() {
         </div>
       ))}
 
-      {DECORATIVE_BUBBLES.map((className, index) => (
+      {DECORATIVE_BUBBLES.slice(0, 4).map((className, index) => (
         <div
           key={`bubble-${index}`}
           className={`absolute hidden rounded-full border-2 shadow-[inset_10px_10px_18px_rgba(255,255,255,0.75),0_16px_28px_rgba(14,116,144,0.12)] backdrop-blur-[1px] 2xl:block ${className}`}

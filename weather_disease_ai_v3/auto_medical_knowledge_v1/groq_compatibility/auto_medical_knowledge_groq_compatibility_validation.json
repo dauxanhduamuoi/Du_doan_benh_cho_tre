@@ -1,0 +1,118 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "root_cause": {
+    "identified": true,
+    "structural_issue": true,
+    "schema_issue": true,
+    "safety_issue": false,
+    "rate_limit_observed": true,
+    "details": [
+      "Groq already used provider-native strict JSON Schema, but its response text was passed directly to Pydantic without bounded formatting normalization.",
+      "JSON, schema, enum, required-field, and exact-source-set failures were collapsed into generic DraftGeneratorOutputError/LLM_INVALID_RESPONSE.",
+      "Auto semantic guards raised one generic AutoMedicalKnowledgeValidationError/AUTO_OUTPUT_VALIDATION_FAILED, so the earlier live rejection category could not be reconstructed from stored history.",
+      "The Auto schema required non-empty prose even for INSUFFICIENT and CONFLICTING, which removed the model's safe empty-output path.",
+      "The current isolated live run was structurally valid and was correctly rejected as AUTO_OUTPUT_UNSUPPORTED_MECHANISM in limitations_vi. This is a safety outcome, not a remaining compatibility defect."
+    ]
+  },
+  "historical_audit": {
+    "failed_attempts_inspected": 9,
+    "known_structured_output_class": 6,
+    "known_generic_semantic_validation": 2,
+    "known_provider_rate_limit": 1,
+    "exact_parse_count_proven": 0,
+    "exact_schema_count_proven": 0,
+    "unknown_historical_detail": 8,
+    "backfilled": false
+  },
+  "output_contract": {
+    "provider_specific_logic_isolated": true,
+    "provider_native_json_schema": true,
+    "safe_normalization": true,
+    "schema_validation_separate": true,
+    "safety_validation_separate": true,
+    "source_set_validation": true,
+    "source_order_irrelevant": true,
+    "insufficient_empty_path": true
+  },
+  "safety": {
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "numeric_guard_preserved": true,
+    "pediatric_guard_preserved": true,
+    "personalized_diagnosis_guard_preserved": true,
+    "unsupported_source_claim_guard": true,
+    "semantic_failure_auto_retry": false
+  },
+  "diagnostics": {
+    "specific_failure_codes": true,
+    "safe_field_level_detail": true,
+    "pipeline_version_persisted": true,
+    "raw_provider_output_persisted": false,
+    "raw_prompt_persisted": false,
+    "raw_evidence_persisted_as_diagnostic": false
+  },
+  "retry_policy": {
+    "maximum_structural_retries": 1,
+    "semantic_retries": 0,
+    "rate_limit_queue_backoff_preserved": true
+  },
+  "legacy_ux": {
+    "history_preserved": true,
+    "legacy_marked": true,
+    "latest_attempt_primary": true,
+    "old_failure_does_not_override_ready": true,
+    "history_collapsed_by_default": true,
+    "filters_present": true
+  },
+  "e2e": {
+    "structural_normalization": "PASS",
+    "structural_retry": "PASS",
+    "safety_rejection": "PASS",
+    "legacy_history": "PASS",
+    "reviewed_precedence": "PASS"
+  },
+  "live": {
+    "topic": "169 Pneumonia + temperature",
+    "groq_calls": 1,
+    "live_auto_generation": "FAIL",
+    "failure_code": "AUTO_OUTPUT_UNSUPPORTED_MECHANISM",
+    "failure_field": "limitations_vi",
+    "automatic_semantic_retry": false,
+    "temporary_db": true,
+    "queries_run": 1,
+    "raw_results": 15,
+    "deduplicated": 15,
+    "disease_relevant": 7,
+    "factor_relevant": 4,
+    "pediatric_relevant": 4,
+    "usable_evidence": 4,
+    "selected_for_generation": 4,
+    "revision_persisted": false,
+    "production_visibility_changed": false
+  },
+  "tests": {
+    "backend_passed": 290,
+    "backend_failed": 0,
+    "frontend_passed": 34,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "root_http_status": 200,
+    "health_endpoint_present": false
+  },
+  "integrity": {
+    "reviewed_data_modified": false,
+    "production_auto_visibility_modified": false,
+    "production_auto_current_pointer_modified": false,
+    "historical_attempts_deleted": false,
+    "production_snapshot_hashes_unchanged": true,
+    "foreign_key_check_pass": true,
+    "temporary_database_foreign_key_check_pass": true
+  },
+  "remaining_limitations": [
+    "Eight historical failure attempts lack enough persisted detail to prove a narrower parse, schema, source-mapping, or semantic category; no category was fabricated or backfilled.",
+    "The one live Groq response was structurally compatible but did not produce READY because the independent mechanism guard correctly failed closed."
+  ],
+  "user_manual_test_required": true
+}

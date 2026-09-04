@@ -1,0 +1,68 @@
+{
+  "status": "PASS",
+  "factors": {
+    "generic_factor_model": true,
+    "weather_supported": true,
+    "age_supported": true,
+    "sex_supported": true,
+    "seasonality_supported": true,
+    "age_value_scoped": true,
+    "sex_value_scoped": true
+  },
+  "search": {
+    "guided_mode": true,
+    "free_pubmed_mode": true,
+    "direct_pmid_preserved": true,
+    "pediatric_clause_preserved": true,
+    "weather_query_supported": true,
+    "age_query_supported": true,
+    "sex_query_supported": true,
+    "seasonality_query_supported": true
+  },
+  "workflow": {
+    "staff_selects_sources": true,
+    "ai_uses_exact_selected_sources": true,
+    "article_level_approval_added": false,
+    "draft_approval_preserved": true,
+    "publish_preserved": true,
+    "unpublish_preserved": true
+  },
+  "parent": {
+    "tier1_is_factor_source_of_truth": true,
+    "age_tier2_supported": true,
+    "sex_tier2_supported": true,
+    "seasonality_tier2_supported": true,
+    "weather_tier2_preserved": true,
+    "no_runtime_pubmed": true,
+    "no_runtime_llm": true,
+    "missing_tier2_keeps_tier1": true
+  },
+  "tests": {
+    "general_explanation_factors_e2e": "PASS",
+    "failure_isolation": "PASS",
+    "focused_backend_passed": 221,
+    "focused_backend_failed": 0,
+    "focused_frontend_passed": 136,
+    "focused_frontend_failed": 0,
+    "migration_pass": true,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "pubmed_live_smoke": "NOT_RUN"
+  },
+  "integrity": {
+    "existing_weather_topics_preserved": true,
+    "old_revisions_rewritten": false,
+    "weather_ai_modified": false,
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "production_business_data_modified": false
+  },
+  "remaining_limitations": [
+    "SEASONALITY V1 intentionally uses a null topic scope and does not distinguish individual months or invented seasons.",
+    "Free PubMed search remains staff-directed discovery; imported results are not automatically trusted or relevant.",
+    "Parent Tier-2 retains the existing positive/upward-only contribution policy."
+  ],
+  "user_manual_test_required": false
+}

@@ -1,0 +1,91 @@
+{
+  "status": "PASS",
+  "runtime_toggle": {
+    "admin_ui_toggle": true,
+    "persisted": true,
+    "source_of_truth": "auto_medical_knowledge_settings.enabled",
+    "env_edit_required": false,
+    "backend_restart_required": false,
+    "frontend_restart_required": false,
+    "default_enabled": false,
+    "old_env_flag_removed": true
+  },
+  "behavior": {
+    "off_blocks_new_parent_jobs": true,
+    "off_blocks_worker_claims": true,
+    "off_avoids_provider_construction": true,
+    "queued_jobs_preserved": true,
+    "existing_auto_content_preserved": true,
+    "resume_after_enable": true,
+    "inflight_job_may_finish": true,
+    "worker_does_not_claim_following_job": true,
+    "reviewed_unaffected": true,
+    "tier1_unaffected": true,
+    "settings_read_failure_fails_closed": true,
+    "poll_interval_seconds": 5
+  },
+  "separation": {
+    "display_mode_separate": true,
+    "revision_visibility_separate": true,
+    "runtime_off_does_not_hide_existing_eligible_auto": true
+  },
+  "authorization": {
+    "admin_can_mutate": true,
+    "staff_can_mutate": false,
+    "staff_failure_status": 403,
+    "public_can_mutate": false,
+    "public_failure_status": 401
+  },
+  "e2e": {
+    "runtime_enable": "PASS",
+    "runtime_pause_resume": "PASS",
+    "reviewed_while_auto_disabled": "PASS"
+  },
+  "tests": {
+    "backend_passed": 71,
+    "backend_failed": 0,
+    "frontend_passed": 120,
+    "frontend_failed": 0,
+    "python_compile_pass": true,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "build_runs": 1,
+    "startup_pass": true,
+    "http_root_smoke_pass": true
+  },
+  "migration": {
+    "version": "v009_auto_medical_knowledge_runtime_toggle",
+    "required": true,
+    "additive": true,
+    "idempotent": true,
+    "default_off": true,
+    "enabled_column_count": 1,
+    "foreign_key_check_pass": true
+  },
+  "integrity": {
+    "reviewed_business_data_modified": false,
+    "auto_content_deleted": false,
+    "auto_jobs_deleted": false,
+    "auto_provenance_modified": false,
+    "business_row_hashes_unchanged": true,
+    "production_runtime_enabled_after_migration": false,
+    "production_auto_job_count_after_startup": 0
+  },
+  "external_live_calls": {
+    "llm": false,
+    "pubmed": false,
+    "pmc": false,
+    "trusted_web": false
+  },
+  "audit": {
+    "config_state_change_audit": "NOT_IMPLEMENTED",
+    "reason": "No existing suitable admin/config audit mechanism; a new subsystem was intentionally not introduced."
+  },
+  "remaining_limitations": [
+    "Worker observes state changes on the next configured poll rather than through a push wakeup bus.",
+    "The worker remains an in-process consumer of the durable SQLite queue.",
+    "A dedicated config audit event is not implemented because no suitable existing mechanism exists."
+  ],
+  "user_manual_test_required": false,
+  "manual_test_recommended": true
+}

@@ -1,0 +1,123 @@
+{
+  "status": "PASS",
+  "unpublish": {
+    "supported": true,
+    "current_publication_only": true,
+    "revision_remains_approved": true,
+    "topic_pointer_cleared": true,
+    "parent_display_flag_cleared": true,
+    "audit_recorded": true,
+    "double_unpublish_protected": true,
+    "double_unpublish_behavior": "HTTP 409; no duplicate UNPUBLISH event",
+    "republish_supported": true,
+    "race_safe": true
+  },
+  "authorization": {
+    "staff_allowed": true,
+    "admin_allowed": true,
+    "viewer_blocked": true,
+    "anonymous_blocked": true,
+    "actor_derived_from_backend_auth_context": true
+  },
+  "side_effects": {
+    "approval_modified": false,
+    "medical_content_modified": false,
+    "llm_called": false,
+    "pubmed_called": false,
+    "pmc_called": false,
+    "weather_api_called": false
+  },
+  "parent": {
+    "tier2_removed_after_unpublish": true,
+    "tier1_preserved": true,
+    "weather_ai_preserved": true,
+    "tier2_returns_after_republish": true,
+    "other_topic_preserved": true
+  },
+  "audit": {
+    "actions": [
+      "PUBLISH",
+      "UNPUBLISH"
+    ],
+    "legacy_rows_default_to_publish": true,
+    "append_only": true,
+    "migration_idempotent": true,
+    "migration_downgrade_tested": true,
+    "history_preserved": true
+  },
+  "tests": {
+    "unpublish_e2e": "PASS",
+    "parent_withdrawal_e2e": "PASS",
+    "backend_focused_passed": 99,
+    "backend_unpublish_focused_passed": 10,
+    "backend_passed": 301,
+    "backend_failed": 0,
+    "frontend_focused_passed": 63,
+    "frontend_passed": 124,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "pip_check_pass": true,
+    "changed_imports_pass": true,
+    "isolated_lifespan_pass": true,
+    "migration_upgrade_twice_pass": true,
+    "migration_downgrade_pass": true,
+    "bounded_uvicorn_http_status": 200
+  },
+  "runtime": {
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_prefix": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend",
+    "python_version": "3.11.15"
+  },
+  "production_database_modified": false,
+  "production_integrity": {
+    "scope": "All medical_% table rows and columns, ordered by rowid",
+    "before_after_match": true,
+    "business_rows_modified": false,
+    "real_publications_created": false,
+    "real_publications_unpublished": false,
+    "table_counts": {
+      "medical_evidence_contents": 1,
+      "medical_evidence_sources": 4,
+      "medical_knowledge_publications": 0,
+      "medical_knowledge_revisions": 6,
+      "medical_knowledge_topics": 2,
+      "medical_revision_sources": 12
+    },
+    "table_sha256": {
+      "medical_evidence_contents": "839a3a1c6dbbc46366989a9888f4291d92d1f59bac98d3fe997fcdb2440ecb29",
+      "medical_evidence_sources": "37abeb385313a46963f40f007ff32733657a7893a8104cadbd20121362d421a4",
+      "medical_knowledge_publications": "ca6d38512d732f5f13a9d21399ac4a915f82487aac6f4fda27f4df1f61dbf645",
+      "medical_knowledge_revisions": "c4ebc7253566cb2b6ee1b7d4be731ed684fc28f5635de93badc953c44468b90d",
+      "medical_knowledge_topics": "9db72d23cf7b45322ef2fe310702b803e84e5728ff943b4072d6f7219c218eac",
+      "medical_revision_sources": "5d77c623dec309750a97b6c9af26b34ee42c638cc4c2d0b5b05dd42d8a4d717c"
+    },
+    "intended_schema_migration": "v004 adds the action column; an existing user-owned reload server may apply it automatically"
+  },
+  "files_added": [
+    "seasonal_disease_backend/migrations/v004_medical_knowledge_unpublish.py",
+    "seasonal_disease_backend/tests/test_medical_knowledge_unpublish.py",
+    "weather_disease_ai_v3/medical_knowledge_v1_unpublish/MEDICAL_KNOWLEDGE_UNPUBLISH_V1_REPORT.md",
+    "weather_disease_ai_v3/medical_knowledge_v1_unpublish/medical_knowledge_unpublish_v1_validation.json"
+  ],
+  "files_modified": [
+    "seasonal_disease_backend/app/main.py",
+    "seasonal_disease_backend/app/medical_knowledge_draft_schemas.py",
+    "seasonal_disease_backend/app/medical_knowledge_models.py",
+    "seasonal_disease_backend/app/repositories/medical_knowledge_repository.py",
+    "seasonal_disease_backend/app/routers/medical_knowledge_drafts.py",
+    "seasonal_disease_backend/app/services/medical_knowledge_publication_service.py",
+    "Frontend/src/lib/medicalKnowledgeApi.ts",
+    "Frontend/src/app/components/medical-knowledge/MedicalDraftReviewForm.tsx",
+    "Frontend/src/app/components/medical-knowledge/MedicalDraftWorkspace.tsx",
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.tsx",
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.test.tsx",
+    "Frontend/src/app/components/ParentPortal.test.tsx"
+  ],
+  "remaining_limitations": [
+    "Legacy audit column names published_by/published_at are reused as actor/time for both actions; consumers must read action.",
+    "SQLite relies on transaction plus exact-pointer CAS/retry because it has no server-style row-level FOR UPDATE lock."
+  ],
+  "user_manual_test_required": false
+}

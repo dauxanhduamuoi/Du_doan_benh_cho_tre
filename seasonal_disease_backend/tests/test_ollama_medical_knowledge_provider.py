@@ -46,7 +46,10 @@ def context() -> DraftGenerationContext:
                 "journal": "Journal",
                 "publication_year": 2024,
                 "publication_types": ["Observational Study"],
-                "abstract_text": "Selected local grounding abstract.",
+                "evidence_content_id": 10,
+                "content_kind": "ABSTRACT",
+                "evidence_text": "Selected local grounding abstract.",
+                "content_origin": "NCBI_PUBMED",
             }
         ],
     )
@@ -65,6 +68,8 @@ def proposal_json() -> str:
                     "source_id": 7,
                     "relevance": "DIRECT",
                     "note_vi": "Nguồn đánh giá trực tiếp lượng mưa.",
+                    "population_relevance": "PEDIATRIC_DIRECT",
+                    "population_note": "Abstract mô tả trực tiếp trẻ em.",
                 }
             ],
         },

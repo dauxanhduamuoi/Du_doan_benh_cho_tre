@@ -1,0 +1,110 @@
+{
+  "status": "PASS",
+  "architecture": {
+    "bounded_contract_repair": true,
+    "max_repair_attempts": 1,
+    "max_generation_calls_per_job": 2,
+    "same_evidence_reused": true,
+    "discovery_not_rerun": true,
+    "full_validation_after_repair": true,
+    "backend_prose_rewrite": false,
+    "same_v2_schema_for_repair": true,
+    "structural_and_contract_budget_shared": true
+  },
+  "repair_policy": {
+    "numeric_undeclared_repairable": true,
+    "numeric_unused_repairable": true,
+    "numeric_duplicate_repairable": true,
+    "causal_overclaim_repairable": false,
+    "unsupported_mechanism_repairable": false,
+    "pediatric_invalid_repairable": false,
+    "evidence_mismatch_repairable": false,
+    "invalid_source_repairable": false
+  },
+  "safety": {
+    "numeric_claim_v2_preserved": true,
+    "exact_source_validation_preserved": true,
+    "exact_excerpt_validation_preserved": true,
+    "claim_kind_validation_preserved": true,
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "pediatric_guard_preserved": true,
+    "semantic_failure_resampling": false,
+    "raw_initial_output_persisted": false,
+    "raw_repair_output_persisted": false,
+    "only_final_valid_proposal_persisted": true
+  },
+  "production_audit": {
+    "topic_id": 19,
+    "disease_group_id": "169",
+    "factor_key": "wind",
+    "job_id": 11,
+    "job_status": "FAILED",
+    "failure_discovery_id": 1542,
+    "failure_code": "AUTO_OUTPUT_NUMERIC_CLAIM_UNDECLARED",
+    "failure_field": "detailed_explanation_vi",
+    "numeric_value": "3",
+    "selected_source_id": 60,
+    "selected_pmid": "21672424",
+    "selected_abstract_standalone_3_occurrences": 0,
+    "production_job_retried": false
+  },
+  "call_budget": {
+    "normal_valid": 1,
+    "structural_corrected_max": 2,
+    "contract_repaired_max": 2,
+    "semantic_failure": 1,
+    "structural_then_contract_failure_max": 2,
+    "hidden_third_call": false
+  },
+  "diagnostics": {
+    "safe_repair_diagnostics_persisted": true,
+    "admin_response_exposes_repair_diagnostics": true,
+    "prompt_persisted": false,
+    "evidence_persisted_in_repair_diagnostics": false,
+    "secrets_persisted": false
+  },
+  "e2e": {
+    "remove_numeric": "PASS",
+    "declare_numeric": "PASS",
+    "repair_fail_closed": "PASS",
+    "semantic_no_repair": "PASS",
+    "numeric_regression": "PASS",
+    "reviewed_isolation": "PASS",
+    "groq_same_strict_schema_offline": "PASS",
+    "rate_limit_cooldown": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 114,
+    "focused_backend_failed": 0,
+    "reviewed_regression_passed": 4,
+    "reviewed_regression_failed": 0,
+    "frontend_tests": "NOT_REQUIRED",
+    "compile_import_pass": true,
+    "app_main_import": "PASS",
+    "live_startup_lifespan": "NOT_RUN_NOT_REQUIRED"
+  },
+  "external_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0,
+    "live_groq_required": false
+  },
+  "integrity": {
+    "production_business_data_modified": false,
+    "production_job_retried": false,
+    "auto_visibility_modified": false,
+    "reviewed_modified": false,
+    "published_pointer_modified": false,
+    "production_medical_business_hash_before": "a6f6154b6de3972839ee665ba404c503ad6eaf95201175668b114c15811a2ce9",
+    "production_medical_business_hash_after": "a6f6154b6de3972839ee665ba404c503ad6eaf95201175668b114c15811a2ce9",
+    "production_discovery_max_id_before": 1542,
+    "production_discovery_max_id_after": 1542
+  },
+  "remaining_limitations": [
+    "A provider may still return an invalid repair; the job then fails closed after the second call.",
+    "Only the three audited mechanical Numeric Claim V2 codes are eligible; expansion requires a separate safety audit.",
+    "The historical production failure remains unchanged until an operator explicitly retries it after deployment."
+  ],
+  "user_manual_test_required": false
+}

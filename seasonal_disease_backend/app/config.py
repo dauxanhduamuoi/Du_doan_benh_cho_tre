@@ -18,9 +18,19 @@ def load_backend_environment(env_file: Path = BACKEND_ENV_FILE) -> bool:
 load_backend_environment()
 
 # JWT
-SECRET_KEY = os.getenv("SECRET_KEY", "CHANGE_THIS_SECRET_KEY_FOR_PRODUCTION")
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))
+
+
+def validate_security_configuration() -> None:
+    """Fail closed before serving requests with a missing or weak JWT signing key."""
+
+    if len(SECRET_KEY) < 32:
+        raise RuntimeError(
+            "SECRET_KEY must be configured with at least 32 characters before startup"
+        )
+
 
 # Weather Disease AI V3 runtime. Paths are centralized here so services and routes
 # do not carry repository-relative constants of their own.
@@ -98,7 +108,7 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip()
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "").strip() or None
 OLLAMA_TIMEOUT_SECONDS = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120"))
 MEDICAL_KNOWLEDGE_PROMPT_VERSION = os.getenv(
-    "MEDICAL_KNOWLEDGE_PROMPT_VERSION", "medical_knowledge_v1"
+    "MEDICAL_KNOWLEDGE_PROMPT_VERSION", "medical_knowledge_v4_general_factors"
 ).strip()
 MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS = float(
     os.getenv("MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS", "45")
@@ -107,5 +117,60 @@ MEDICAL_KNOWLEDGE_LLM_MAX_INPUT_CHARS = int(
     os.getenv("MEDICAL_KNOWLEDGE_LLM_MAX_INPUT_CHARS", "60000")
 )
 MEDICAL_KNOWLEDGE_LLM_MAX_SOURCES = int(
-    os.getenv("MEDICAL_KNOWLEDGE_LLM_MAX_SOURCES", "8")
+    os.getenv("MEDICAL_KNOWLEDGE_LLM_MAX_SOURCES", "10")
+)
+MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE = int(
+    os.getenv("MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE", "6000")
+)
+
+# Auto runtime ON/OFF is persisted in the database and controlled by Admin UI.
+# These settings remain separate controls for display and worker bounds.
+AUTO_MEDICAL_KNOWLEDGE_DISPLAY_MODE = os.getenv(
+    "AUTO_MEDICAL_KNOWLEDGE_DISPLAY_MODE", "REVIEWED_ONLY"
+).strip().upper()
+AUTO_MEDICAL_KNOWLEDGE_MAX_SOURCES = min(
+    10, max(1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_MAX_SOURCES", "10")))
+)
+AUTO_MEDICAL_KNOWLEDGE_MAX_CONCURRENT_JOBS = min(
+    4, max(1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_MAX_CONCURRENT_JOBS", "1")))
+)
+AUTO_MEDICAL_KNOWLEDGE_MAX_RETRIES = max(
+    1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_MAX_RETRIES", "3"))
+)
+AUTO_MEDICAL_KNOWLEDGE_MAX_STRUCTURAL_RETRIES = min(
+    1, max(0, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_MAX_STRUCTURAL_RETRIES", "1")))
+)
+AUTO_MEDICAL_KNOWLEDGE_RETRY_DELAY_SECONDS = max(
+    1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_RETRY_DELAY_SECONDS", "300"))
+)
+AUTO_MEDICAL_KNOWLEDGE_GROQ_RATE_LIMIT_COOLDOWN_SECONDS = max(
+    1,
+    int(
+        os.getenv(
+            "AUTO_MEDICAL_KNOWLEDGE_GROQ_RATE_LIMIT_COOLDOWN_SECONDS", "300"
+        )
+    ),
+)
+AUTO_MEDICAL_KNOWLEDGE_POLL_SECONDS = max(
+    1.0, float(os.getenv("AUTO_MEDICAL_KNOWLEDGE_POLL_SECONDS", "5"))
+)
+AUTO_MEDICAL_KNOWLEDGE_INSUFFICIENT_STALE_DAYS = max(
+    1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_INSUFFICIENT_STALE_DAYS", "30"))
+)
+AUTO_MEDICAL_KNOWLEDGE_AUTO_VISIBLE = os.getenv(
+    "AUTO_MEDICAL_KNOWLEDGE_AUTO_VISIBLE", "0"
+).strip().lower() in {"1", "true", "yes"}
+AUTO_MEDICAL_KNOWLEDGE_PROMPT_VERSION = os.getenv(
+    "AUTO_MEDICAL_KNOWLEDGE_PROMPT_VERSION",
+    "medical_knowledge_auto_v2_numeric_claims",
+).strip()
+if not AUTO_MEDICAL_KNOWLEDGE_PROMPT_VERSION.startswith(
+    "medical_knowledge_auto_v2_numeric_claims"
+):
+    AUTO_MEDICAL_KNOWLEDGE_PROMPT_VERSION = "medical_knowledge_auto_v2_numeric_claims"
+AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC = min(
+    3, max(1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC", "3")))
+)
+AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH = min(
+    25, max(1, int(os.getenv("AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH", "15")))
 )

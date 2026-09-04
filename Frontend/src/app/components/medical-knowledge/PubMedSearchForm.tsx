@@ -1,50 +1,66 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Loader2, Plus, Search, X } from 'lucide-react';
-import type { DiseaseGroupOption, WeatherFactorOption } from '@/lib/medicalKnowledgeApi';
+import { useState, type FormEvent } from 'react';
+import { Loader2, Search } from 'lucide-react';
+import type { DiseaseGroupOption } from '@/lib/medicalKnowledgeApi';
+import {
+  factorIsComplete,
+  type ExplanationFactorOption,
+  type MedicalFactorSelector,
+} from '@/lib/medicalKnowledgeFactors';
+import MedicalTopicSelector from './MedicalTopicSelector';
 
 interface Props {
   diseaseGroups: DiseaseGroupOption[];
-  weatherFactors: WeatherFactorOption[];
+  factorOptions: ExplanationFactorOption[];
   diseaseGroupId: string;
-  weatherFactor: string;
+  factor: MedicalFactorSelector | null;
+  searchMode: 'GUIDED' | 'FREE';
+  freeQuery: string;
   diseaseTerms: string[];
+  defaultDiseaseTerm: string | null;
   maxResults: 10 | 15 | 25;
   yearFrom: number | null;
   yearTo: number | null;
   loading: boolean;
+  pmid: string;
+  pmidLoading: boolean;
   onDiseaseGroupChange: (value: string) => void;
-  onWeatherFactorChange: (value: string) => void;
+  onFactorChange: (value: MedicalFactorSelector | null) => void;
+  onSearchModeChange: (value: 'GUIDED' | 'FREE') => void;
+  onFreeQueryChange: (value: string) => void;
   onDiseaseTermsChange: (values: string[]) => void;
   onMaxResultsChange: (value: 10 | 15 | 25) => void;
   onYearFromChange: (value: number | null) => void;
   onYearToChange: (value: number | null) => void;
   onSubmit: () => void;
+  onPmidChange: (value: string) => void;
+  onPmidLookup: () => void;
+  showTopicSelector?: boolean;
 }
 
 export default function PubMedSearchForm(props: Props) {
-  const [draftTerm, setDraftTerm] = useState('');
+  const [termDraft, setTermDraft] = useState('');
   const [termError, setTermError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDraftTerm('');
-    setTermError(null);
-  }, [props.diseaseGroupId]);
+  const [pmidError, setPmidError] = useState<string | null>(null);
+  const yearsValid = (props.yearFrom === null || (props.yearFrom >= 1800 && props.yearFrom <= 2100))
+    && (props.yearTo === null || (props.yearTo >= 1800 && props.yearTo <= 2100))
+    && (props.yearFrom === null || props.yearTo === null || props.yearFrom <= props.yearTo);
+  const canSearch = Boolean(
+    props.diseaseGroupId
+    && factorIsComplete(props.factor)
+    && (props.searchMode === 'FREE' ? props.freeQuery.trim() : props.diseaseTerms.length)
+    && yearsValid
+    && !props.loading
+    && !props.pmidLoading,
+  );
+  const canLookup = Boolean(props.diseaseGroupId && factorIsComplete(props.factor) && !props.loading && !props.pmidLoading);
 
   function addTerm() {
-    const term = draftTerm.trim();
-    if (!term) {
-      setTermError('Hãy nhập từ khóa trước khi thêm.');
+    const value = termDraft.trim();
+    if (value.length < 2 || value.length > 120 || /["\[\]\r\n]/.test(value)) {
+      setTermError('Từ khóa cần có 2–120 ký tự và không chứa cú pháp PubMed đặc biệt.');
       return;
     }
-    if (term.length < 2 || term.length > 120) {
-      setTermError('Mỗi từ khóa cần có từ 2 đến 120 ký tự.');
-      return;
-    }
-    if (/["\[\]\r\n]/.test(term)) {
-      setTermError('Từ khóa không được chứa dấu ngoặc vuông, dấu ngoặc kép hoặc xuống dòng.');
-      return;
-    }
-    if (props.diseaseTerms.some((value) => value.toLocaleLowerCase() === term.toLocaleLowerCase())) {
+    if (props.diseaseTerms.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) {
       setTermError('Từ khóa này đã được thêm.');
       return;
     }
@@ -52,16 +68,9 @@ export default function PubMedSearchForm(props: Props) {
       setTermError('Chỉ có thể thêm tối đa 8 từ khóa.');
       return;
     }
-    props.onDiseaseTermsChange([...props.diseaseTerms, term]);
-    setDraftTerm('');
+    props.onDiseaseTermsChange([...props.diseaseTerms, value]);
+    setTermDraft('');
     setTermError(null);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      addTerm();
-    }
   }
 
   function submit(event: FormEvent) {
@@ -69,163 +78,87 @@ export default function PubMedSearchForm(props: Props) {
     props.onSubmit();
   }
 
-  const canSearch = Boolean(
-    props.diseaseGroupId &&
-      props.weatherFactor &&
-      props.diseaseTerms.length > 0 &&
-      !props.loading &&
-      (props.yearFrom === null || (props.yearFrom >= 1800 && props.yearFrom <= 2100)) &&
-      (props.yearTo === null || (props.yearTo >= 1800 && props.yearTo <= 2100)) &&
-      (props.yearFrom === null || props.yearTo === null || props.yearFrom <= props.yearTo),
-  );
+  function lookup() {
+    const value = props.pmid.trim();
+    if (!/^[0-9]{1,16}$/.test(value)) {
+      setPmidError('PMID chỉ gồm các chữ số.');
+      return;
+    }
+    setPmidError(null);
+    props.onPmidChange(value);
+    props.onPmidLookup();
+  }
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div>
-          <label htmlFor="medical-disease-group" className="mb-1.5 block text-sm font-semibold text-slate-800">
-            1. Nhóm bệnh
-          </label>
-          <select
-            id="medical-disease-group"
-            value={props.diseaseGroupId}
-            onChange={(event) => props.onDiseaseGroupChange(event.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="">Chọn nhóm bệnh</option>
-            {props.diseaseGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.id} — {group.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {props.showTopicSelector !== false && (
+        <MedicalTopicSelector
+          compact
+          diseaseGroups={props.diseaseGroups}
+          factorOptions={props.factorOptions}
+          diseaseGroupId={props.diseaseGroupId}
+          factor={props.factor}
+          onDiseaseGroupChange={props.onDiseaseGroupChange}
+          onFactorChange={props.onFactorChange}
+        />
+      )}
 
-        <div>
-          <label htmlFor="medical-weather-factor" className="mb-1.5 block text-sm font-semibold text-slate-800">
-            2. Yếu tố thời tiết
-          </label>
-          <select
-            id="medical-weather-factor"
-            value={props.weatherFactor}
-            onChange={(event) => props.onWeatherFactorChange(event.target.value)}
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="">Chọn yếu tố thời tiết</option>
-            {props.weatherFactors.map((factor) => (
-              <option key={factor.value} value={factor.value}>
-                {factor.label_vi}
-              </option>
-            ))}
-          </select>
+      <fieldset className={props.showTopicSelector === false ? '' : 'mt-6'}>
+        <legend className="mb-2 text-sm font-semibold text-slate-800">Chế độ tìm kiếm</legend>
+        <div className="flex flex-wrap gap-2">
+          {([['GUIDED', 'Tìm có hướng dẫn'], ['FREE', 'Tìm kiếm PubMed tự do']] as const).map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={props.searchMode === value} onClick={() => props.onSearchModeChange(value)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${props.searchMode === value ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}>{label}</button>
+          ))}
         </div>
-      </div>
+      </fieldset>
 
-      <div className="mt-6">
-        <label htmlFor="pubmed-disease-term" className="mb-1 block text-sm font-semibold text-slate-800">
-          3. Từ khóa bệnh dùng để tìm PubMed
-        </label>
-        <p className="mb-3 text-sm leading-6 text-slate-500">
-          PubMed chủ yếu sử dụng thuật ngữ y khoa tiếng Anh. Hãy nhập một hoặc vài thuật ngữ mô tả đúng nhóm bệnh.
-        </p>
-        {props.diseaseTerms.length > 0 && (
+      {props.searchMode === 'FREE' ? (
+        <div className="mt-5">
+          <label htmlFor="pubmed-free-query" className="mb-1.5 block text-sm font-semibold text-slate-800">Truy vấn PubMed tự do</label>
+          <textarea id="pubmed-free-query" value={props.freeQuery} maxLength={1000} onChange={(event) => props.onFreeQueryChange(event.target.value)} placeholder={'Ví dụ: intestinal infection children AND ("sex differences"[Title/Abstract])'} className="min-h-24 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+          <p className="mt-1 text-xs text-slate-500">Dấu ngoặc, dấu ngoặc kép và field tag PubMed được giữ nguyên. Nguồn vẫn vào đúng kho chủ đề hiện tại.</p>
+        </div>
+      ) : (
+        <div className="mt-5">
+          <label htmlFor="pubmed-disease-term" className="mb-1.5 block text-sm font-semibold text-slate-800">3. Từ khóa bệnh dùng để tìm PubMed</label>
+          <p className="mb-1 text-sm text-blue-700">Tìm kiếm mặc định ưu tiên các nghiên cứu trên trẻ em.</p>
+          <p className="mb-3 text-sm text-blue-700">Tìm có hướng dẫn tự thêm phạm vi trẻ em và từ khóa phù hợp với yếu tố đang chọn.</p>
           <div className="mb-3 flex flex-wrap gap-2" aria-label="Các từ khóa đã thêm">
             {props.diseaseTerms.map((term) => (
-              <span key={term.toLocaleLowerCase()} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-800">
-                <span className="break-words">{term}</span>
-                <button
-                  type="button"
-                  onClick={() => props.onDiseaseTermsChange(props.diseaseTerms.filter((value) => value !== term))}
-                  aria-label={`Xóa từ khóa ${term}`}
-                  className="rounded-full p-0.5 hover:bg-blue-100"
-                >
-                  <X size={14} />
-                </button>
+              <span key={term} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-800">
+                <span>{term}</span>
+                <button type="button" aria-label={`Xóa từ khóa ${term}`} onClick={() => props.onDiseaseTermsChange(props.diseaseTerms.filter((item) => item !== term))}>×</button>
               </span>
             ))}
           </div>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            id="pubmed-disease-term"
-            value={draftTerm}
-            onChange={(event) => {
-              setDraftTerm(event.target.value);
-              if (termError) setTermError(null);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Ví dụ: infectious diarrhea"
-            className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-          <button
-            type="button"
-            onClick={addTerm}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-          >
-            <Plus size={16} /> Thêm từ khóa
-          </button>
+          <div className="flex gap-2">
+            <input id="pubmed-disease-term" value={termDraft} onChange={(event) => { setTermDraft(event.target.value); setTermError(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTerm(); } }} placeholder="Ví dụ: infectious diarrhea" className="min-w-0 flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+            <button type="button" onClick={addTerm} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700">Thêm từ khóa</button>
+          </div>
+          {termError && <p role="alert" className="mt-2 text-sm text-red-600">{termError}</p>}
+          {props.defaultDiseaseTerm && !(props.diseaseTerms.length === 1 && props.diseaseTerms[0] === props.defaultDiseaseTerm) && <button type="button" onClick={() => props.onDiseaseTermsChange([props.defaultDiseaseTerm!])} className="mt-2 text-xs font-semibold text-blue-700">Khôi phục từ khóa mặc định</button>}
         </div>
-        {termError && <p role="alert" className="mt-2 text-sm text-red-600">{termError}</p>}
-        {props.diseaseTerms.length === 0 && !termError && (
-          <p className="mt-2 text-xs text-slate-400">Cần ít nhất 1 và tối đa 8 từ khóa.</p>
-        )}
-      </div>
+      )}
 
       <details className="mt-6 rounded-xl border border-slate-200 bg-slate-50">
         <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">Tùy chọn nâng cao</summary>
-        <div className="grid gap-4 border-t border-slate-200 p-4 sm:grid-cols-3">
-          <div>
-            <label htmlFor="pubmed-max-results" className="mb-1 block text-sm text-slate-700">Số kết quả</label>
-            <select
-              id="pubmed-max-results"
-              value={props.maxResults}
-              onChange={(event) => props.onMaxResultsChange(Number(event.target.value) as 10 | 15 | 25)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-              <option value={25}>25</option>
-            </select>
+        <div className="border-t border-slate-200 p-4">
+          <label htmlFor="pubmed-direct-pmid" className="mb-1 block text-sm font-semibold text-slate-800">Tìm trực tiếp bằng PMID</label>
+          <p className="mb-3 text-sm text-slate-500">PMID là mã số của bài nghiên cứu trên PubMed.</p>
+          <div className="flex gap-2">
+            <input id="pubmed-direct-pmid" inputMode="numeric" value={props.pmid} onChange={(event) => props.onPmidChange(event.target.value)} placeholder="Ví dụ: 34201085" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+            <button type="button" onClick={lookup} disabled={!canLookup} className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{props.pmidLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}{props.pmidLoading ? 'Đang tìm bài…' : 'Tìm bài'}</button>
           </div>
-          <div>
-            <label htmlFor="pubmed-year-from" className="mb-1 block text-sm text-slate-700">Từ năm</label>
-            <input
-              id="pubmed-year-from"
-              type="number"
-              min={1800}
-              max={2100}
-              value={props.yearFrom ?? ''}
-              onChange={(event) => props.onYearFromChange(event.target.value ? Number(event.target.value) : null)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="pubmed-year-to" className="mb-1 block text-sm text-slate-700">Đến năm</label>
-            <input
-              id="pubmed-year-to"
-              type="number"
-              min={1800}
-              max={2100}
-              value={props.yearTo ?? ''}
-              onChange={(event) => props.onYearToChange(event.target.value ? Number(event.target.value) : null)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
+          {pmidError && <p role="alert" className="mt-2 text-sm text-red-600">{pmidError}</p>}
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <select aria-label="Số kết quả" value={props.maxResults} onChange={(event) => props.onMaxResultsChange(Number(event.target.value) as 10 | 15 | 25)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value={10}>10 kết quả</option><option value={15}>15 kết quả</option><option value={25}>25 kết quả</option></select>
+            <input aria-label="Từ năm" type="number" min={1800} max={2100} value={props.yearFrom ?? ''} onChange={(event) => props.onYearFromChange(event.target.value ? Number(event.target.value) : null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <input aria-label="Đến năm" type="number" min={1800} max={2100} value={props.yearTo ?? ''} onChange={(event) => props.onYearToChange(event.target.value ? Number(event.target.value) : null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
           </div>
         </div>
       </details>
 
-      {props.yearFrom !== null && props.yearTo !== null && props.yearFrom > props.yearTo && (
-        <p role="alert" className="mt-3 text-sm text-red-600">Năm bắt đầu không được lớn hơn năm kết thúc.</p>
-      )}
-
-      <button
-        type="submit"
-        disabled={!canSearch}
-        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
-      >
-        {props.loading ? <Loader2 size={17} className="animate-spin" /> : <Search size={17} />}
-        {props.loading ? 'Đang tìm tài liệu…' : 'Tìm tài liệu PubMed'}
-      </button>
+      <button type="submit" disabled={!canSearch} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-300">{props.loading ? <Loader2 size={17} className="animate-spin" /> : <Search size={17} />}{props.loading ? 'Đang tìm tài liệu…' : 'Tìm tài liệu PubMed'}</button>
     </form>
   );
 }

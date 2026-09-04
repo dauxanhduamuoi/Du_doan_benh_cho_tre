@@ -1,0 +1,51 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "default_keyword": {
+    "auto_filled": true,
+    "uses_structured_english_name": false,
+    "structured_english_name_preferred_when_available": true,
+    "fallback_label_parsing_required": true,
+    "disease_change_updates_keyword": true,
+    "weather_change_preserves_keyword": true,
+    "user_can_edit": true,
+    "restore_default_action": true,
+    "no_duplicate_default": true,
+    "keyword_limit_preserved": true,
+    "search_enabled_with_default": true,
+    "search_preserves_custom_keywords": true,
+    "direct_pmid_preserves_custom_keywords": true,
+    "source_import_preserves_custom_keywords": true
+  },
+  "catalog_audit": {
+    "deployed_disease_groups": 221,
+    "english_suffix_parseable": 220,
+    "maximum_parsed_keyword_length": 110,
+    "unsafe_parsed_keywords": 0,
+    "unparseable_disease_group_ids": [
+      "313"
+    ]
+  },
+  "tests": {
+    "focused_frontend_passed": 79,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "backend_tests_run": false
+  },
+  "backend_modified": false,
+  "database_modified": false,
+  "external_live_calls": false,
+  "files_modified": [
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.tsx",
+    "Frontend/src/app/components/medical-knowledge/PubMedSearchForm.tsx",
+    "Frontend/src/lib/medicalKnowledgeApi.ts",
+    "Frontend/src/app/components/medical-knowledge/MedicalKnowledgeResearchPage.test.tsx"
+  ],
+  "remaining_notes": [
+    "Current Medical Knowledge options do not expose a structured group-level English name, so the current runtime uses the first exact ' - ' delimiter in the catalog label.",
+    "Deployed disease group 313 has no safely parseable English suffix and therefore receives no guessed default keyword.",
+    "The active user/Uvicorn runtime changed production Medical Knowledge rows relative to the previous task snapshot; this frontend-only task issued no database writes."
+  ],
+  "user_manual_test_required": false,
+  "user_manual_visual_smoke_recommended": true
+}

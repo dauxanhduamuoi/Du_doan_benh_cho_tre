@@ -1,0 +1,84 @@
+{
+  "status": "PASS",
+  "parent_integration": {
+    "published_medical_knowledge_supported": true,
+    "tier2_optional": true,
+    "weather_ai_independent": true,
+    "tier1_independent": true,
+    "separate_read_path": true,
+    "canonical_matching": true
+  },
+  "publication_safety": {
+    "draft_exposed": false,
+    "approved_unpublished_exposed": false,
+    "replaced_revision_exposed": false,
+    "current_published_only": true,
+    "parent_display_flag_enforced": true
+  },
+  "runtime": {
+    "llm_called": false,
+    "pubmed_called": false,
+    "pmc_called": false,
+    "weather_api_called_by_tier2": false
+  },
+  "privacy": {
+    "full_evidence_exposed": false,
+    "abstract_exposed": false,
+    "prompt_exposed": false,
+    "model_provider_exposed": false,
+    "private_staff_metadata_exposed": false
+  },
+  "tests": {
+    "parent_tier2_e2e": "PASS",
+    "tier2_failure_isolation": "PASS",
+    "backend_passed": 291,
+    "backend_failed": 0,
+    "backend_focused_passed": 22,
+    "critical_backend_e2e_passed": 23,
+    "frontend_passed": 116,
+    "frontend_failed": 0,
+    "frontend_focused_passed": 13,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "pip_check_pass": true
+  },
+  "integrity": {
+    "weather_ai_modified": false,
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "tier1_logic_modified": false
+  },
+  "production_database_modified": false,
+  "production_database_integrity": {
+    "validation_used_isolated_databases": true,
+    "production_test_data_created": false,
+    "medical_knowledge_tables_before_after_equal": true,
+    "whole_file_hash_stable": false,
+    "whole_file_hash_limitation": "A separate user-owned Uvicorn --reload process was continuously writing the live database; it was not stopped without authorization."
+  },
+  "files_added": [
+    "seasonal_disease_backend/app/published_medical_knowledge_schemas.py",
+    "seasonal_disease_backend/app/services/published_medical_knowledge_read_service.py",
+    "seasonal_disease_backend/tests/test_published_medical_knowledge_public.py",
+    "Frontend/src/app/components/weather-ai/publishedMedicalKnowledge.ts",
+    "Frontend/src/app/components/ParentPortal.test.tsx",
+    "Frontend/src/app/components/weather-ai/publishedMedicalKnowledge.test.tsx",
+    "Frontend/src/lib/publishedMedicalKnowledgeApi.test.ts",
+    "weather_disease_ai_v3/medical_knowledge_v1_parent_integration/MEDICAL_KNOWLEDGE_PARENT_INTEGRATION_V1_REPORT.md",
+    "weather_disease_ai_v3/medical_knowledge_v1_parent_integration/medical_knowledge_parent_integration_v1_validation.json"
+  ],
+  "files_modified": [
+    "seasonal_disease_backend/app/repositories/medical_knowledge_repository.py",
+    "seasonal_disease_backend/app/routers/public.py",
+    "Frontend/src/lib/api.ts",
+    "Frontend/src/app/components/ParentPortal.tsx",
+    "Frontend/src/app/components/weather-ai/WeatherAIResults.tsx"
+  ],
+  "remaining_limitations": [
+    "PMCID is optional in the safe DTO but the current persisted source model does not retain it directly, so it remains null unless persistence later supplies it.",
+    "A byte-stable whole-file production DB SHA-256 cannot be attributed while the user's separate auto-reloading Uvicorn process performs concurrent writes; all six Medical Knowledge table snapshots remained identical across controlled validation."
+  ],
+  "user_manual_test_required": false
+}

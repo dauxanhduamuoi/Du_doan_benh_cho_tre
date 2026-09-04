@@ -1,0 +1,78 @@
+{
+  "status": "PASS",
+  "architecture": {
+    "deterministic_safe_fallback": true,
+    "uses_failed_ai_prose": false,
+    "extra_llm_call_for_fallback": false,
+    "max_provider_calls": 2,
+    "centralized_eligibility_policy": true,
+    "validated_snapshot_required": true
+  },
+  "eligibility": {
+    "direct_evidence_required": true,
+    "pediatric_safe_required": true,
+    "source_provenance_required": true,
+    "insufficient_can_fallback": false,
+    "conflicting_can_fallback": false,
+    "semantic_failure_can_fallback": false,
+    "repair_mechanical_failure_can_fallback": true
+  },
+  "fallback_output": {
+    "generation_mode_persisted": true,
+    "mode": "SAFE_FALLBACK",
+    "deterministic_template": true,
+    "numeric_claims_empty": true,
+    "mechanism_generated": false,
+    "causal_wording_generated": false,
+    "failed_ai_prose_reused": false,
+    "source_provenance_preserved": true
+  },
+  "safety": {
+    "numeric_v2_preserved": true,
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "pediatric_guard_preserved": true,
+    "trusted_source_policy_preserved": true,
+    "reviewed_precedence_preserved": true
+  },
+  "e2e": {
+    "contract_failure_fallback": "PASS",
+    "provider_failure_fallback": "PASS",
+    "semantic_guard": "PASS",
+    "insufficient_guard": "PASS",
+    "reviewed_precedence": "PASS",
+    "parent_fallback": "PASS",
+    "reviewed_unpublish_auto_fallback": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 294,
+    "focused_backend_failed": 0,
+    "frontend_tests": "PASS",
+    "frontend_passed": 47,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "compile_import_pass": true,
+    "startup_pass": true,
+    "foreign_key_check_pass": true
+  },
+  "external_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "integrity": {
+    "production_business_data_modified": false,
+    "production_job_retried": false,
+    "reviewed_modified": false,
+    "auto_visibility_modified": false,
+    "business_hash_before": "f526dcf09a8b1113d41e8fc8fc83bddc1c0559988c816d4ef00d0dea933288c0",
+    "business_hash_after": "f526dcf09a8b1113d41e8fc8fc83bddc1c0559988c816d4ef00d0dea933288c0"
+  },
+  "remaining_limitations": [
+    "Safe Fallback V1 is intentionally qualitative and minimal.",
+    "Initial provider or structural failure cannot fallback because no validated snapshot exists.",
+    "Repair rate limiting and generic provider unavailability remain fail-closed.",
+    "Historical failed production jobs are not retroactively converted or retried."
+  ],
+  "user_manual_test_required": false
+}

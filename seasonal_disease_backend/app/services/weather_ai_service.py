@@ -151,9 +151,16 @@ class WeatherAIRuntimeService:
 
             tier2_started = time.perf_counter()
             if tier1["available"]:
-                tier2 = self.medical_knowledge.explain(
-                    disease_id, tier1["positive_factors"]
-                )
+                try:
+                    tier2 = self.medical_knowledge.explain(
+                        disease_id, tier1["positive_factors"]
+                    )
+                except Exception:
+                    logger.exception(
+                        "Tier 2 medical knowledge failed for disease_id=%s",
+                        disease_id,
+                    )
+                    tier2 = self._tier2_unavailable("MEDICAL_KB_ERROR")
             else:
                 tier2 = self._tier2_unavailable("TIER1_UNAVAILABLE")
             tier2_seconds += time.perf_counter() - tier2_started

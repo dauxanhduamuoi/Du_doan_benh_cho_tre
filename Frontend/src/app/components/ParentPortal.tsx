@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Baby,
@@ -24,29 +24,13 @@ import {
   PersonalBrandBadge,
 } from './ParentPortalDecor';
 import * as api from '@/lib/api';
-import { fuzzyMatch, splitDiseaseLabel } from '@/lib/disease';
+import { fuzzyMatch } from '@/lib/disease';
 import {
   WeatherAIDisclaimer,
-  WeatherAIExplanationSections,
   WeatherAILoadingNotice,
 } from './weather-ai/WeatherAIResults';
-
-const RISK_STYLE: Record<string, string> = {
-  Cao: 'border-rose-200 bg-rose-50 text-rose-700',
-  'Trung bình': 'border-amber-200 bg-amber-50 text-amber-700',
-  Thấp: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-};
-
-function riskStyle(level: string) {
-  return RISK_STYLE[level] ?? 'border-sky-200 bg-sky-50 text-sky-700';
-}
-
-function riskText(level: string, t: TFunction) {
-  if (level === 'Cao') return t('common.high');
-  if (level === 'Trung bình' || level === 'Trung binh') return t('common.medium');
-  if (level === 'Thấp' || level === 'Thap') return t('common.low');
-  return level;
-}
+import { buildPublishedMedicalKnowledgeSelectors } from './weather-ai/publishedMedicalKnowledge';
+import { ParentDiseaseCard } from './parent/ParentDiseaseCard';
 
 function normalize(text: string) {
   return text
@@ -55,7 +39,6 @@ function normalize(text: string) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd');
 }
-
 function splitText(value?: string | null): string[] {
   if (!value) return [];
   return value
@@ -85,12 +68,6 @@ function findKnowledge(diseaseName: string, rows: api.DiseaseKnowledgeRow[], t: 
 function formatNum(v: unknown, digits = 1) {
   if (typeof v !== 'number' || Number.isNaN(v)) return '-';
   return v.toFixed(digits).replace(/\.0$/, '');
-}
-
-function formatPeriodRange(from: string | null | undefined, to: string | null | undefined, t: TFunction) {
-  if (from && to && from !== to) return t('parent.period.range', { from, to });
-  if (from || to) return from ?? to;
-  return t('parent.period.currentImported');
 }
 
 function displayOption(value: string, t: TFunction) {
@@ -162,11 +139,19 @@ export default function ParentPortal() {
   const [aiResult, setAiResult] = useState<api.WeatherAIPredictResponse | null>(null);
   const [localRisks, setLocalRisks] = useState<api.AreaLocalRisk[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [publishedMedicalKnowledge, setPublishedMedicalKnowledge] = useState<api.PublishedMedicalKnowledgeItem[]>([]);
+  const [tier2Loading, setTier2Loading] = useState(false);
+  const [tier2LoadingDiseaseIds, setTier2LoadingDiseaseIds] = useState<string[]>([]);
+  const tier2RequestId = useRef(0);
 
   const clearResults = useCallback(() => {
+    tier2RequestId.current += 1;
     setAiResult(null);
     setLocalRisks([]);
     setRecommendations([]);
+    setPublishedMedicalKnowledge([]);
+    setTier2Loading(false);
+    setTier2LoadingDiseaseIds([]);
   }, []);
 
   useLayoutEffect(() => {
@@ -292,6 +277,10 @@ export default function ParentPortal() {
 
     setLoading(true);
     setError(null);
+    tier2RequestId.current += 1;
+    setPublishedMedicalKnowledge([]);
+    setTier2Loading(false);
+    setTier2LoadingDiseaseIds([]);
     const weatherLatitude =
       locationMode === 'gps'
         ? coords?.latitude
@@ -332,6 +321,35 @@ export default function ParentPortal() {
       setAiResult(weatherRows);
       setLocalRisks(risks);
       setRecommendations(rec?.recommendations ?? []);
+
+      const selectors = buildPublishedMedicalKnowledgeSelectors(weatherRows);
+      if (selectors.length > 0) {
+        const requestId = ++tier2RequestId.current;
+        const requestedPairs = new Set(
+          selectors.map((item) => `${item.disease_group_id}\u0000${item.weather_factor}`),
+        );
+        setTier2Loading(true);
+        setTier2LoadingDiseaseIds([...new Set(selectors.map((item) => item.disease_group_id))]);
+        void api.getPublicPublishedMedicalKnowledge(selectors)
+          .then((response) => {
+            if (tier2RequestId.current === requestId) {
+              setPublishedMedicalKnowledge(response.items.filter((item) =>
+                requestedPairs.has(`${item.disease_group_id}\u0000${item.weather_factor}`),
+              ));
+            }
+          })
+          .catch(() => {
+            if (tier2RequestId.current === requestId) {
+              setPublishedMedicalKnowledge([]);
+            }
+          })
+          .finally(() => {
+            if (tier2RequestId.current === requestId) {
+              setTier2Loading(false);
+              setTier2LoadingDiseaseIds([]);
+            }
+          });
+      }
     } catch (e) {
       setError(api.weatherAIErrorMessage(e));
     } finally {
@@ -350,17 +368,20 @@ export default function ParentPortal() {
         localPeriodFrom: area?.period_from ?? null,
         localPeriodTo: area?.period_to ?? null,
         knowledge: findKnowledge(row.disease_name, knowledge, t),
+        publishedMedicalKnowledge: publishedMedicalKnowledge.filter(
+          (item) => item.disease_group_id === row.disease_group_id,
+        ),
       };
     });
-  }, [aiResult, localRisks, knowledge, t]);
+  }, [aiResult, localRisks, knowledge, publishedMedicalKnowledge, t]);
 
   const mainRisk = combinedRisks[0] ?? null;
   const otherRisks = combinedRisks.slice(1);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fff3c9] via-[#e8fbff] to-[#ffe8f3] text-slate-800">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-slate-50 to-amber-50 text-slate-800">
       <DecorativeBackground />
-      <main className="relative z-10 mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">
         <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <HospitalBrandBadge />
           <PersonalBrandBadge />
@@ -372,7 +393,7 @@ export default function ParentPortal() {
             <div className="pointer-events-none absolute bottom-8 left-8 h-16 w-16 rounded-full bg-sky-200/80" />
             <div className="pointer-events-none absolute left-1/2 top-8 h-10 w-10 rounded-full bg-rose-200/70" />
 
-            <div className="relative grid gap-6 lg:grid-cols-[1fr_310px]">
+            <div className="relative grid gap-6 lg:grid-cols-[1fr_270px]">
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-black text-sky-700 shadow-md shadow-sky-100">
                   <Baby size={16} />
@@ -392,7 +413,7 @@ export default function ParentPortal() {
                 </div>
               </div>
 
-              <div className="relative min-h-[390px] overflow-hidden rounded-[28px] border border-white bg-white/90 p-4 shadow-lg shadow-teal-100/70">
+              <div className="relative min-h-[270px] overflow-hidden rounded-[28px] border border-white bg-white/90 p-4 shadow-lg shadow-teal-100/70">
                 <div className="pointer-events-none absolute -right-5 -top-4 text-7xl opacity-25">🐳</div>
                 <div className="relative z-10 flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-100 to-sky-100 text-teal-700 shadow-sm">
@@ -419,7 +440,7 @@ export default function ParentPortal() {
                     src="/parent-weather-fox.png"
                     alt=""
                     aria-hidden="true"
-                    className="h-[220px] w-auto max-w-[86%] object-contain drop-shadow-[0_18px_18px_rgba(14,116,144,0.14)]"
+                    className="h-[165px] w-auto max-w-[80%] object-contain drop-shadow-[0_18px_18px_rgba(14,116,144,0.14)]"
                   />
                 </div>
               </div>
@@ -546,6 +567,7 @@ export default function ParentPortal() {
 
               <div className="flex flex-col justify-end gap-2 sm:flex-row lg:flex-col">
                 <button
+                  data-testid="parent-predict-submit"
                   onClick={run}
                   disabled={loading || initialLoading}
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 via-cyan-500 to-teal-500 px-5 text-sm font-black text-white shadow-lg shadow-sky-200 hover:from-sky-600 hover:to-teal-600 disabled:opacity-60"
@@ -566,7 +588,7 @@ export default function ParentPortal() {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-5 lg:grid-cols-[1fr_330px]">
+        <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-5">
             <section className="rounded-[30px] border border-white bg-white/95 p-5 shadow-xl shadow-sky-100/60 sm:p-6">
               <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -594,11 +616,11 @@ export default function ParentPortal() {
                 <EmptyState loading={loading || initialLoading} />
               ) : (
                 <div className="space-y-4">
-                  <RiskCard row={mainRisk} index={0} featured />
+                  <ParentDiseaseCard row={mainRisk} index={0} featured tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(mainRisk.disease_group_id)} />
                   {otherRisks.length > 0 && (
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-4">
                       {otherRisks.map((row, index) => (
-                        <RiskCard key={row.disease_id} row={row} index={index + 1} />
+                        <ParentDiseaseCard key={row.disease_id} row={row} index={index + 1} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(row.disease_group_id)} />
                       ))}
                     </div>
                   )}
@@ -608,22 +630,24 @@ export default function ParentPortal() {
             </section>
           </div>
 
-          <aside className="space-y-5">
-            <section className="rounded-[30px] border border-white bg-white/95 p-5 shadow-xl shadow-teal-100/60">
-              <div className="mb-4 flex items-center gap-2">
+          <aside className="space-y-5 self-start xl:sticky xl:top-5">
+            <section className="rounded-[26px] border border-white bg-white/95 p-4 shadow-lg shadow-teal-100/50">
+              <div className="mb-3 flex items-center gap-2">
                 <ShieldCheck className="text-teal-600" size={20} />
                 <h2 className="text-lg font-black text-teal-900">{t('parent.recommendations.title')}</h2>
               </div>
-              <div className="space-y-3">
+              <div>
                 {recommendations.length ? (
-                  recommendations.map((item, index) => (
-                    <div key={`${item}-${index}`} className="rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 to-sky-50 p-3 text-sm font-medium leading-6 text-slate-700">
-                      <span className="mr-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-black text-teal-700 shadow-sm">
-                        {index + 1}
-                      </span>
-                      {item}
-                    </div>
-                  ))
+                  <ol className="divide-y divide-teal-100 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50/80 to-sky-50/80 px-3">
+                    {recommendations.map((item, index) => (
+                      <li key={`${item}-${index}`} className="flex gap-2.5 py-3 text-sm font-medium leading-5 text-slate-700">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-teal-700 shadow-sm">
+                          {index + 1}
+                        </span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ol>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-teal-200 bg-teal-50/60 p-4 text-sm font-medium leading-6 text-teal-800">
                     {t('parent.recommendations.empty')}
@@ -632,7 +656,7 @@ export default function ParentPortal() {
               </div>
             </section>
 
-            <section className="rounded-[30px] border border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50 p-5 shadow-lg shadow-amber-100/60">
+            <section className="rounded-[26px] border border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50 p-4 shadow-md shadow-amber-100/50">
               <div className="mb-2 flex items-center gap-2 text-amber-700">
                 <Sparkles size={18} />
                 <h2 className="font-black">{t('parent.note.title')}</h2>
@@ -692,6 +716,7 @@ function ProvinceCombobox({
   return (
     <div className="relative">
       <button
+        data-testid="province-combobox-trigger"
         type="button"
         onClick={() => setOpen(!open)}
         className={`flex h-12 w-full items-center justify-between gap-3 rounded-2xl border bg-white px-4 text-left text-sm shadow-sm outline-none transition ${
@@ -741,7 +766,6 @@ function ProvinceCombobox({
     </div>
   );
 }
-
 function EmptyState({ loading }: { loading: boolean }) {
   const t = useVietnameseT();
 
@@ -754,96 +778,6 @@ function EmptyState({ loading }: { loading: boolean }) {
         </span>
       ) : (
         t('parent.results.empty')
-      )}
-    </div>
-  );
-}
-
-type RiskCardRow = api.WeatherAIDiseaseRanking & {
-  localCases: number | null;
-  localRisk: string | null;
-  localPeriodFrom: string | null;
-  localPeriodTo: string | null;
-  knowledge: {
-    symptoms: string[];
-    warning: string;
-    prevention: string[];
-    source: string;
-  };
-};
-
-const RISK_CARD_COLORS = [
-  'border-sky-100 bg-gradient-to-br from-sky-50 to-white',
-  'border-rose-100 bg-gradient-to-br from-rose-50 to-white',
-  'border-teal-100 bg-gradient-to-br from-teal-50 to-white',
-  'border-amber-100 bg-gradient-to-br from-amber-50 to-white',
-  'border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 to-white',
-] as const;
-
-function RiskCard({ row, index, featured = false }: { row: RiskCardRow; index: number; featured?: boolean }) {
-  const t = useVietnameseT();
-  const label = splitDiseaseLabel(row.disease_name).vi;
-  const cardColor = RISK_CARD_COLORS[index % RISK_CARD_COLORS.length];
-  const areaPeriod = formatPeriodRange(row.localPeriodFrom, row.localPeriodTo, t);
-  return (
-    <article className={`relative overflow-hidden rounded-[28px] border p-4 shadow-sm ${cardColor} ${featured ? 'sm:p-5' : ''}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-black text-sky-700 shadow-md shadow-sky-100">
-            <span aria-label={`Xếp hạng ${row.rank}`}>#{row.rank}</span>
-          </div>
-          <div className="min-w-0">
-            <h3 className={`${featured ? 'text-xl' : 'text-base'} font-black leading-7 text-slate-900`}>{label}</h3>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
-              <span className="rounded-full bg-white px-2.5 py-1 text-sky-700 shadow-sm">
-                {row.rank === 1 ? 'Nhóm bệnh đáng lưu ý nhất hiện tại' : `Được xếp thứ ${row.rank} trong bối cảnh hiện tại`}
-              </span>
-              <span className="rounded-full bg-white px-2.5 py-1 text-teal-700 shadow-sm">
-                {t('parent.risk.areaCases', {
-                  cases: row.localCases === null ? t('parent.risk.noLocalData') : t('parent.risk.caseCount', { count: row.localCases.toLocaleString('vi-VN') }),
-                  period: areaPeriod,
-                })}
-              </span>
-            </div>
-          </div>
-        </div>
-        {row.localRisk && (
-          <span className={`w-fit shrink-0 rounded-full border px-3 py-1 text-xs font-black ${riskStyle(row.localRisk)}`}>
-            Dữ liệu khu vực: {riskText(row.localRisk, t)}
-          </span>
-        )}
-      </div>
-
-      <WeatherAIExplanationSections prediction={row} variant="parent" />
-
-      <div className={`mt-4 grid gap-3 ${featured ? 'lg:grid-cols-2' : ''}`}>
-        <TextBlock title={t('parent.risk.commonSymptoms')} rows={row.knowledge.symptoms} />
-        <TextBlock title={t('parent.risk.prevention')} rows={row.knowledge.prevention} />
-      </div>
-      <div className="mt-3 rounded-2xl border border-amber-200 bg-white/90 px-3 py-2 text-xs font-medium leading-5 text-amber-800">
-        <strong>{t('parent.risk.warningPrefix')} </strong>{row.knowledge.warning}
-      </div>
-    </article>
-  );
-}
-
-function TextBlock({ title, rows }: { title: string; rows: string[] }) {
-  const t = useVietnameseT();
-
-  return (
-    <div className="rounded-2xl border border-white bg-white/90 p-3 shadow-sm">
-      <p className="mb-2 text-sm font-black text-sky-900">{title}</p>
-      {rows.length === 0 ? (
-        <p className="text-xs leading-5 text-slate-500">{t('parent.risk.noGuideData')}</p>
-      ) : (
-        <ul className="space-y-1 text-xs font-medium leading-5 text-slate-600">
-          {rows.slice(0, 4).map((row) => (
-            <li key={row} className="flex gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r from-sky-400 to-rose-400" />
-              <span>{row}</span>
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );

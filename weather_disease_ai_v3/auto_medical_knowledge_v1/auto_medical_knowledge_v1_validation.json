@@ -1,0 +1,104 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "architecture": {
+    "reviewed_branch_preserved": true,
+    "auto_branch_separate": true,
+    "canonical_topic_reused": true,
+    "auto_is_not_approved": true
+  },
+  "generation": {
+    "demand_driven": true,
+    "parent_request_non_blocking": true,
+    "durable_jobs": true,
+    "restart_recovery": true,
+    "duplicate_job_prevention": true,
+    "insufficient_is_valid_result": true,
+    "no_invented_mechanism_policy": true,
+    "max_sources": 10,
+    "default_feature_enabled": false
+  },
+  "sources": {
+    "trusted_source_policy": true,
+    "actual_providers": [
+      "NCBI_PUBMED",
+      "NCBI_PMC"
+    ],
+    "future_only_providers": [
+      "WHO",
+      "CDC",
+      "OFFICIAL_HEALTH_AGENCY",
+      "PROFESSIONAL_MEDICAL_ORG",
+      "ACADEMIC_TRUSTED_WEB"
+    ],
+    "exact_provenance_persisted": true,
+    "provider_controls_trust_class": true,
+    "unsupported_selected_trust_rejected": true,
+    "pediatric_policy_preserved": true
+  },
+  "display": {
+    "reviewed_always_preferred": true,
+    "auto_fallback_supported": true,
+    "auto_warning_required": true,
+    "visibility_is_not_medical_approval": true,
+    "default_mode": "REVIEWED_ONLY",
+    "new_auto_visible_by_default": false,
+    "unpublish_can_restore_eligible_auto_fallback": true
+  },
+  "e2e": {
+    "auto_demand_generation": "PASS",
+    "reviewed_overrides_auto": "PASS",
+    "auto_insufficient": "PASS",
+    "auto_failure_isolation": "PASS",
+    "auto_job_dedup": "PASS"
+  },
+  "tests": {
+    "backend_passed": 399,
+    "backend_failed": 0,
+    "frontend_passed": 170,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "build_runs": 1,
+    "startup_pass": true,
+    "http_root_smoke_pass": true,
+    "python_compile_pass": true
+  },
+  "migration": {
+    "version": "v008_auto_medical_knowledge",
+    "additive": true,
+    "idempotent": true,
+    "auto_table_count": 6,
+    "foreign_key_check_pass": true,
+    "reviewed_row_hashes_unchanged": true,
+    "production_auto_job_count": 0,
+    "production_auto_revision_count": 0
+  },
+  "integrity": {
+    "forecast_ai_modified": false,
+    "weather_ai_model_modified": false,
+    "shap_math_modified": false,
+    "reviewed_business_data_rewritten": false,
+    "production_business_data_modified": false,
+    "topic_source_library_semantics_modified": false
+  },
+  "external_live_calls": {
+    "llm": false,
+    "pubmed": false,
+    "pmc": false,
+    "trusted_web": false
+  },
+  "runtime": {
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "queue_backend": "SQLite",
+    "worker_model": "in_process_background_worker",
+    "parent_waits_for_external_network": false
+  },
+  "remaining_limitations": [
+    "Trusted source discovery is currently implemented only for PubMed and PMC.",
+    "The worker consumes a durable SQLite queue but is not a distributed multi-host scheduler.",
+    "Optional bulk generation and queue cancellation are not implemented in V1.",
+    "A final whole-project regression and staging manual smoke are recommended as release-closing checks."
+  ],
+  "user_manual_test_required": false,
+  "manual_test_recommended": true
+}

@@ -7,7 +7,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.config import (
+    AUTO_MEDICAL_KNOWLEDGE_INSUFFICIENT_STALE_DAYS,
+    AUTO_MEDICAL_KNOWLEDGE_MAX_RETRIES,
+)
 from app.models import DiseaseKnowledge
+from app.published_medical_knowledge_schemas import (
+    PublishedMedicalKnowledgeBatchRequest,
+    PublishedMedicalKnowledgeBatchResponse,
+)
+from app.services.published_medical_knowledge_read_service import (
+    PublishedMedicalKnowledgeReadService,
+)
+from app.services.auto_medical_knowledge_service import AutoMedicalKnowledgeQueueService
 from app.services.weather_ai_service import (
     DEFAULT_TIMEZONE,
     get_weather_ai_options,
@@ -29,6 +41,20 @@ class ParentRiskRequest(BaseModel):
     timezone: str = Field(DEFAULT_TIMEZONE)
     weather: dict[str, Any] | None = None
 
+
+def get_published_medical_knowledge_read_service(
+    db: Session = Depends(get_db),
+) -> PublishedMedicalKnowledgeReadService:
+    queue = AutoMedicalKnowledgeQueueService(
+        db,
+        max_retries=AUTO_MEDICAL_KNOWLEDGE_MAX_RETRIES,
+        insufficient_stale_days=AUTO_MEDICAL_KNOWLEDGE_INSUFFICIENT_STALE_DAYS,
+    )
+    return PublishedMedicalKnowledgeReadService(
+        db,
+        auto_queue=queue,
+    )
+
 @router.get("/disease-knowledge")
 def disease_knowledge(db: Session = Depends(get_db)):
     rows = db.query(DiseaseKnowledge).order_by(DiseaseKnowledge.id.desc()).all()
@@ -44,6 +70,21 @@ def disease_knowledge(db: Session = Depends(get_db)):
         }
         for r in rows
     ]
+
+
+@router.post(
+    "/medical-knowledge/published",
+    response_model=PublishedMedicalKnowledgeBatchResponse,
+)
+def published_medical_knowledge(
+    payload: PublishedMedicalKnowledgeBatchRequest,
+    service: PublishedMedicalKnowledgeReadService = Depends(
+        get_published_medical_knowledge_read_service
+    ),
+):
+    """Return only consistent, current publication-safe Medical Knowledge views."""
+
+    return service.read_batch(payload)
 
 
 @router.get("/weather-options")

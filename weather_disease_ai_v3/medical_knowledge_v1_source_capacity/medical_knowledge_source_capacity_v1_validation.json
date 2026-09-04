@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "source_capacity": {
+    "max_sources": 10,
+    "ten_sources_supported": true,
+    "eleven_sources_rejected": true,
+    "total_input_bound_preserved": true,
+    "per_source_bound_preserved": true
+  },
+  "selection": {
+    "staff_controls_relevance": true,
+    "usable_sources_selectable": true,
+    "unusable_sources_selectable": false,
+    "unusable_sources_still_storable": true,
+    "select_all_usable_supported": true,
+    "draft_basket_contains_only_usable_sources": true
+  },
+  "backend": {
+    "count_validation": true,
+    "usable_evidence_validation": true,
+    "topic_validation_preserved": true,
+    "source_provenance_preserved": true
+  },
+  "tests": {
+    "ten_source_draft_e2e": "PASS",
+    "focused_backend_passed": 256,
+    "focused_backend_failed": 0,
+    "focused_frontend_passed": 136,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true
+  },
+  "integrity": {
+    "weather_ai_modified": false,
+    "medical_factor_architecture_modified": false,
+    "production_business_data_modified": false
+  },
+  "external_live_calls": {
+    "groq": false,
+    "pubmed": false,
+    "pmc": false
+  },
+  "remaining_limitations": [
+    "UI readability follows backend evidence status; a post-refresh race is still rejected fail closed by the backend.",
+    "For more than 10 readable sources, Select All chooses the first 10 in stable library order and staff can replace selections manually.",
+    "AI-readable does not imply medical relevance; DIRECT, INDIRECT, and NOT_SUPPORTIVE assessment remains part of Draft review."
+  ],
+  "user_manual_test_required": false
+}

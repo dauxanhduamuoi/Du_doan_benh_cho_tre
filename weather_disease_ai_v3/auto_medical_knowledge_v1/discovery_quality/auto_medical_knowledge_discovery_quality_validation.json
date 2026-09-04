@@ -1,0 +1,129 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "audit": {
+    "failed_jobs_inspected": 7,
+    "failed_root_causes_identified": true,
+    "failed_root_causes": {
+      "llm_structured_output_error": 6,
+      "llm_rate_limit_error": 1,
+      "pubmed_or_pmc_technical_error": 0
+    },
+    "insufficient_jobs_inspected": 12,
+    "group_32_checked": true,
+    "group_32_is_malaria_related": false,
+    "historical_false_positive_pmid": "14636983"
+  },
+  "discovery": {
+    "guided_query_logic_reused": true,
+    "staged_search": true,
+    "disease_relevance_guard": true,
+    "factor_relevance_guard": true,
+    "disease_factor_linkage_guard": true,
+    "pediatric_relevance_preserved": true,
+    "false_substring_match_guard": true,
+    "covariate_only_match_guard": true,
+    "max_query_stages": 3,
+    "max_results_per_query": 25,
+    "max_sources": 10,
+    "per_result_llm_calls": false
+  },
+  "diagnostics": {
+    "query_audit_visible": true,
+    "candidate_counts_visible": true,
+    "selected_and_rejected_bibliography_visible": true,
+    "raw_evidence_visible": false,
+    "specific_failure_reason": true,
+    "specific_insufficient_reason": true,
+    "retry_attempt_history_preserved": true
+  },
+  "safety": {
+    "pediatric_direct_gate_preserved": true,
+    "causal_overclaim_guard_preserved": true,
+    "exact_provenance_preserved": true,
+    "trust_policy_preserved": true,
+    "reviewed_workflow_changed": false,
+    "who_or_cdc_added": false
+  },
+  "e2e": {
+    "strict": "PASS",
+    "fallback": "PASS",
+    "irrelevant_source_guard": "PASS",
+    "true_insufficient": "PASS",
+    "failure_classification": "PASS"
+  },
+  "live_smoke": {
+    "pubmed_pmc_discovery": "PASS",
+    "influenza_humidity": "PASS",
+    "pneumonia_temperature": "PASS",
+    "problematic_topic": "PASS",
+    "problematic_topic_selector": "169 + humidity",
+    "influenza_humidity_counts": {
+      "queries_run": 3,
+      "raw_results": 30,
+      "deduplicated": 10,
+      "disease_relevant": 5,
+      "factor_relevant": 1,
+      "pediatric_relevant": 1,
+      "usable_evidence": 1,
+      "selected_for_generation": 1
+    },
+    "pneumonia_temperature_counts": {
+      "queries_run": 3,
+      "raw_results": 30,
+      "deduplicated": 22,
+      "disease_relevant": 13,
+      "factor_relevant": 2,
+      "pediatric_relevant": 2,
+      "usable_evidence": 2,
+      "selected_for_generation": 2
+    },
+    "pneumonia_humidity_counts": {
+      "queries_run": 3,
+      "raw_results": 30,
+      "deduplicated": 12,
+      "disease_relevant": 5,
+      "factor_relevant": 1,
+      "pediatric_relevant": 1,
+      "usable_evidence": 1,
+      "selected_for_generation": 1
+    },
+    "live_llm_calls": 1,
+    "live_auto_generation": "FAIL",
+    "live_auto_generation_failure_code": "AUTO_OUTPUT_VALIDATION_FAILED",
+    "live_auto_revision_persisted": false,
+    "live_auto_visible": false,
+    "live_database": "TEMPORARY_SQLITE"
+  },
+  "tests": {
+    "backend_passed": 137,
+    "backend_failed": 0,
+    "frontend_passed": 103,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "lifespan_pass": true,
+    "http_root_smoke_pass": true
+  },
+  "integrity": {
+    "sqlite_integrity_check": "ok",
+    "foreign_key_violations": 0,
+    "reviewed_revision_count_before": 15,
+    "reviewed_revision_count_after": 15,
+    "publication_event_count_before": 4,
+    "publication_event_count_after": 4,
+    "auto_job_count_before": 19,
+    "auto_job_count_after": 19,
+    "live_smoke_production_db_hash_unchanged": true,
+    "reviewed_business_data_modified": false,
+    "weather_ai_modified": false,
+    "forecast_ai_modified": false,
+    "production_display_modified": false
+  },
+  "remaining_limitations": [
+    "The single live Groq generation returned output that the deterministic Auto safety validator rejected; no second LLM call was made.",
+    "Historical jobs created before this change do not receive fabricated stage-count diagnostics.",
+    "Deterministic text and metadata gates improve precision but cannot replace final evidence assessment by the generation validator and medical review."
+  ],
+  "user_manual_test_required": true
+}

@@ -1,0 +1,99 @@
+{
+  "status": "PASS",
+  "architecture": {
+    "numeric_claim_contract_v2": true,
+    "auto_only": true,
+    "reviewed_schema_unchanged": true,
+    "legacy_v1_readable": true,
+    "token_scanning_no_longer_primary_evidence_contract": true,
+    "max_numeric_claims_per_revision": 10,
+    "additional_llm_validation_calls": 0
+  },
+  "prompt": {
+    "version": "medical_knowledge_auto_v2_numeric_claims",
+    "pipeline_version": "auto_medical_knowledge_v2_numeric_claims",
+    "prefer_qualitative_explanation": true,
+    "unnecessary_numbers_discouraged": true,
+    "numeric_claim_required_for_medical_numbers": true,
+    "insufficient_empty_numeric_claims_supported": true
+  },
+  "validation": {
+    "undeclared_numeric_claim_rejected": true,
+    "unused_numeric_claim_rejected": true,
+    "duplicate_numeric_claim_rejected": true,
+    "selected_source_required": true,
+    "globally_existing_unselected_source_rejected": true,
+    "supporting_text_verified": true,
+    "supporting_text_normalizations": [
+      "UNICODE_NFKC",
+      "WHITESPACE_AND_LINE_BREAKS",
+      "TYPOGRAPHIC_DASHES"
+    ],
+    "paraphrased_support_rejected": true,
+    "claim_kind_validated": true,
+    "incompatible_numeric_types_do_not_cross_match": true,
+    "unsupported_numbers_fail_closed": true,
+    "backend_prose_rewrite": false
+  },
+  "regression": {
+    "count_5087_5_087_preserved": true,
+    "year_range_2004_2009_preserved": true,
+    "generic_value_3_requires_contract_not_special_case": true,
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "pediatric_guard_preserved": true,
+    "personalized_certainty_guard_preserved": true,
+    "source_provenance_preserved": true,
+    "trusted_source_rules_preserved": true
+  },
+  "persistence": {
+    "verified_numeric_claims_persisted": true,
+    "storage": "SOURCE_AND_EVIDENCE_CONTENT_IDS_WITH_OFFSETS_AND_SHA256",
+    "raw_supporting_text_persisted": false,
+    "raw_model_response_persisted": false,
+    "migration": "v011_auto_numeric_claim_contract",
+    "migration_additive": true,
+    "migration_idempotent": true,
+    "historical_revisions_rewritten": false
+  },
+  "e2e": {
+    "qualitative": "PASS",
+    "supported_numeric": "PASS",
+    "undeclared_numeric": "PASS",
+    "hallucinated_numeric": "PASS",
+    "year_range": "PASS",
+    "legacy_v1": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 141,
+    "focused_backend_failed": 0,
+    "frontend_tests": "PASS",
+    "focused_frontend_passed": 30,
+    "focused_frontend_failed": 0,
+    "frontend_typecheck_pass": true,
+    "compile_import_pass": true,
+    "startup_pass": true,
+    "http_root_smoke_pass": true,
+    "foreign_key_check_pass": true,
+    "whole_project_regression_run": false
+  },
+  "external_live_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "integrity": {
+    "production_database_hash_unchanged": true,
+    "reviewed_business_data_modified": false,
+    "auto_visibility_modified": false,
+    "auto_current_pointer_modified": false,
+    "historical_auto_revisions_modified": false,
+    "production_job_169_wind_retried": false,
+    "parent_api_expanded_with_internal_claims": false
+  },
+  "remaining_limitations": [
+    "Supporting excerpts intentionally reject paraphrase and non-whitelisted textual changes.",
+    "OTHER_NUMERIC intentionally fails closed when deterministic kind validation is not possible."
+  ],
+  "user_manual_test_required": false
+}

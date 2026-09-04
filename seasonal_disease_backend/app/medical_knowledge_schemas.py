@@ -5,13 +5,15 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from .medical_knowledge_factor_schemas import GenericFactorSelector
 from .medical_knowledge_models import (
+    EVIDENCE_CONTENT_KINDS,
+    EVIDENCE_CONTENT_ORIGINS,
     EVIDENCE_LEVELS,
     EVIDENCE_SCOPES,
     REVISION_STATUSES,
     SOURCE_ROLES,
     SOURCE_TYPES,
-    WEATHER_FACTORS,
 )
 
 
@@ -21,15 +23,9 @@ def _validate_choice(value: str, allowed: tuple[str, ...], field_name: str) -> s
     return value
 
 
-class MedicalTopicCreate(BaseModel):
+class MedicalTopicCreate(GenericFactorSelector):
     disease_group_id: str = Field(min_length=1, max_length=100)
-    weather_factor: str
     created_by: int | None = None
-
-    @field_validator("weather_factor")
-    @classmethod
-    def validate_weather_factor(cls, value: str) -> str:
-        return _validate_choice(value, WEATHER_FACTORS, "weather_factor")
 
 
 class MedicalRevisionCreate(BaseModel):
@@ -85,14 +81,52 @@ class MedicalEvidenceSourceCreate(BaseModel):
         return _validate_choice(value, SOURCE_TYPES, "source_type")
 
 
+class MedicalEvidenceContentCreate(BaseModel):
+    source_id: int
+    content_kind: str
+    content_origin: str
+    external_identifier: str | None = Field(default=None, max_length=64)
+    evidence_text: str = Field(min_length=1)
+    retrieved_at: datetime
+    is_truncated: bool = False
+    license_name: str | None = Field(default=None, max_length=255)
+    license_url: str | None = None
+    provenance_json: dict[str, Any] | list[Any] | None = None
+    content_sha256: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]{64}$")
+
+    @field_validator("content_kind")
+    @classmethod
+    def validate_content_kind(cls, value: str) -> str:
+        return _validate_choice(value, EVIDENCE_CONTENT_KINDS, "content_kind")
+
+    @field_validator("content_origin")
+    @classmethod
+    def validate_content_origin(cls, value: str) -> str:
+        return _validate_choice(value, EVIDENCE_CONTENT_ORIGINS, "content_origin")
+
+
 class MedicalRevisionSourceCreate(BaseModel):
     revision_id: int
     source_id: int
+    evidence_content_id: int | None = None
     source_role: str
     sort_order: int = Field(default=0, ge=0)
     relevance_note: str | None = None
+    population_relevance: str = "UNKNOWN"
+    population_note: str = Field(
+        default="Legacy revision has no stored population assessment.",
+        min_length=1,
+        max_length=1000,
+    )
 
     @field_validator("source_role")
     @classmethod
     def validate_source_role(cls, value: str) -> str:
         return _validate_choice(value, SOURCE_ROLES, "source_role")
+
+    @field_validator("population_relevance")
+    @classmethod
+    def validate_population_relevance(cls, value: str) -> str:
+        from app.medical_knowledge_models import POPULATION_RELEVANCES
+
+        return _validate_choice(value, POPULATION_RELEVANCES, "population_relevance")

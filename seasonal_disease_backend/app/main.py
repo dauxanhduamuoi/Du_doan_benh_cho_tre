@@ -1,4 +1,5 @@
 import os
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +9,7 @@ from app.database import Base, SessionLocal, engine
 from app import medical_knowledge_models  # noqa: F401 - register tables in Base metadata
 from app.routers import (
     admin,
+    auto_medical_knowledge,
     areas,
     auth,
     dashboard,
@@ -21,13 +23,54 @@ from app.routers import (
     weather_ai,
 )
 from app.services.area_service import ensure_area_schema, seed_default_areas
-from app.config import WEATHER_AI_V3_PRELOAD
+from app.config import (
+    AUTO_MEDICAL_KNOWLEDGE_MAX_CONCURRENT_JOBS,
+    WEATHER_AI_V3_PRELOAD,
+    validate_security_configuration,
+)
+from app.services.auto_medical_knowledge_worker import (
+    recover_interrupted_auto_medical_knowledge_jobs,
+    run_auto_medical_knowledge_worker,
+)
 from app.services.weather_ai_service import initialize_weather_ai_runtime
+from migrations.v002_medical_evidence_content import upgrade as upgrade_medical_evidence_content
+from migrations.v003_medical_knowledge_publication import upgrade as upgrade_medical_publication
+from migrations.v004_medical_knowledge_unpublish import upgrade as upgrade_medical_unpublish
+from migrations.v005_medical_knowledge_topic_sources import upgrade as upgrade_medical_topic_sources
+from migrations.v006_medical_knowledge_pediatric_population import (
+    upgrade as upgrade_medical_pediatric_population,
+)
+from migrations.v007_medical_knowledge_general_factors import (
+    upgrade as upgrade_medical_general_factors,
+)
+from migrations.v008_auto_medical_knowledge import upgrade as upgrade_auto_medical_knowledge
+from migrations.v009_auto_medical_knowledge_runtime_toggle import (
+    upgrade as upgrade_auto_medical_knowledge_runtime_toggle,
+)
+from migrations.v010_auto_medical_knowledge_provider_cooldown import (
+    upgrade as upgrade_auto_medical_knowledge_provider_cooldown,
+)
+from migrations.v011_auto_numeric_claim_contract import (
+    upgrade as upgrade_auto_numeric_claim_contract,
+)
+from migrations.v012_auto_safe_fallback import upgrade as upgrade_auto_safe_fallback
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    validate_security_configuration()
     Base.metadata.create_all(bind=engine)
+    upgrade_medical_evidence_content(engine)
+    upgrade_medical_publication(engine)
+    upgrade_medical_unpublish(engine)
+    upgrade_medical_topic_sources(engine)
+    upgrade_medical_pediatric_population(engine)
+    upgrade_medical_general_factors(engine)
+    upgrade_auto_medical_knowledge(engine)
+    upgrade_auto_medical_knowledge_runtime_toggle(engine)
+    upgrade_auto_medical_knowledge_provider_cooldown(engine)
+    upgrade_auto_numeric_claim_contract(engine)
+    upgrade_auto_safe_fallback(engine)
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)
@@ -35,7 +78,18 @@ async def lifespan(_: FastAPI):
         status = initialize_weather_ai_runtime()
         if not status.get("ready"):
             raise RuntimeError(f"Weather AI V3 preload failed: {status.get('error')}")
-    yield
+    recover_interrupted_auto_medical_knowledge_jobs()
+    stop_event = asyncio.Event()
+    workers = [
+        asyncio.create_task(run_auto_medical_knowledge_worker(stop_event))
+        for _ in range(AUTO_MEDICAL_KNOWLEDGE_MAX_CONCURRENT_JOBS)
+    ]
+    try:
+        yield
+    finally:
+        stop_event.set()
+        if workers:
+            await asyncio.gather(*workers, return_exceptions=True)
 
 app = FastAPI(
     title="Seasonal Disease Forecast API",
@@ -81,3 +135,4 @@ app.include_router(medical_knowledge_pubmed.router)
 app.include_router(medical_knowledge_pubmed.options_router)
 app.include_router(medical_knowledge_drafts.router)
 app.include_router(medical_knowledge_service_status.router)
+app.include_router(auto_medical_knowledge.router)

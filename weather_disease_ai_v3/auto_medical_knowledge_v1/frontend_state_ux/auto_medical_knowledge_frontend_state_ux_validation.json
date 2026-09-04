@@ -1,0 +1,62 @@
+{
+  "status": "PASS",
+  "auto_refresh": {
+    "root_cause_identified": true,
+    "backend_state_was_correct": true,
+    "conditional_polling": true,
+    "poll_interval_ms": 3000,
+    "active_statuses": [
+      "QUEUED",
+      "SEARCHING",
+      "GENERATING"
+    ],
+    "poll_only_when_active": true,
+    "stops_when_terminal": true,
+    "cleanup_on_unmount": true,
+    "no_duplicate_intervals": true,
+    "no_overlapping_background_requests": true,
+    "poll_failure_preserves_state": true,
+    "focus_revalidation": true,
+    "confirmed_refetch_after_actions": true,
+    "manual_reload_no_longer_required": true
+  },
+  "navigation": {
+    "url_is_source_of_truth": true,
+    "url_scheme": "?section=medical-knowledge",
+    "medical_knowledge_survives_reload": true,
+    "browser_history_supported": true,
+    "default_overview_preserved": true,
+    "invalid_section_safe": true,
+    "permission_checks_preserved": true,
+    "localstorage_only_solution": false
+  },
+  "tests": {
+    "focused_frontend_passed": 35,
+    "focused_frontend_failed": 0,
+    "auto_panel_passed": 26,
+    "url_navigation_passed": 7,
+    "shared_navigation_regression_passed": 2,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "build_runs": 1,
+    "backend_tests": "NOT_REQUIRED"
+  },
+  "integrity": {
+    "backend_modified": false,
+    "medical_business_logic_modified": false,
+    "reviewed_modified": false,
+    "production_database_modified": false,
+    "medical_content_modified": false,
+    "dependencies_added": false,
+    "numeric_error_3_modified": false
+  },
+  "external_live_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "remaining_limitations": [
+    "Background status propagation may take up to the configured 3000 ms polling interval."
+  ],
+  "user_manual_test_required": false
+}

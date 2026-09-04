@@ -14,7 +14,11 @@ import {
   UserRound,
   Wind,
 } from 'lucide-react';
-import type { WeatherAIDiseaseRanking } from '@/lib/api';
+import type {
+  PublishedMedicalKnowledgeItem,
+  WeatherAIDiseaseRanking,
+} from '@/lib/api';
+import { factorLabel } from '@/lib/medicalKnowledgeFactors';
 import {
   buildTier1DisplayGroups,
   type Tier1DisplayDirection,
@@ -87,8 +91,8 @@ function FactorList({
   const isUp = direction === 'UP';
   const DirectionIcon = isUp ? ArrowUp : ArrowDown;
   return (
-    <div>
-      <p className={`mb-2 text-sm font-semibold ${isUp ? 'text-emerald-800' : 'text-indigo-800'}`}>
+    <div className={`rounded-2xl border p-3 ${isUp ? 'border-emerald-100 bg-emerald-50/60' : 'border-indigo-100 bg-indigo-50/60'}`}>
+      <p className={`mb-2 text-sm font-extrabold ${isUp ? 'text-emerald-800' : 'text-indigo-800'}`}>
         {isUp ? '↑' : '↓'} {title}
       </p>
       <ul className="space-y-2">
@@ -97,7 +101,7 @@ function FactorList({
           return (
           <li
             key={group.key}
-            className="flex items-start gap-2 rounded-xl border border-white/80 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+            className="flex items-start gap-2.5 rounded-xl border border-white bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm"
             data-testid={`tier1-group-${group.key}`}
           >
             <ConceptIcon
@@ -114,7 +118,7 @@ function FactorList({
               ) : (
                 <p className="mt-0.5 leading-5 text-slate-600">Điều kiện này đang được AI sử dụng để xếp hạng.</p>
               )}
-              <p className={`mt-1 text-xs leading-5 ${isUp ? 'text-emerald-700' : 'text-indigo-700'}`}>
+              <p className={`mt-1 text-[11px] font-medium leading-4 ${isUp ? 'text-emerald-700' : 'text-indigo-700'}`}>
                 <DirectionIcon size={13} aria-hidden="true" className="mr-1 inline" />
                 {directionEffect(direction)}
               </p>
@@ -130,7 +134,7 @@ function FactorList({
 function MixedFactorList({ groups }: { groups: Tier1DisplayGroup[] }) {
   if (groups.length === 0) return null;
   return (
-    <div>
+    <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
       <p className="mb-2 text-sm font-semibold text-amber-900">↕ Các yếu tố có tác động theo nhiều chiều</p>
       <ul className="space-y-2">
         {groups.map((group) => {
@@ -172,9 +176,11 @@ function MixedFactorList({ groups }: { groups: Tier1DisplayGroup[] }) {
 export function WeatherAIExplanationSections({
   prediction,
   variant = 'clinical',
+  showLegacyTier2 = true,
 }: {
   prediction: WeatherAIDiseaseRanking;
   variant?: ResultsVariant;
+  showLegacyTier2?: boolean;
 }) {
   const styles = variantStyles[variant];
   const tier1 = prediction.tier1;
@@ -190,16 +196,18 @@ export function WeatherAIExplanationSections({
   const mixedGroups = tier1Groups.filter((group) => group.direction === 'MIXED');
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className={variant === 'parent' ? 'space-y-3' : 'mt-4 space-y-3'}>
       {tier1.available && (
         <section className={`rounded-2xl border p-4 ${styles.tier1}`} aria-label="Giải thích xếp hạng của mô hình">
           <h4 className="text-sm font-bold text-slate-900">
-            Vì sao AI xếp nhóm bệnh này ở vị trí #{prediction.rank}?
+            {variant === 'parent'
+              ? 'Các yếu tố ảnh hưởng đến thứ hạng'
+              : `Vì sao AI xếp nhóm bệnh này ở vị trí #${prediction.rank}?`}
           </h4>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            AI dựa trên thông tin của trẻ và điều kiện thời tiết gần đây. Các yếu tố dưới đây đang ảnh hưởng đến thứ hạng của nhóm bệnh này.
+            AI dựa trên thông tin của trẻ và điều kiện thời tiết gần đây. Hai nhóm dưới đây cho biết yếu tố nào đang đẩy thứ hạng lên hoặc xuống.
           </p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
             <FactorList title="Đang làm nhóm bệnh này được xếp cao hơn" groups={positiveGroups} direction="UP" />
             <FactorList title="Đang làm nhóm bệnh này được xếp thấp hơn" groups={negativeGroups} direction="DOWN" />
           </div>
@@ -213,7 +221,7 @@ export function WeatherAIExplanationSections({
         </section>
       )}
 
-      {tier2.available && tier2.explanation_short_vi && (
+      {showLegacyTier2 && tier2.available && tier2.explanation_short_vi && (
         <section className={`rounded-2xl border p-4 ${styles.tier2}`} aria-label="Giải thích y khoa và dịch tễ học">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -262,6 +270,116 @@ export function WeatherAIExplanationSections({
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+const medicalFactorLabels: Record<string, string> = {
+  temperature: 'Nhiệt độ',
+  humidity: 'Độ ẩm',
+  precipitation: 'Mưa / lượng mưa',
+  wind: 'Gió',
+  weather_condition: 'Điều kiện thời tiết',
+};
+
+function citationText(source: PublishedMedicalKnowledgeItem['sources'][number]): string {
+  return [
+    source.title,
+    source.journal,
+    source.publication_year ? String(source.publication_year) : null,
+    source.pmid ? `PMID ${source.pmid}` : null,
+    source.doi ? `DOI ${source.doi}` : null,
+    source.pmcid,
+  ].filter(Boolean).join(' · ');
+}
+
+export function PublishedMedicalKnowledgeSections({
+  items,
+  loading = false,
+}: {
+  items: PublishedMedicalKnowledgeItem[];
+  loading?: boolean;
+}) {
+  if (loading && items.length === 0) {
+    return (
+      <div role="status" className="mt-3 flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-xs text-teal-800">
+        <Loader2 size={15} aria-hidden="true" className="animate-spin" />
+        Đang tải giải thích y khoa bổ sung…
+      </div>
+    );
+  }
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-3">
+      {items.map((item) => (
+        <section
+          key={`${item.knowledge_type}-${item.revision_id}-${item.factor_type}-${item.factor_key}-${item.factor_value ?? ''}`}
+          className={`rounded-2xl border p-4 ${item.knowledge_type === 'AUTO'
+            ? 'border-violet-200 bg-gradient-to-br from-violet-50 to-white'
+            : 'border-teal-100 bg-gradient-to-br from-teal-50 to-white'}`}
+          aria-label="Giải thích y khoa"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h4 className="flex items-center gap-2 text-sm font-bold text-teal-950">
+                <BookOpen size={17} aria-hidden="true" /> Giải thích y khoa
+              </h4>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                {factorLabel(item)} — {item.knowledge_type === 'AUTO'
+                  ? 'nội dung được tạo tự động từ bằng chứng tin cậy.'
+                  : 'nội dung y khoa dựa trên tài liệu đã được nhân viên y tế duyệt.'}
+              </p>
+            </div>
+            <span className="w-fit shrink-0 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-semibold text-teal-800">
+              {evidenceStatusLabel(item.evidence_level)}
+            </span>
+          </div>
+          {item.knowledge_type === 'AUTO' && (
+            <div role="note" className="mt-3 flex items-start gap-2 rounded-xl border border-violet-200 bg-violet-100/70 px-3 py-2 text-xs font-semibold leading-5 text-violet-950">
+              <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+              <p>{item.warning}</p>
+            </div>
+          )}
+          {item.knowledge_type === 'AUTO' && item.generation_mode === 'SAFE_FALLBACK' && (
+            <p className="mt-2 text-xs font-semibold text-violet-900">Giải thích tự động rút gọn</p>
+          )}
+          <p className="mt-3 text-sm leading-6 text-slate-800">{item.short_explanation_vi}</p>
+          <details className="mt-3 rounded-xl border border-teal-100 bg-white/80 px-3 py-2 text-sm text-slate-700">
+            <summary className="cursor-pointer font-semibold text-teal-900">Xem giải thích chi tiết</summary>
+            <p className="mt-2 leading-6">{item.detailed_explanation_vi}</p>
+          </details>
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+            <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
+            <p><strong>Giới hạn của bằng chứng:</strong> {item.limitations_vi}</p>
+          </div>
+          <div className="mt-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Nguồn tham khảo</p>
+            <ul className="mt-2 space-y-2 text-xs leading-5 text-slate-700">
+              {item.sources.map((source, index) => {
+                const text = citationText(source);
+                return (
+                  <li key={`${source.pmid ?? source.doi ?? source.title}-${index}`}>
+                    {source.url && isSafeSourceUrl(source.url) ? (
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-start gap-1.5 font-medium text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                      >
+                        <span>{text}</span>
+                        <ExternalLink size={13} aria-hidden="true" className="mt-1 shrink-0" />
+                      </a>
+                    ) : text}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Đây là thông tin tham khảo ở mức nhóm bệnh, không phải chẩn đoán hoặc dự đoán nguy cơ cá nhân của trẻ.
+          </p>
+        </section>
+      ))}
     </div>
   );
 }

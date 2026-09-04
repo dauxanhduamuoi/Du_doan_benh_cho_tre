@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+import app.config as config_module
 from app.config import BACKEND_ENV_FILE, BACKEND_ROOT, load_backend_environment
 from app.database import Base, get_db
 from app.medical_knowledge_models import (
@@ -134,6 +135,22 @@ def test_missing_env_file_is_safe(tmp_path):
     assert load_backend_environment(tmp_path / "missing.env") is False
 
 
+@pytest.mark.parametrize("secret_key", ["", "too-short"])
+def test_startup_security_configuration_rejects_missing_or_weak_jwt_key(
+    monkeypatch, secret_key
+):
+    monkeypatch.setattr(config_module, "SECRET_KEY", secret_key)
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY must be configured"):
+        config_module.validate_security_configuration()
+
+
+def test_startup_security_configuration_accepts_strong_jwt_key(monkeypatch):
+    monkeypatch.setattr(config_module, "SECRET_KEY", "x" * 32)
+
+    config_module.validate_security_configuration()
+
+
 def test_git_ignores_local_env_but_not_example():
     ignored = subprocess.run(
         ["git", "check-ignore", "-q", "seasonal_disease_backend/.env"],
@@ -207,6 +224,7 @@ def test_status_exposes_flags_and_model_but_never_secret_values(api_client, monk
 
 def test_missing_external_configuration_is_reported_without_breaking_status(api_client, monkeypatch):
     client, _app, _db, _pubmed, _llm = api_client
+    monkeypatch.setattr(status_module, "MEDICAL_KNOWLEDGE_LLM_PROVIDER", "openai")
     monkeypatch.setattr(status_module, "NCBI_EMAIL", None)
     monkeypatch.setattr(status_module, "NCBI_API_KEY", None)
     monkeypatch.setattr(status_module, "OPENAI_API_KEY", None)
@@ -280,8 +298,9 @@ def test_admin_and_staff_can_run_explicit_connection_tests(
     assert (pubmed.calls if dependency_name == "pubmed" else llm.calls)
 
 
-def test_connection_tests_are_small_and_do_not_mutate_database(api_client):
+def test_connection_tests_are_small_and_do_not_mutate_database(api_client, monkeypatch):
     client, _app, db, pubmed, llm = api_client
+    monkeypatch.setattr(status_module, "MEDICAL_KNOWLEDGE_LLM_PROVIDER", "ollama")
     user_count_before = db.query(User).count()
     medical_counts_before = tuple(
         db.query(model).count()
@@ -440,6 +459,7 @@ def test_missing_configuration_connection_tests_return_503(api_client, monkeypat
     app.dependency_overrides.pop(get_status_llm_generator)
     monkeypatch.setattr(status_module, "NCBI_EMAIL", None)
     monkeypatch.setattr(status_module, "NCBI_API_KEY", None)
+    monkeypatch.setattr(status_module, "MEDICAL_KNOWLEDGE_LLM_PROVIDER", "openai")
     monkeypatch.setattr(status_module, "OPENAI_API_KEY", None)
     monkeypatch.setattr(status_module, "OPENAI_MODEL", None)
 

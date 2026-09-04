@@ -228,6 +228,29 @@ def test_12_missing_medical_kb_does_not_break_ranking(registry, train_context, t
     }
 
 
+class _ExplodingMedicalKnowledge:
+    def explain(self, _disease_id, _positive_factors):
+        raise RuntimeError("simulated unexpected Tier 2 failure")
+
+
+def test_unexpected_tier2_failure_cannot_break_ranking_or_tier1(registry, train_context):
+    service = WeatherAIRuntimeService(registry, _ExplodingMedicalKnowledge())
+    result = service.predict(
+        train_context["age_group"],
+        train_context["gender"],
+        top_k=1,
+        weather=train_context["weather"],
+        target_date=train_context["target_date"],
+    )
+
+    assert len(result["predictions"]) == 1
+    prediction = result["predictions"][0]
+    assert prediction["rank"] == 1
+    assert prediction["tier1"]["available"] is True
+    assert prediction["tier2"]["available"] is False
+    assert prediction["tier2"]["reason"] == "MEDICAL_KB_ERROR"
+
+
 def test_runtime_display_allowed_is_a_hard_gate():
     service = MedicalKnowledgeService.from_records([_record("SUPPORTED", allowed=False)])
     result = service.explain("5", [_weather_factor()])

@@ -1,0 +1,66 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "population": {
+    "pediatric_target_explicit": true,
+    "source_population_assessment": true,
+    "pediatric_direct_supported": true,
+    "mixed_age_supported": true,
+    "adult_only_supported": true,
+    "elderly_only_supported": true,
+    "unknown_supported": true
+  },
+  "search": {
+    "pediatric_clause_default": true,
+    "direct_pmid_unfiltered": true,
+    "user_retyping_pediatric_terms_required": false
+  },
+  "safety": {
+    "adult_direct_not_treated_as_pediatric_direct": true,
+    "supported_requires_pediatric_direct_support": true,
+    "approval_revalidates_population": true,
+    "parent_requires_pediatric_direct_support": true,
+    "old_revision_missing_population_fails_closed": true
+  },
+  "parent": {
+    "adult_only_tier2_exposed": false,
+    "elderly_only_tier2_exposed": false,
+    "eligible_pediatric_tier2_exposed": true,
+    "tier1_unchanged": true
+  },
+  "tests": {
+    "pediatric_population_e2e": "PASS",
+    "focused_backend_passed": 270,
+    "focused_backend_failed": 0,
+    "focused_frontend_passed": 100,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "http_smoke_pass": true,
+    "pediatric_pubmed_live_smoke": "NOT_RUN"
+  },
+  "integrity": {
+    "weather_ai_modified": false,
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "tier1_modified": false,
+    "production_business_data_modified": false,
+    "schema_migration_applied": true,
+    "historical_revision_rows_rewritten": false
+  },
+  "external_live_calls": {
+    "groq": false,
+    "openai": false,
+    "pmc": false,
+    "pubmed_search_count": 0
+  },
+  "prompt_version": "medical_knowledge_v3_pediatric_population",
+  "remaining_limitations": [
+    "Exact pediatric age-band matching is outside V1 scope.",
+    "Population remains UNKNOWN when selected evidence does not report age.",
+    "Historical publications without population metadata intentionally fail closed.",
+    "No optional live PubMed smoke or live LLM generation was run."
+  ],
+  "user_manual_test_required": false
+}

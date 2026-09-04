@@ -13,7 +13,11 @@ from app.services.pubmed_client import (
     PubMedUnavailableError,
     parse_pubmed_records,
 )
-from app.services.pubmed_query_builder import WEATHER_SEARCH_TERMS, build_pubmed_query
+from app.services.pubmed_query_builder import (
+    PEDIATRIC_SEARCH_COMPONENT,
+    WEATHER_SEARCH_TERMS,
+    build_pubmed_query,
+)
 
 
 PUBMED_XML = b"""<?xml version="1.0"?>
@@ -41,7 +45,7 @@ PUBMED_XML = b"""<?xml version="1.0"?>
       </Article>
     </MedlineCitation>
     <PubmedData>
-      <ArticleIdList><ArticleId IdType="doi">10.1000/example</ArticleId></ArticleIdList>
+      <ArticleIdList><ArticleId IdType="doi">10.1000/example</ArticleId><ArticleId IdType="pmc">PMC123456</ArticleId></ArticleIdList>
     </PubmedData>
   </PubmedArticle>
 </PubmedArticleSet>"""
@@ -83,6 +87,12 @@ def test_query_builder_has_disease_and_weather_components(factor, expected):
     query = build_pubmed_query(["gastroenteritis", "infectious diarrhea"], factor)
     assert query.startswith('("gastroenteritis"[Title/Abstract] OR "infectious diarrhea"[Title/Abstract]) AND (')
     assert expected in query
+    assert query.count(PEDIATRIC_SEARCH_COMPONENT) == 1
+    assert '"Infant"[MeSH Terms]' in query
+    assert '"Child"[MeSH Terms]' in query
+    assert '"Adolescent"[MeSH Terms]' in query
+    assert '"pediatric"[Title/Abstract]' in query
+    assert '"paediatric"[Title/Abstract]' in query
     assert tuple(WEATHER_SEARCH_TERMS) == (
         "temperature",
         "humidity",
@@ -117,6 +127,7 @@ def test_parser_reads_complete_record_and_nested_text():
     assert record.publication_year == 2024
     assert record.abstract_text == "BACKGROUND: First section. METHODS: Second section."
     assert record.pubmed_url == "https://pubmed.ncbi.nlm.nih.gov/12345678/"
+    assert record.pmcid == "PMC123456"
 
 
 def test_parser_missing_doi_and_abstract_is_safe():
@@ -176,6 +187,31 @@ def test_zero_esearch_result_does_not_call_efetch():
     assert calls == 1
 
 
+def test_exact_pmid_lookup_reuses_efetch_parser_and_returns_at_most_one_record():
+    second_article = MISSING_FIELDS_XML.removeprefix(b"<PubmedArticleSet>").removesuffix(
+        b"</PubmedArticleSet>"
+    )
+    combined_xml = PUBMED_XML.replace(b"</PubmedArticleSet>", second_article + b"</PubmedArticleSet>")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request):
+        requests.append(request)
+        return httpx.Response(200, content=combined_xml)
+
+    record = make_client(handler).get_article_by_pmid("87654321")
+
+    assert record is not None
+    assert record.pmid == "87654321"
+    assert len(requests) == 1
+    assert requests[0].url.path.endswith("efetch.fcgi")
+    assert parse_qs(requests[0].content.decode("utf-8"))["id"] == ["87654321"]
+
+
+def test_exact_pmid_lookup_returns_none_when_efetch_has_no_matching_record():
+    client = make_client(lambda _request: httpx.Response(200, content=PUBMED_XML))
+    assert client.get_article_by_pmid("99999999") is None
+
+
 def test_timeout_is_retried_only_to_bound_then_mapped():
     calls = 0
 
@@ -201,6 +237,20 @@ def test_http_429_is_bounded_and_mapped():
     client = make_client(handler, max_retries=1)
     with pytest.raises(PubMedRateLimitError):
         client.search_ids("query", 5)
+    assert calls == 2
+
+
+def test_http_5xx_is_bounded_and_mapped():
+    calls = 0
+
+    def handler(_request: httpx.Request):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503)
+
+    client = make_client(handler, max_retries=1)
+    with pytest.raises(PubMedUnavailableError, match="unavailable"):
+        client.get_article_by_pmid("34201085")
     assert calls == 2
 
 

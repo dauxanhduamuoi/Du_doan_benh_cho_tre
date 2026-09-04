@@ -1,0 +1,52 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "sample_audit": {
+    "topic": "169 · wind",
+    "value": "2004-2009",
+    "exact_attempt_found": true,
+    "exact_evidence_inspected": true,
+    "evidence_supports_range": true,
+    "classification": "FALSE_POSITIVE"
+  },
+  "year_range_validation": {
+    "implemented": true,
+    "dash_variants_supported": true,
+    "from_to_supported": true,
+    "between_and_supported": true,
+    "month_qualified_ranges_supported": true,
+    "unrelated_years_do_not_form_range": true,
+    "publication_year_does_not_invent_range": true,
+    "medical_numeric_ranges_remain_separate": true,
+    "unsupported_year_ranges_fail_closed": true
+  },
+  "regression": {
+    "existing_count_normalization_preserved": true,
+    "unsupported_number_guard_preserved": true
+  },
+  "e2e": {
+    "year_range_normalization": "PASS",
+    "year_range_hallucination_guard": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 23,
+    "focused_backend_failed": 0,
+    "frontend_tests": "NOT_REQUIRED",
+    "compile_import_pass": true
+  },
+  "external_live_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "integrity": {
+    "production_business_data_modified": false,
+    "reviewed_modified": false,
+    "auto_visibility_modified": false
+  },
+  "remaining_limitations": [
+    "Month-level differences are intentionally reduced to the same start/end year interval.",
+    "A bare evidence range without a temporal signal remains unsupported to avoid classifying arbitrary four-digit medical values as years.",
+    "A later unsupported numeric value 3 exists on the same durable job and was left untouched as out of scope."
+  ],
+  "user_manual_test_required": false
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Callable, Literal, Protocol, TypeVar
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -29,11 +29,249 @@ class DraftGeneratorUnavailableError(DraftGeneratorError):
 
 
 class DraftGeneratorRateLimitError(DraftGeneratorUnavailableError):
-    pass
+    def __init__(
+        self, message: str, *, retry_after_seconds: float | None = None
+    ) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
 
 
 class DraftGeneratorOutputError(DraftGeneratorError):
     pass
+
+
+class DraftGeneratorStructuredOutputError(DraftGeneratorOutputError):
+    """A safe, machine-readable failure in the model's output contract."""
+
+    def __init__(
+        self,
+        code: str,
+        safe_detail: str,
+        *,
+        field: str | None = None,
+        source_id: int | None = None,
+    ):
+        super().__init__(safe_detail)
+        self.code = code
+        self.safe_detail = safe_detail
+        self.field = field
+        self.source_id = source_id
+
+
+class DraftGeneratorProviderResponseError(DraftGeneratorOutputError):
+    """A provider-boundary failure with only allow-listed, non-content diagnostics."""
+
+    code = "AUTO_OUTPUT_PROVIDER_RESPONSE_INVALID"
+
+    def __init__(self, safe_detail: str, *, diagnostics: dict | None = None) -> None:
+        super().__init__(safe_detail)
+        self.safe_detail = safe_detail
+        self.provider_diagnostics = diagnostics or {}
+
+
+class DraftGeneratorProviderEnvelopeError(DraftGeneratorProviderResponseError):
+    pass
+
+
+class DraftGeneratorProviderRequestRejectedError(DraftGeneratorProviderResponseError):
+    code = "AUTO_OUTPUT_PROVIDER_REQUEST_REJECTED"
+
+
+class DraftGeneratorProviderContentEmptyError(DraftGeneratorProviderResponseError):
+    code = "AUTO_OUTPUT_PROVIDER_CONTENT_EMPTY"
+
+
+class DraftGeneratorProviderIncompleteError(DraftGeneratorProviderResponseError):
+    code = "AUTO_OUTPUT_PROVIDER_INCOMPLETE"
+
+
+class DraftProposalWholeGroupRequiresDirectError(DraftGeneratorOutputError):
+    pass
+
+
+def raise_structured_draft_validation_error(
+    provider: str, exc: ValidationError
+) -> None:
+    if "WHOLE_GROUP requires at least one DIRECT source assessment" in str(exc):
+        raise DraftProposalWholeGroupRequiresDirectError(
+            f"{provider} proposed WHOLE_GROUP without a DIRECT source"
+        ) from exc
+    raise DraftGeneratorOutputError(
+        f"{provider} returned an invalid structured draft"
+    ) from exc
+
+
+ProposalT = TypeVar("ProposalT", bound=BaseModel)
+_SAFE_ENUMS = {
+    "evidence_level": {
+        "SUPPORTED", "LIMITED_OR_INDIRECT", "CONFLICTING", "INSUFFICIENT"
+    },
+    "evidence_scope": {"WHOLE_GROUP", "PARTIAL_GROUP"},
+    "relevance": {"DIRECT", "INDIRECT", "NOT_SUPPORTIVE"},
+    "population_relevance": {
+        "PEDIATRIC_DIRECT", "MIXED_AGE", "ADULT_ONLY", "ELDERLY_ONLY", "UNKNOWN"
+    },
+    "claim_kind": {
+        "COUNT", "PERCENTAGE", "RATE", "RATIO_OR_EFFECT", "MEASUREMENT",
+        "AGE", "DURATION", "TEMPORAL_PERIOD", "OTHER_NUMERIC",
+    },
+}
+
+
+def _raise_structural(
+    code: str,
+    detail: str,
+    *,
+    field: str | None = None,
+    source_id: int | None = None,
+    cause: Exception | None = None,
+) -> None:
+    error = DraftGeneratorStructuredOutputError(
+        code, detail, field=field, source_id=source_id
+    )
+    if cause is not None:
+        raise error from cause
+    raise error
+
+
+def _normalized_json_object(output_text: str) -> dict:
+    text = output_text.strip().lstrip("\ufeff").strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if fenced:
+        text = fenced.group(1).strip().lstrip("\ufeff").strip()
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as direct_error:
+        start = text.find("{")
+        if start < 0:
+            _raise_structural(
+                "AUTO_OUTPUT_JSON_INVALID",
+                "Provider output does not contain a valid JSON object.",
+                cause=direct_error,
+            )
+        try:
+            value, end = json.JSONDecoder().raw_decode(text, start)
+        except json.JSONDecodeError as exc:
+            _raise_structural(
+                "AUTO_OUTPUT_JSON_INVALID",
+                "Provider output does not contain a valid JSON object.",
+                cause=exc,
+            )
+        # Plain prose around one object is harmless. Any other JSON value is
+        # ambiguous and must fail closed.
+        prefix = text[:start].strip()
+        suffix = text[end:].strip()
+        surrounding_json = False
+        for surrounding in (prefix, suffix):
+            if not surrounding:
+                continue
+            try:
+                json.JSONDecoder().raw_decode(surrounding)
+                surrounding_json = True
+            except json.JSONDecodeError:
+                pass
+        if "}" in prefix or "{" in suffix or "}" in suffix or surrounding_json:
+            _raise_structural(
+                "AUTO_OUTPUT_JSON_INVALID",
+                "Provider output contains multiple or ambiguous JSON objects.",
+            )
+    if not isinstance(value, dict):
+        _raise_structural(
+            "AUTO_OUTPUT_SCHEMA_INVALID",
+            "Provider output must be one JSON object.",
+        )
+    return value
+
+
+def _normalize_safe_enum(value, field: str):
+    if not isinstance(value, str):
+        return value
+    canonical = value.strip().upper()
+    return canonical if canonical in _SAFE_ENUMS[field] else value
+
+
+def parse_medical_draft_output(
+    output_text: str,
+    context: DraftGenerationContext,
+    proposal_model: type[ProposalT] = MedicalKnowledgeDraftProposal,
+) -> ProposalT:
+    """Normalize formatting only, then validate schema and exact provenance."""
+
+    value = _normalized_json_object(output_text)
+    for field in ("evidence_level", "evidence_scope"):
+        if field in value:
+            value[field] = _normalize_safe_enum(value[field], field)
+    assessments = value.get("source_assessments")
+    if isinstance(assessments, list):
+        for assessment in assessments:
+            if not isinstance(assessment, dict):
+                continue
+            for field in ("relevance", "population_relevance"):
+                if field in assessment:
+                    assessment[field] = _normalize_safe_enum(assessment[field], field)
+    numeric_claims = value.get("numeric_claims")
+    if isinstance(numeric_claims, list):
+        for claim in numeric_claims:
+            if isinstance(claim, dict) and "claim_kind" in claim:
+                claim["claim_kind"] = _normalize_safe_enum(
+                    claim["claim_kind"], "claim_kind"
+                )
+
+    required = proposal_model.model_json_schema().get("required", [])
+    missing = [field for field in required if field not in value]
+    if missing:
+        _raise_structural(
+            "AUTO_OUTPUT_MISSING_REQUIRED_FIELD",
+            "Provider output is missing a required field.",
+            field=str(missing[0]),
+        )
+
+    if not isinstance(assessments, list):
+        _raise_structural(
+            "AUTO_OUTPUT_SCHEMA_INVALID",
+            "source_assessments must be an array.",
+            field="source_assessments",
+        )
+    selected_ids = [source.source_id for source in context.sources]
+    returned_ids = [
+        item.get("source_id") for item in assessments if isinstance(item, dict)
+    ]
+    if (
+        len(returned_ids) != len(assessments)
+        or len(returned_ids) != len(selected_ids)
+        or len(set(returned_ids)) != len(returned_ids)
+        or set(returned_ids) != set(selected_ids)
+    ):
+        unexpected = next(
+            (item for item in returned_ids if isinstance(item, int) and item not in selected_ids),
+            None,
+        )
+        _raise_structural(
+            "AUTO_OUTPUT_SOURCE_SET_MISMATCH",
+            "Provider output must assess every selected source ID exactly once.",
+            field="source_assessments",
+            source_id=unexpected,
+        )
+
+    try:
+        return proposal_model.model_validate(value)
+    except ValidationError as exc:
+        errors = exc.errors()
+        first = errors[0] if errors else {}
+        field = ".".join(str(item) for item in first.get("loc", ())) or None
+        error_type = str(first.get("type") or "")
+        if error_type == "missing":
+            code = "AUTO_OUTPUT_MISSING_REQUIRED_FIELD"
+        elif error_type in {"literal_error", "enum"}:
+            code = "AUTO_OUTPUT_INVALID_ENUM"
+        else:
+            code = "AUTO_OUTPUT_SCHEMA_INVALID"
+        _raise_structural(
+            code,
+            "Provider output does not satisfy the required structured schema.",
+            field=field,
+            cause=exc,
+        )
 
 
 class DraftGeneratorRefusalError(DraftGeneratorOutputError):
@@ -83,7 +321,13 @@ class MedicalKnowledgeDraftGenerator(Protocol):
     def model_name(self) -> str:
         ...
 
-    def generate(self, context: DraftGenerationContext) -> MedicalKnowledgeDraftProposal:
+    def generate(
+        self,
+        context: DraftGenerationContext,
+        *,
+        structural_retry: bool = False,
+        user_input_override: str | None = None,
+    ) -> BaseModel:
         ...
 
     def test_connection(self) -> bool:
@@ -100,6 +344,29 @@ class MedicalKnowledgeLlmConfiguration:
     model: str | None
     configured: bool
     api_key_configured: bool
+
+
+_STRUCTURAL_RETRY_INSTRUCTION = (
+    "Previous response failed the structured-output contract. Return a fresh "
+    "complete response from the supplied evidence using the exact schema."
+)
+
+
+def build_generation_user_input(
+    context: DraftGenerationContext,
+    input_builder: Callable[[DraftGenerationContext], str],
+    *,
+    structural_retry: bool = False,
+    user_input_override: str | None = None,
+) -> str:
+    """Compose provider-neutral generation input without provider business logic."""
+
+    if user_input_override is not None:
+        return user_input_override
+    sections = [input_builder(context)]
+    if structural_retry:
+        sections.append(_STRUCTURAL_RETRY_INSTRUCTION)
+    return "\n\n".join(sections)
 
 
 _LOCAL_OLLAMA_HOSTS = frozenset({"localhost", "127.0.0.1"})
@@ -203,11 +470,17 @@ class OpenAIMedicalKnowledgeDraftGenerator:
         model: str | None,
         timeout_seconds: float = 45.0,
         client: httpx.Client | None = None,
+        system_instructions: str = SYSTEM_INSTRUCTIONS,
+        input_builder: Callable[[DraftGenerationContext], str] = build_generation_input,
+        proposal_model: type[BaseModel] = MedicalKnowledgeDraftProposal,
     ):
         self.api_key = api_key
         self._model_name = model
         self._owns_client = client is None
         self.client = client or httpx.Client(timeout=timeout_seconds)
+        self.system_instructions = system_instructions
+        self.input_builder = input_builder
+        self.proposal_model = proposal_model
 
     @property
     def model_name(self) -> str:
@@ -263,7 +536,13 @@ class OpenAIMedicalKnowledgeDraftGenerator:
                     return content["text"]
         raise DraftGeneratorOutputError("OpenAI returned no structured output")
 
-    def generate(self, context: DraftGenerationContext) -> MedicalKnowledgeDraftProposal:
+    def generate(
+        self,
+        context: DraftGenerationContext,
+        *,
+        structural_retry: bool = False,
+        user_input_override: str | None = None,
+    ):
 
         payload = {
             "model": self._model_name,
@@ -271,11 +550,19 @@ class OpenAIMedicalKnowledgeDraftGenerator:
             "input": [
                 {
                     "role": "developer",
-                    "content": [{"type": "input_text", "text": SYSTEM_INSTRUCTIONS}],
+                    "content": [{"type": "input_text", "text": self.system_instructions}],
                 },
                 {
                     "role": "user",
-                    "content": [{"type": "input_text", "text": build_generation_input(context)}],
+                    "content": [{
+                        "type": "input_text",
+                        "text": build_generation_user_input(
+                            context,
+                            self.input_builder,
+                            structural_retry=structural_retry,
+                            user_input_override=user_input_override,
+                        ),
+                    }],
                 },
             ],
             "text": {
@@ -283,15 +570,12 @@ class OpenAIMedicalKnowledgeDraftGenerator:
                     "type": "json_schema",
                     "name": "medical_knowledge_draft_v1",
                     "strict": True,
-                    "schema": MedicalKnowledgeDraftProposal.model_json_schema(),
+                    "schema": self.proposal_model.model_json_schema(),
                 }
             },
         }
         output_text = self._extract_output_text(self._post(payload))
-        try:
-            return MedicalKnowledgeDraftProposal.model_validate(json.loads(output_text))
-        except (json.JSONDecodeError, ValidationError) as exc:
-            raise DraftGeneratorOutputError("OpenAI returned an invalid structured draft") from exc
+        return parse_medical_draft_output(output_text, context, self.proposal_model)
 
     def test_connection(self) -> bool:
         """Send one minimal, non-medical structured request without tools or persistence."""
@@ -338,11 +622,17 @@ class OllamaMedicalKnowledgeDraftGenerator:
         model: str | None,
         timeout_seconds: float = 120.0,
         client: httpx.Client | None = None,
+        system_instructions: str = SYSTEM_INSTRUCTIONS,
+        input_builder: Callable[[DraftGenerationContext], str] = build_generation_input,
+        proposal_model: type[BaseModel] = MedicalKnowledgeDraftProposal,
     ):
         self._base_url = base_url
         self._model_name = model
         self._owns_client = client is None
         self.client = client or httpx.Client(timeout=timeout_seconds)
+        self.system_instructions = system_instructions
+        self.input_builder = input_builder
+        self.proposal_model = proposal_model
 
     @property
     def model_name(self) -> str:
@@ -414,20 +704,29 @@ class OllamaMedicalKnowledgeDraftGenerator:
             raise DraftGeneratorOutputError("Local Ollama returned no structured output")
         return content
 
-    def generate(self, context: DraftGenerationContext) -> MedicalKnowledgeDraftProposal:
+    def generate(
+        self,
+        context: DraftGenerationContext,
+        *,
+        structural_retry: bool = False,
+        user_input_override: str | None = None,
+    ):
         output_text = self._chat(
-            schema=MedicalKnowledgeDraftProposal.model_json_schema(),
+            schema=self.proposal_model.model_json_schema(),
             messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-                {"role": "user", "content": build_generation_input(context)},
+                {"role": "system", "content": self.system_instructions},
+                {
+                    "role": "user",
+                    "content": build_generation_user_input(
+                        context,
+                        self.input_builder,
+                        structural_retry=structural_retry,
+                        user_input_override=user_input_override,
+                    ),
+                },
             ],
         )
-        try:
-            return MedicalKnowledgeDraftProposal.model_validate_json(output_text)
-        except ValidationError as exc:
-            raise DraftGeneratorOutputError(
-                "Local Ollama returned an invalid structured draft"
-            ) from exc
+        return parse_medical_draft_output(output_text, context, self.proposal_model)
 
     def test_connection(self) -> bool:
         output_text = self._chat(
@@ -460,6 +759,9 @@ def create_medical_knowledge_draft_generator(
     groq_api_key: str | None = None,
     groq_model: str | None = None,
     groq_timeout_seconds: float = 45.0,
+    system_instructions: str = SYSTEM_INSTRUCTIONS,
+    input_builder: Callable[[DraftGenerationContext], str] = build_generation_input,
+    proposal_model: type[BaseModel] = MedicalKnowledgeDraftProposal,
 ) -> MedicalKnowledgeDraftGenerator:
     """Create exactly the selected provider. No provider fallback is permitted."""
 
@@ -474,6 +776,9 @@ def create_medical_knowledge_draft_generator(
             model=groq_model,
             timeout_seconds=groq_timeout_seconds,
             client=client,
+            system_instructions=system_instructions,
+            input_builder=input_builder,
+            proposal_model=proposal_model,
         )
     if normalized_provider == "ollama":
         return OllamaMedicalKnowledgeDraftGenerator(
@@ -481,6 +786,9 @@ def create_medical_knowledge_draft_generator(
             model=ollama_model,
             timeout_seconds=ollama_timeout_seconds,
             client=client,
+            system_instructions=system_instructions,
+            input_builder=input_builder,
+            proposal_model=proposal_model,
         )
     if normalized_provider == "openai":
         return OpenAIMedicalKnowledgeDraftGenerator(
@@ -488,6 +796,9 @@ def create_medical_knowledge_draft_generator(
             model=openai_model,
             timeout_seconds=openai_timeout_seconds,
             client=client,
+            system_instructions=system_instructions,
+            input_builder=input_builder,
+            proposal_model=proposal_model,
         )
     raise UnknownDraftGeneratorProviderError(
         f"Unsupported Medical Knowledge LLM provider: {normalized_provider or '<empty>'}"

@@ -15,6 +15,7 @@ import LoadingFallback from './components/LoadingFallback';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useUnreadNotifications } from './hooks/useUnreadNotifications';
 import { canAccessTab, getBottomNavItems, getMainNavItems, type TabType } from './navigation';
+import { useAdminSectionNavigation } from './useAdminSectionNavigation';
 import { useI18n, useT } from '@/lib/i18n';
 
 function initialsOf(name: string): string {
@@ -28,12 +29,9 @@ function AppShell() {
   const { user, logout } = useAuth();
   const t = useT();
   const { lang } = useI18n();
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = useUnreadNotifications(activeTab === 'notifications');
 
   const allMenuItems = useMemo(() => getMainNavItems(t), [t]);
 
@@ -43,6 +41,9 @@ function AppShell() {
   );
 
   const bottomItems = useMemo(() => getBottomNavItems(t), [t]);
+  const fallbackTab: TabType = menuItems[0]?.id ?? 'settings';
+  const { activeTab, navigateToTab } = useAdminSectionNavigation(user, fallbackTab);
+  const unreadCount = useUnreadNotifications(activeTab === 'notifications');
 
   const displayName = user?.full_name || user?.username || 'User';
   const roleLabel = user?.role === 'admin' ? t('user.adminRole') : t('user.staffRole');
@@ -51,13 +52,6 @@ function AppShell() {
       logout();
     }
   };
-
-  useEffect(() => {
-    if (activeTab === 'settings' || activeTab === 'account' || activeTab === 'notifications') return;
-    if (!canAccessTab(user, activeTab)) {
-      setActiveTab(menuItems[0]?.id ?? 'settings');
-    }
-  }, [activeTab, menuItems, user]);
 
   // Đóng user menu khi click ra ngoài
   useEffect(() => {
@@ -105,7 +99,7 @@ function AppShell() {
               return (
                 <li key={item.id}>
                   <button
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => navigateToTab(item.id)}
                     title={!sidebarOpen ? item.label : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 ${
                       isActive
@@ -150,7 +144,7 @@ function AppShell() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => navigateToTab(item.id)}
                 title={!sidebarOpen ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
                   isActive
@@ -194,7 +188,7 @@ function AppShell() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setActiveTab('notifications')}
+                onClick={() => navigateToTab('notifications')}
                 title={t('sidebar.notifications')}
                 className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors"
               >
@@ -229,7 +223,7 @@ function AppShell() {
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
-                        setActiveTab('account');
+                        navigateToTab('account');
                       }}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                     >
@@ -239,7 +233,7 @@ function AppShell() {
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
-                        setActiveTab('settings');
+                        navigateToTab('settings');
                       }}
                       className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                     >

@@ -1,0 +1,102 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "source_model": {
+    "global_source_dedup_preserved": true,
+    "topic_source_library_supported": true,
+    "topic_source_unique": true,
+    "revision_source_snapshot_preserved": true
+  },
+  "ui": {
+    "search_import_selection_separate": true,
+    "draft_selection_separate": true,
+    "already_in_topic_not_reimported": true,
+    "draft_source_preview_visible": true,
+    "draft_source_count_visible": true,
+    "topic_change_clears_selection": true,
+    "stale_async_topic_response_ignored": true
+  },
+  "draft": {
+    "explicit_source_ids_required": true,
+    "uses_only_selected_sources": true,
+    "unselected_library_sources_ignored": true,
+    "cross_topic_sources_rejected": true,
+    "specific_error_codes": true,
+    "whole_group_direct_rule_preserved": true,
+    "not_supportive_selected_source_preserved": true
+  },
+  "persistence": {
+    "source_library_persistent": true,
+    "restart_test": "PASS",
+    "database_path": "D:\\OS_C\\Bài học trên trường\\Thực tập\\Fullstack_2\\ThucTap-main\\seasonal_disease_backend\\database.db",
+    "database_path_deterministic": true,
+    "multiple_database_files_found": true,
+    "unused_database_files": [
+      {
+        "path": "D:\\OS_C\\Bài học trên trường\\Thực tập\\Fullstack_2\\ThucTap-main\\database.db",
+        "bytes": 0,
+        "configured": false
+      }
+    ]
+  },
+  "influenza_issue": {
+    "reproduced": true,
+    "root_cause": "Global PubMed source IDs had no persistent topic membership invariant, so a Pneumonia source could reach an Influenza Draft request; the frontend then collapsed validation failures into one generic 422 message.",
+    "fixed": true,
+    "fails_before_llm": true,
+    "specific_codes": [
+      "DRAFT_TOPIC_MISMATCH",
+      "DRAFT_SOURCE_NOT_IN_TOPIC"
+    ],
+    "safety_rule_weakened": false
+  },
+  "tests": {
+    "source_library_restart_persistence_test": "PASS",
+    "source_library_draft_selection_e2e": "PASS",
+    "focused_backend_passed": 155,
+    "focused_backend_failed": 0,
+    "focused_backend_warnings": 2,
+    "focused_frontend_passed": 70,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "lifespan_pass": true,
+    "http_root_smoke_pass": true,
+    "migration_pass": true,
+    "full_backend_suite_run": false,
+    "full_frontend_suite_run": false
+  },
+  "runtime": {
+    "python_executable": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend\\python.exe",
+    "python_prefix": "D:\\Users\\LENOVO\\anaconda3\\envs\\seasonal_backend",
+    "python_version": "3.11.15",
+    "isolated_sqlite_used_for_mutating_validation": true,
+    "existing_uvicorn_process_stopped": false
+  },
+  "integrity": {
+    "weather_ai_modified": false,
+    "lightgbm_modified": false,
+    "shap_modified": false,
+    "ranking_modified": false,
+    "tier1_modified": false,
+    "approval_semantics_modified": false,
+    "publish_semantics_modified": false,
+    "unpublish_semantics_modified": false,
+    "production_business_data_modified": false,
+    "production_medical_table_hashes_unchanged": true,
+    "env_modified": false,
+    "secrets_printed": false
+  },
+  "external_live_calls": {
+    "groq": false,
+    "pubmed": false,
+    "pmc": false
+  },
+  "remaining_limitations": [
+    "A zero-byte, unconfigured database.db exists at repository root; it was not deleted or merged.",
+    "Historical revision-source rows were not backfilled into the new topic library; staff may explicitly re-add/reuse those global sources.",
+    "Two pre-existing Pydantic class-based Config deprecation warnings appeared during isolated startup testing."
+  ],
+  "user_manual_test_required": false,
+  "user_manual_visual_smoke_recommended": true
+}

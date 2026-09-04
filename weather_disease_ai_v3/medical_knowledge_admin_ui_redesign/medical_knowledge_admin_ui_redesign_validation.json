@@ -1,0 +1,58 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "architecture": {
+    "reviewed_auto_separated": true,
+    "reviewed_workspace_structured": true,
+    "auto_dashboard_structured": true,
+    "technical_details_collapsed": true,
+    "backend_changed": false
+  },
+  "reviewed": {
+    "topic_selector_preserved": true,
+    "guided_search_preserved": true,
+    "free_search_preserved": true,
+    "direct_pmid_preserved": true,
+    "topic_library_preserved": true,
+    "draft_basket_preserved": true,
+    "draft_preserved": true,
+    "approval_preserved": true,
+    "publish_preserved": true,
+    "unpublish_preserved": true,
+    "revision_history_preserved": true
+  },
+  "auto": {
+    "runtime_toggle_preserved": true,
+    "parent_mode_preserved": true,
+    "queue_preserved": true,
+    "retry_preserved": true,
+    "visibility_preserved": true,
+    "ai_full_displayed": true,
+    "safe_fallback_displayed": true,
+    "diagnostics_preserved": true,
+    "history_preserved": true,
+    "conditional_polling_preserved": true
+  },
+  "ux": {
+    "main_tabs": true,
+    "auto_filters": true,
+    "responsive": true,
+    "empty_states": true,
+    "service_config_collapsed": true,
+    "url_section_behavior_preserved": true
+  },
+  "tests": {
+    "focused_frontend_passed": 191,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true
+  },
+  "external_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "remaining_limitations": [
+    "In-app Browser session iab was unavailable, so a real-browser responsive visual smoke was not completed."
+  ],
+  "user_manual_test_required": true
+}

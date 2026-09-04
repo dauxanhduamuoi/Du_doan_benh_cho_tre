@@ -3,16 +3,25 @@ from __future__ import annotations
 import logging
 from collections.abc import Generator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.config import NCBI_API_KEY, NCBI_EMAIL, NCBI_TOOL
+from app.config import (
+    MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
+    NCBI_API_KEY,
+    NCBI_EMAIL,
+    NCBI_TOOL,
+)
 from app.database import get_db
 from app.models import User
+from app.medical_knowledge_factors import normalize_factor
 from app.pubmed_schemas import (
     MedicalKnowledgeOptionsResponse,
+    MedicalKnowledgeTopicSourceLibraryResponse,
     PubMedImportRequest,
     PubMedImportResponse,
+    PubMedLookupRequest,
+    PubMedLookupResponse,
     PubMedSearchRequest,
     PubMedSearchResponse,
 )
@@ -21,6 +30,7 @@ from app.services.medical_knowledge_pubmed_service import (
     DiseaseGroupNotFoundError,
     DiseaseUniverseConfigurationError,
     MedicalKnowledgePubMedService,
+    PubMedArticleNotFoundError,
     get_medical_knowledge_options,
 )
 from app.services.pubmed_client import (
@@ -29,6 +39,8 @@ from app.services.pubmed_client import (
     PubMedRateLimitError,
     PubMedUnavailableError,
 )
+from app.services.medical_evidence_content_service import MedicalEvidenceContentService
+from app.services.pmc_client import PmcClient
 
 
 logger = logging.getLogger(__name__)
@@ -39,12 +51,21 @@ options_router = APIRouter(prefix="/api/medical-knowledge", tags=["Medical Knowl
 def get_pubmed_service(db: Session = Depends(get_db)) -> Generator[MedicalKnowledgePubMedService, None, None]:
     client = PubMedClient(tool=NCBI_TOOL, email=NCBI_EMAIL, api_key=NCBI_API_KEY)
     try:
-        yield MedicalKnowledgePubMedService(db, client)
+        yield MedicalKnowledgePubMedService(
+            db,
+            client,
+            evidence_content_service=MedicalEvidenceContentService(
+                PmcClient(client),
+                max_chars_per_source=MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
+            ),
+        )
     finally:
         client.close()
 
 
 def _map_service_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, PubMedArticleNotFoundError):
+        return HTTPException(status_code=404, detail="PubMed article was not found")
     if isinstance(exc, DiseaseGroupNotFoundError):
         return HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, (PubMedConfigurationError, DiseaseUniverseConfigurationError)):
@@ -65,6 +86,43 @@ def medical_knowledge_options(_current_user: User = Depends(require_staff_or_adm
         raise _map_service_error(exc) from exc
 
 
+@options_router.get(
+    "/topic-sources", response_model=MedicalKnowledgeTopicSourceLibraryResponse
+)
+def get_topic_source_library(
+    disease_group_id: str = Query(min_length=1, max_length=100),
+    factor_type: str | None = Query(default=None, max_length=16),
+    factor_key: str | None = Query(default=None, max_length=32),
+    factor_value: str | None = Query(default=None, max_length=100),
+    weather_factor: str | None = Query(default=None, max_length=32),
+    _current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgePubMedService = Depends(get_pubmed_service),
+):
+    try:
+        factor = normalize_factor(
+            factor_type=factor_type,
+            factor_key=factor_key,
+            factor_value=factor_value,
+            weather_factor=weather_factor,
+        )
+        if factor.factor_type == "WEATHER" and factor_type is None and factor_key is None:
+            return service.get_topic_source_library(
+                disease_group_id=disease_group_id,
+                weather_factor=factor.weather_factor,
+            )
+        return service.get_topic_source_library(
+            disease_group_id=disease_group_id,
+            factor_type=factor.factor_type,
+            factor_key=factor.factor_key,
+            factor_value=factor.factor_value,
+            weather_factor=factor.weather_factor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise _map_service_error(exc) from exc
+
+
 @router.post("/search", response_model=PubMedSearchResponse)
 def search_pubmed(
     payload: PubMedSearchRequest,
@@ -77,13 +135,25 @@ def search_pubmed(
         raise _map_service_error(exc) from exc
 
 
-@router.post("/import", response_model=PubMedImportResponse)
-def import_pubmed_sources(
-    payload: PubMedImportRequest,
+@router.post("/lookup", response_model=PubMedLookupResponse)
+def lookup_pubmed_article(
+    payload: PubMedLookupRequest,
     _current_user: User = Depends(require_staff_or_admin),
     service: MedicalKnowledgePubMedService = Depends(get_pubmed_service),
 ):
     try:
-        return service.import_pmids(payload)
+        return service.lookup_pmid(payload)
+    except Exception as exc:
+        raise _map_service_error(exc) from exc
+
+
+@router.post("/import", response_model=PubMedImportResponse)
+def import_pubmed_sources(
+    payload: PubMedImportRequest,
+    current_user: User = Depends(require_staff_or_admin),
+    service: MedicalKnowledgePubMedService = Depends(get_pubmed_service),
+):
+    try:
+        return service.import_pmids(payload, added_by=current_user.id)
     except Exception as exc:
         raise _map_service_error(exc) from exc

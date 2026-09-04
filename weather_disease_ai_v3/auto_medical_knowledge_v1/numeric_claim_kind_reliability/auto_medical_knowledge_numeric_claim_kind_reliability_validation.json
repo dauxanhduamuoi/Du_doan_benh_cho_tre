@@ -1,0 +1,96 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "production_audit": {
+    "topic": "87 · temperature",
+    "topic_id": 34,
+    "job_id": 27,
+    "attempt": 1,
+    "attempt_key": "27:1:2026-09-02T16:24:22.253687",
+    "source_id": 90,
+    "pmid": "38969477",
+    "evidence_content_id": 85,
+    "value": "1.07",
+    "exact_evidence_inspected": true,
+    "declared_kind": "NOT_PERSISTED",
+    "declared_unit": "NOT_PERSISTED",
+    "generated_prose": "NOT_PERSISTED",
+    "supported_kind": "RATIO_OR_EFFECT",
+    "classification": "TRUE_SEMANTIC_ERROR",
+    "classification_note": "Historical proposal fields required to prove taxonomy-only mismatch were not persisted; fail-closed classification used without guessing.",
+    "historical_provider_model_persisted": false,
+    "configured_provider_at_audit": "groq",
+    "configured_model_at_audit": "openai/gpt-oss-20b"
+  },
+  "architecture": {
+    "generic_numeric_kind_classification": true,
+    "value_1_07_special_cased": false,
+    "source_90_special_cased": false,
+    "backend_silent_kind_rewrite": false,
+    "repair_policy_centralized": true
+  },
+  "safety": {
+    "semantic_mismatch_fail_closed": true,
+    "ambiguous_kind_fail_closed": true,
+    "source_validation_preserved": true,
+    "excerpt_validation_preserved": true,
+    "numeric_v2_preserved": true,
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "pediatric_guard_preserved": true
+  },
+  "repair": {
+    "taxonomy_only_mismatch_repairable": true,
+    "typed_failure_code": "AUTO_OUTPUT_NUMERIC_CLAIM_KIND_MISMATCH",
+    "max_generation_calls": 2,
+    "semantic_kind_invalid_repairable": false,
+    "semantic_kind_invalid_can_fallback": false,
+    "taxonomy_kind_mismatch_can_fallback": false
+  },
+  "e2e": {
+    "kind_repair": "PASS",
+    "kind_remove": "PASS",
+    "semantic_guard": "PASS",
+    "safe_fallback": "NOT_APPLICABLE",
+    "numeric_regression": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 61,
+    "focused_backend_failed": 0,
+    "focused_backend_deselected": 81,
+    "frontend_tests": "PASS",
+    "frontend_tests_passed": 37,
+    "frontend_typecheck": "PASS",
+    "compile_import_pass": true
+  },
+  "external_calls": {
+    "groq": 0,
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "integrity": {
+    "production_business_data_modified": false,
+    "production_job_retried": false,
+    "reviewed_modified": false,
+    "auto_visibility_modified": false,
+    "before": {
+      "page_count": 46039,
+      "freelist_count": 1140,
+      "jobs": 27,
+      "discoveries": 1695,
+      "revisions": 21,
+      "numeric_claims": 0
+    },
+    "after": {
+      "page_count": 46039,
+      "freelist_count": 1140,
+      "jobs": 27,
+      "discoveries": 1695,
+      "revisions": 21,
+      "numeric_claims": 0
+    }
+  },
+  "remaining_limitations": [
+    "The raw historical failed proposal was not persisted, so its exact claim_kind, unit, supporting_text, Parent prose, and attempt-specific provider/model cannot be recovered without guessing."
+  ],
+  "user_manual_test_required": false
+}

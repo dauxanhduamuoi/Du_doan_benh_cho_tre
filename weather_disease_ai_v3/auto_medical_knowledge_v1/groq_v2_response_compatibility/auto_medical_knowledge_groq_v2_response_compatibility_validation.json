@@ -1,0 +1,139 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "production_attempt_audit": {
+    "exact_attempt_found": true,
+    "topic_id": 19,
+    "disease_group_id": "169",
+    "factor_key": "wind",
+    "job_id": 11,
+    "attempt": 1,
+    "attempt_key": "11:1:2026-08-31T05:36:12.562366",
+    "attempt_timestamp": "2026-08-31 05:36:12.562366",
+    "failure_code": "AUTO_OUTPUT_PROVIDER_RESPONSE_INVALID",
+    "root_cause_identified": true,
+    "failure_stage": "Groq strict JSON-schema request rejection at the HTTP 4xx branch, before choices/message/content",
+    "prompt_version": "medical_knowledge_auto_v2_numeric_claims",
+    "pipeline_version": "auto_medical_knowledge_v2_numeric_claims",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "selected_source_count": 1,
+    "discovery_status": {
+      "queries_run": 3,
+      "raw_results": 18,
+      "deduplicated": 6,
+      "disease_relevant": 6,
+      "factor_relevant": 1,
+      "pediatric_relevant": 1,
+      "usable_evidence": 1,
+      "selected_for_generation": 1,
+      "insufficient_reason": null
+    },
+    "provider_error_class": "DraftGeneratorOutputError",
+    "persisted_safe_failure_detail": "The pipeline rejected this output safely.",
+    "old_exact_http_status_persisted": false,
+    "completion_content_existed": false,
+    "medical_json_existed": false
+  },
+  "provider_contract": {
+    "response_envelope_validated": true,
+    "empty_content_distinguished": true,
+    "json_errors_distinguished": true,
+    "schema_errors_distinguished": true,
+    "provider_specific_logic_isolated": true,
+    "v2_schema_provider_compatible": true,
+    "transport_schema_changed": true,
+    "core_auto_proposal_schema_changed": false,
+    "groq_adapter_changed": true,
+    "strict_mode": true,
+    "structured_output_type": "json_schema",
+    "refusal_field_supported_by_current_chat_contract": false
+  },
+  "error_codes": {
+    "added": [
+      "AUTO_OUTPUT_PROVIDER_REQUEST_REJECTED",
+      "AUTO_OUTPUT_PROVIDER_CONTENT_EMPTY",
+      "AUTO_OUTPUT_PROVIDER_INCOMPLETE"
+    ],
+    "retained": [
+      "AUTO_OUTPUT_PROVIDER_RESPONSE_INVALID",
+      "AUTO_OUTPUT_JSON_INVALID",
+      "AUTO_OUTPUT_SCHEMA_INVALID",
+      "AUTO_OUTPUT_MISSING_REQUIRED_FIELD",
+      "AUTO_OUTPUT_INVALID_ENUM",
+      "AUTO_OUTPUT_SOURCE_SET_MISMATCH"
+    ]
+  },
+  "structural_retry": {
+    "maximum_retries": 1,
+    "json_and_schema_failures_retry_once": true,
+    "provider_envelope_failures_retried": false,
+    "request_rejection_retried": false,
+    "empty_content_retried": false,
+    "semantic_safety_retried": false
+  },
+  "numeric_v2": {
+    "contract_preserved": true,
+    "prompt_version_preserved": true,
+    "pipeline_version_preserved": true,
+    "numeric_validator_changed": false,
+    "count_regression_preserved": true,
+    "year_range_regression_preserved": true,
+    "generic_3_not_special_cased": true,
+    "exact_source_and_excerpt_verification_preserved": true,
+    "offset_and_hash_persistence_preserved": true,
+    "parent_internal_claim_hiding_preserved": true
+  },
+  "e2e": {
+    "groq_v2_envelope": "PASS",
+    "empty_content": "PASS",
+    "invalid_json_classification": "PASS",
+    "v2_numeric_contract": "PASS",
+    "provider_vs_safety": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 97,
+    "focused_backend_failed": 0,
+    "focused_backend_deselected": 58,
+    "frontend_tests": "PASS",
+    "focused_frontend_passed": 33,
+    "focused_frontend_failed": 0,
+    "compile_import_pass": true,
+    "diff_check_pass": true
+  },
+  "live": {
+    "groq_calls": 1,
+    "result": "PASS",
+    "provider_response_understood": true,
+    "http_status": 200,
+    "choices_count": 1,
+    "finish_reason": "stop",
+    "content_type": "str",
+    "content_length": 845,
+    "message_keys": [
+      "content",
+      "reasoning",
+      "role"
+    ],
+    "proposal_schema_validated": true,
+    "temporary_sqlite_used": true,
+    "temporary_sqlite_removed": true,
+    "pubmed_calls": 0,
+    "pmc_calls": 0
+  },
+  "integrity": {
+    "production_business_data_modified": false,
+    "production_job_retried": false,
+    "production_job_unchanged": true,
+    "production_topic_pointer_unchanged": true,
+    "reviewed_modified": false,
+    "auto_visibility_modified": false,
+    "migration_added": false,
+    "raw_database_file_hash_equal": false,
+    "raw_hash_note": "The already-running Uvicorn/WatchFiles process reloaded after source edits and ran its idempotent startup path; logical audited business rows and maxima remained unchanged."
+  },
+  "remaining_limitations": [
+    "The historical safe failure record did not persist the exact old HTTP status or envelope shape; new failures now persist allow-listed provider stage metadata.",
+    "A production retry was prohibited, so the exact 169 · wind job still needs one user-initiated manual retry."
+  ],
+  "user_manual_test_required": true
+}

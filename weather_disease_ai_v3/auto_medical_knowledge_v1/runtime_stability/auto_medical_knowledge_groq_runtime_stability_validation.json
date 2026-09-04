@@ -1,0 +1,68 @@
+{
+  "status": "PASS_WITH_NOTES",
+  "error_classification": {
+    "legacy_generic_preserved": true,
+    "new_attempts_use_specific_codes": true,
+    "generic_new_error_regression_fixed": true
+  },
+  "numeric_validation": {
+    "sample_5_087_investigated": true,
+    "sample_was_true_hallucination": false,
+    "sample_was_false_positive": true,
+    "safe_numeric_normalization": true,
+    "ambiguous_numbers_fail_closed": true,
+    "metadata_number_false_positives_prevented": true,
+    "unsupported_numbers_still_rejected": true
+  },
+  "rate_limit": {
+    "provider_cooldown_implemented": true,
+    "cooldown_scope": "DB",
+    "retry_after_supported": true,
+    "fallback_cooldown_supported": true,
+    "queued_jobs_preserved": true,
+    "no_provider_spam_during_cooldown": true,
+    "automatic_resume": true,
+    "parent_non_blocking": true,
+    "reviewed_unaffected": true
+  },
+  "safety": {
+    "causal_guard_preserved": true,
+    "mechanism_guard_preserved": true,
+    "numeric_guard_preserved": true,
+    "pediatric_guard_preserved": true,
+    "source_provenance_preserved": true
+  },
+  "e2e": {
+    "numeric_normalization": "PASS",
+    "numeric_hallucination_guard": "PASS",
+    "groq_cooldown": "PASS",
+    "legacy_error_mapping": "PASS",
+    "reviewed_during_auto_cooldown": "PASS"
+  },
+  "tests": {
+    "backend_passed": 275,
+    "backend_failed": 0,
+    "frontend_passed": 129,
+    "frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true
+  },
+  "integrity": {
+    "reviewed_data_modified": false,
+    "auto_visibility_modified": false,
+    "historical_attempts_deleted": false,
+    "foreign_key_check_pass": true
+  },
+  "external_live_calls": {
+    "groq": 0,
+    "pubmed": false,
+    "pmc": false
+  },
+  "remaining_limitations": [
+    "Historical raw LLM prose was intentionally not persisted, so the exact adjacent count words for the stored 5.087 token cannot be reconstructed; the selected snapshot contains the matching 5087 child count and the new matcher requires count context at runtime.",
+    "Provider calls already in flight in another configured worker cannot be cancelled after the first 429 commits cooldown; subsequent claims are blocked.",
+    "The Admin UI needs its normal refresh to visually clear an expired cooldown, while backend processing resumes automatically."
+  ],
+  "user_manual_test_required": false
+}

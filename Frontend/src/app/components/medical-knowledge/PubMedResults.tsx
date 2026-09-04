@@ -4,8 +4,8 @@ import PubMedResultCard from './PubMedResultCard';
 
 interface Props {
   response: PubMedSearchResponse;
+  mode?: 'keyword' | 'pmid';
   selectedPmids: Set<string>;
-  importedPmids: Set<string>;
   importing: boolean;
   onToggle: (pmid: string) => void;
   onToggleAll: () => void;
@@ -16,15 +16,20 @@ export default function PubMedResults(props: Props) {
   if (props.response.results.length === 0) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-        <h2 className="font-bold text-slate-800">Không tìm thấy tài liệu phù hợp</h2>
+        <h2 className="font-bold text-slate-800">
+          {props.mode === 'pmid' ? 'Không tìm thấy bài PubMed với PMID này' : 'Không tìm thấy tài liệu phù hợp'}
+        </h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">
-          Không tìm thấy tài liệu phù hợp với từ khóa hiện tại. Bạn có thể điều chỉnh từ khóa và tìm lại.
+          {props.mode === 'pmid'
+            ? 'Hãy kiểm tra lại mã PMID rồi thử lại.'
+            : 'Không tìm thấy tài liệu phù hợp với từ khóa hiện tại. Bạn có thể điều chỉnh từ khóa và tìm lại.'}
         </p>
       </div>
     );
   }
 
-  const allSelected = props.response.results.every((paper) => props.selectedPmids.has(paper.pmid));
+  const importable = props.response.results.filter((paper) => !paper.in_topic_library);
+  const allSelected = importable.length > 0 && importable.every((paper) => props.selectedPmids.has(paper.pmid));
   const selectedCount = props.selectedPmids.size;
 
   return (
@@ -33,9 +38,10 @@ export default function PubMedResults(props: Props) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 id="pubmed-results-title" className="text-lg font-bold text-slate-900">
-              Tìm thấy {props.response.count} tài liệu
+              {props.mode === 'pmid' ? 'Kết quả theo PMID' : `Tìm thấy ${props.response.count} tài liệu`}
             </h2>
             <p className="mt-1 text-sm text-slate-500">Đã chọn {selectedCount} tài liệu</p>
+            <p className="mt-1 text-xs text-slate-500">Checkbox ở kết quả chỉ dùng để thêm tài liệu vào kho chủ đề, không chọn cho AI.</p>
           </div>
           <button
             type="button"
@@ -45,10 +51,12 @@ export default function PubMedResults(props: Props) {
             {allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả kết quả'}
           </button>
         </div>
-        <details className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-600">Chi tiết tìm kiếm</summary>
-          <code className="mt-2 block whitespace-pre-wrap break-words text-xs leading-5 text-slate-600">{props.response.query}</code>
-        </details>
+        {props.mode !== 'pmid' && (
+          <details className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-600">Chi tiết tìm kiếm</summary>
+            <code className="mt-2 block whitespace-pre-wrap break-words text-xs leading-5 text-slate-600">{props.response.query}</code>
+          </details>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -57,7 +65,6 @@ export default function PubMedResults(props: Props) {
             key={paper.pmid}
             paper={paper}
             selected={props.selectedPmids.has(paper.pmid)}
-            imported={props.importedPmids.has(paper.pmid)}
             onToggle={() => props.onToggle(paper.pmid)}
           />
         ))}
@@ -74,7 +81,7 @@ export default function PubMedResults(props: Props) {
           {props.importing ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
           {props.importing
             ? 'Đang thêm vào kho…'
-            : `Thêm ${selectedCount} tài liệu vào kho nguồn`}
+            : `Thêm ${selectedCount} tài liệu vào kho chủ đề`}
         </button>
       </div>
     </section>

@@ -44,6 +44,7 @@ class PubMedArticleRecord:
     doi: str | None
     abstract_text: str | None
     pubmed_url: str
+    pmcid: str | None = None
     raw_metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -117,6 +118,13 @@ def _doi(article: ElementTree.Element) -> str | None:
     return None
 
 
+def _pmcid(article: ElementTree.Element) -> str | None:
+    for article_id in article.findall(".//PubmedData/ArticleIdList/ArticleId"):
+        if (article_id.get("IdType") or "").lower() == "pmc":
+            return _text(article_id)
+    return None
+
+
 def _abstract(article: ElementTree.Element) -> str | None:
     sections: list[str] = []
     for section in article.findall(".//Article/Abstract/AbstractText"):
@@ -150,6 +158,12 @@ def parse_pubmed_records(xml_content: bytes | str) -> list[PubMedArticleRecord]:
             if (value := _text(node))
         }
         doi = _doi(article)
+        pmcid = _pmcid(article)
+        mesh_terms = [
+            value
+            for node in article.findall(".//MeshHeadingList/MeshHeading/DescriptorName")
+            if (value := _text(node))
+        ]
         records.append(
             PubMedArticleRecord(
                 pmid=pmid,
@@ -160,13 +174,16 @@ def parse_pubmed_records(xml_content: bytes | str) -> list[PubMedArticleRecord]:
                 doi=doi,
                 abstract_text=_abstract(article),
                 pubmed_url=PUBMED_RECORD_URL.format(pmid=pmid),
+                pmcid=pmcid,
                 raw_metadata={
                     "provider": "NCBI PubMed",
                     "pmid": pmid,
                     "doi": doi,
+                    "pmcid": pmcid,
                     "publication_types": publication_types,
                     "languages": languages,
                     "journal_identifiers": journal_identifiers,
+                    "mesh_terms": mesh_terms,
                 },
             )
         )
@@ -239,6 +256,11 @@ class PubMedClient:
             return response.content
         raise PubMedUnavailableError("PubMed request failed")
 
+    def request_eutils(self, endpoint: str, params: dict[str, str | int]) -> bytes:
+        """Expose the shared, policy-compliant NCBI transport to sibling clients."""
+
+        return self._request(endpoint, params)
+
     def search_ids(self, query: str, max_results: int) -> tuple[int, list[str]]:
         content = self._request(
             "esearch.fcgi",
@@ -263,6 +285,11 @@ class PubMedClient:
             {"db": "pubmed", "id": ",".join(pmids), "retmode": "xml"},
         )
         return parse_pubmed_records(content)
+
+    def get_article_by_pmid(self, pmid: str) -> PubMedArticleRecord | None:
+        """Fetch one exact PubMed record while reusing the bounded EFetch parser."""
+
+        return next((record for record in self.fetch_records([pmid]) if record.pmid == pmid), None)
 
     def search(self, query: str, max_results: int) -> tuple[int, list[PubMedArticleRecord]]:
         total_count, pmids = self.search_ids(query, max_results)

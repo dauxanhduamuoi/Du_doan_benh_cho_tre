@@ -20,12 +20,14 @@ type RequestOptions = RequestInit & { skipAuth?: boolean };
 export class ApiError extends Error {
   status: number;
   detail: string;
+  code: string | null;
 
-  constructor(status: number, detail: string) {
+  constructor(status: number, detail: string, code: string | null = null) {
     super(detail || `Request failed: ${status}`);
     this.name = 'ApiError';
     this.status = status;
     this.detail = detail;
+    this.code = code;
   }
 }
 
@@ -48,13 +50,19 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (!res.ok) {
     let detail = res.statusText;
+    let code: string | null = null;
     try {
       const data = await res.json();
-      if (data?.detail) detail = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      if (typeof data?.detail === 'string') {
+        detail = data.detail;
+      } else if (data?.detail && typeof data.detail === 'object') {
+        detail = typeof data.detail.message === 'string' ? data.detail.message : JSON.stringify(data.detail);
+        code = typeof data.detail.code === 'string' ? data.detail.code : null;
+      }
     } catch {
       // ignore parse error
     }
-    throw new ApiError(res.status, detail);
+    throw new ApiError(res.status, detail, code);
   }
 
   if (res.status === 204) {
@@ -737,6 +745,107 @@ export interface WeatherAIPredictResponse {
   disclaimer: string;
 }
 
+export type PublishedMedicalWeatherFactor =
+  | 'temperature'
+  | 'humidity'
+  | 'precipitation'
+  | 'wind'
+  | 'weather_condition';
+
+export interface PublishedMedicalKnowledgeSelector {
+  disease_group_id: string;
+  factor_type: 'WEATHER' | 'AGE' | 'SEX' | 'SEASONALITY';
+  factor_key: string;
+  factor_value: string | null;
+  weather_factor?: PublishedMedicalWeatherFactor | null;
+}
+
+export interface PublishedMedicalKnowledgeCitation {
+  title: string;
+  journal: string | null;
+  publication_year: number | null;
+  pmid: string | null;
+  doi: string | null;
+  pmcid: string | null;
+  url: string | null;
+}
+
+export interface PublishedMedicalKnowledgeItem {
+  disease_group_id: string;
+  knowledge_type: 'REVIEWED' | 'AUTO';
+  generation_mode?: 'AI_FULL' | 'SAFE_FALLBACK' | null;
+  warning: string | null;
+  factor_type: 'WEATHER' | 'AGE' | 'SEX' | 'SEASONALITY';
+  factor_key: string;
+  factor_value: string | null;
+  weather_factor: PublishedMedicalWeatherFactor | null;
+  revision_id: number;
+  evidence_level: 'SUPPORTED' | 'LIMITED_OR_INDIRECT';
+  evidence_scope: 'WHOLE_GROUP' | 'PARTIAL_GROUP';
+  short_explanation_vi: string;
+  detailed_explanation_vi: string;
+  limitations_vi: string;
+  sources: PublishedMedicalKnowledgeCitation[];
+}
+
+export interface PublishedMedicalKnowledgeResponse {
+  items: PublishedMedicalKnowledgeItem[];
+}
+
+const PUBLISHED_WEATHER_FACTORS = new Set<PublishedMedicalWeatherFactor>([
+  'temperature',
+  'humidity',
+  'precipitation',
+  'wind',
+  'weather_condition',
+]);
+const PUBLISHED_FACTOR_TYPES = new Set(['WEATHER', 'AGE', 'SEX', 'SEASONALITY']);
+
+function safePublishedMedicalKnowledgeResponse(value: unknown): PublishedMedicalKnowledgeResponse {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as { items?: unknown }).items)) {
+    return { items: [] };
+  }
+  const items = (value as { items: unknown[] }).items.filter((item): item is PublishedMedicalKnowledgeItem => {
+    if (!item || typeof item !== 'object') return false;
+    const row = item as Record<string, unknown>;
+    const sourcesValid = Array.isArray(row.sources) && row.sources.length > 0 && row.sources.every((source) => {
+      if (!source || typeof source !== 'object') return false;
+      const citation = source as Record<string, unknown>;
+      return typeof citation.title === 'string'
+        && citation.title.trim().length > 0
+        && (citation.journal === null || typeof citation.journal === 'string')
+        && (citation.publication_year === null || Number.isInteger(citation.publication_year))
+        && (citation.pmid === null || typeof citation.pmid === 'string')
+        && (citation.doi === null || typeof citation.doi === 'string')
+        && (citation.pmcid === null || typeof citation.pmcid === 'string')
+        && (citation.url === null || typeof citation.url === 'string');
+    });
+    return typeof row.disease_group_id === 'string'
+      && (row.knowledge_type === 'REVIEWED' || row.knowledge_type === 'AUTO')
+      && (row.generation_mode === undefined || row.generation_mode === null
+        || row.generation_mode === 'AI_FULL' || row.generation_mode === 'SAFE_FALLBACK')
+      && (row.knowledge_type === 'AUTO'
+        ? typeof row.warning === 'string' && row.warning.trim().length > 0
+        : row.warning === null)
+      && PUBLISHED_FACTOR_TYPES.has(String(row.factor_type))
+      && typeof row.factor_key === 'string'
+      && row.factor_key.trim().length > 0
+      && (row.factor_value === null || typeof row.factor_value === 'string')
+      && (row.weather_factor === null || PUBLISHED_WEATHER_FACTORS.has(row.weather_factor as PublishedMedicalWeatherFactor))
+      && Number.isInteger(row.revision_id)
+      && (row.evidence_level === 'SUPPORTED' || row.evidence_level === 'LIMITED_OR_INDIRECT')
+      && (row.evidence_scope === 'WHOLE_GROUP' || row.evidence_scope === 'PARTIAL_GROUP')
+      && typeof row.short_explanation_vi === 'string'
+      && row.short_explanation_vi.trim().length > 0
+      && typeof row.detailed_explanation_vi === 'string'
+      && row.detailed_explanation_vi.trim().length > 0
+      && typeof row.limitations_vi === 'string'
+      && row.limitations_vi.trim().length > 0
+      && sourcesValid;
+  });
+  return { items };
+}
+
 export function weatherAIErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 422) return 'Thông tin đầu vào chưa hợp lệ.';
@@ -789,6 +898,18 @@ export function predictPublicParentRisk(payload: {
     body: JSON.stringify(payload),
     skipAuth: true,
   });
+}
+
+export async function getPublicPublishedMedicalKnowledge(
+  items: PublishedMedicalKnowledgeSelector[],
+): Promise<PublishedMedicalKnowledgeResponse> {
+  const response = await request<unknown>('/api/public/medical-knowledge/published', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+    skipAuth: true,
+  });
+  return safePublishedMedicalKnowledgeResponse(response);
 }
 
 // ===== Dashboard advanced filters / analysis =====
