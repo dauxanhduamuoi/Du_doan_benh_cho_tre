@@ -37,6 +37,10 @@ from app.pubmed_schemas import (
 )
 from app.repositories.medical_knowledge_repository import MedicalKnowledgeRepository
 from app.services.pubmed_client import PubMedClient
+from app.services.medical_evidence_provider import (
+    MedicalEvidenceProvider,
+)
+from app.services.pubmed_evidence_provider import PubMedMedicalEvidenceProvider
 from app.services.pubmed_query_builder import build_pubmed_query
 from app.services.medical_knowledge_draft_generator import (
     get_medical_knowledge_llm_configuration,
@@ -134,17 +138,23 @@ class MedicalKnowledgePubMedService:
     def __init__(
         self,
         db: Session,
-        client: PubMedClient,
+        client: PubMedClient | MedicalEvidenceProvider,
         *,
         disease_manifest_path: Path = WEATHER_AI_V3_MODEL_MANIFEST,
         evidence_content_service: MedicalEvidenceContentService | None = None,
     ):
         self.db = db
-        self.client = client
+        self.provider = (
+            client
+            if isinstance(client, MedicalEvidenceProvider)
+            else PubMedMedicalEvidenceProvider(
+                client,
+                evidence_content_service or MedicalEvidenceContentService(None),
+            )
+        )
         self.repository = MedicalKnowledgeRepository(db)
         self.topic_sources = MedicalKnowledgeTopicSourceService(db)
         self.disease_manifest_path = disease_manifest_path
-        self.evidence_content_service = evidence_content_service or MedicalEvidenceContentService(None)
 
     def _validate_disease_group(self, disease_group_id: str) -> None:
         deployed_ids = load_deployed_disease_ids(str(self.disease_manifest_path.resolve()))
@@ -213,7 +223,7 @@ class MedicalKnowledgePubMedService:
             )
         )
         assert query is not None
-        _total_count, records = self.client.search(query, request.max_results)
+        records = self.provider.search(query, request.max_results).sources
         by_pmid, content, linked_ids = self._stored_state(
             request,
             [record.pmid for record in records],
@@ -248,11 +258,13 @@ class MedicalKnowledgePubMedService:
 
     def lookup_pmid(self, request: PubMedLookupRequest) -> PubMedLookupResponse:
         self._validate_disease_group(request.disease_group_id)
-        record = self.client.get_article_by_pmid(request.pmid)
+        record = self.provider.lookup(request.pmid)
         if record is None:
             raise PubMedArticleNotFoundError("PubMed article was not found")
 
-        source = self.repository.get_source_by_pmid(request.pmid)
+        source = self.repository.get_source_by_provider_external_id("PUBMED", request.pmid)
+        if source is None:
+            source = self.repository.get_source_by_pmid(request.pmid)
         existing_source = None
         if source is not None:
             content = self.repository.get_preferred_evidence_contents([source.id]).get(source.id)
@@ -299,9 +311,25 @@ class MedicalKnowledgePubMedService:
     ) -> PubMedImportResponse:
         self._validate_disease_group(request.disease_group_id)
         # PubMed and optional PMC retrieval happen outside a write transaction.
-        records = self.client.fetch_records(request.pmids)
+        records = self.provider.fetch_many(request.pmids)
         now = datetime.utcnow()
-        existing_sources = self.repository.get_sources_by_pmids([record.pmid for record in records])
+        existing_sources = self.repository.get_sources_by_provider_external_ids(
+            "PUBMED", [record.external_id for record in records]
+        )
+        known_external_ids = {source.external_id for source in existing_sources}
+        legacy_sources = self.repository.get_sources_by_pmids(
+            [
+                record.pmid
+                for record in records
+                if record.pmid and record.external_id not in known_external_ids
+            ]
+        )
+        existing_source_ids = {source.id for source in existing_sources}
+        existing_sources.extend(
+            source
+            for source in legacy_sources
+            if source.id not in existing_source_ids
+        )
         existing_content = self.repository.get_preferred_evidence_contents(
             [source.id for source in existing_sources]
         )
@@ -314,13 +342,9 @@ class MedicalKnowledgePubMedService:
         # End the read transaction before bounded ELink/EFetch calls.
         self.db.rollback()
         resolved_by_pmid = {
-            record.pmid: self.evidence_content_service.resolve(
-                pmid=record.pmid,
-                abstract_text=record.abstract_text,
-                retrieved_at=now,
-            )
+            record.pmid: self.provider.enrich(record, retrieved_at=now)
             for record in records
-            if record.pmid not in enriched_pmids
+            if record.pmid and record.pmid not in enriched_pmids
         }
 
         imported: list[PubMedImportedSource] = []
@@ -335,12 +359,19 @@ class MedicalKnowledgePubMedService:
                 created_by=added_by,
             )
             for record in records:
-                source = self.repository.get_source_by_pmid(record.pmid)
+                source = self.repository.get_source_by_provider_external_id(
+                    record.provider_id, record.external_id
+                )
+                if source is None and record.pmid:
+                    source = self.repository.get_source_by_pmid(record.pmid)
                 created = source is None
                 if source is None:
                     source = self.repository.create_source(
                         MedicalEvidenceSourceCreate(
                             source_type="PUBMED",
+                            provider_id=record.provider_id,
+                            external_id=record.external_id,
+                            source_kind=record.source_kind.value,
                             pmid=record.pmid,
                             doi=record.doi,
                             title=record.title,
@@ -356,7 +387,7 @@ class MedicalKnowledgePubMedService:
                     created_count += 1
                 content = None
                 resolved = resolved_by_pmid.get(record.pmid)
-                if resolved is not None:
+                if resolved is not None and resolved.content_sha256:
                     content = self.repository.get_evidence_content_by_hash(
                         source.id, resolved.content_sha256
                     )
@@ -366,13 +397,13 @@ class MedicalKnowledgePubMedService:
                                 source_id=source.id,
                                 content_kind=resolved.content_kind,
                                 content_origin=resolved.content_origin,
-                                external_identifier=resolved.external_identifier,
+                                external_identifier=resolved.pmcid,
                                 evidence_text=resolved.evidence_text,
                                 retrieved_at=resolved.retrieved_at,
                                 is_truncated=resolved.is_truncated,
                                 license_name=resolved.license_name,
                                 license_url=resolved.license_url,
-                                provenance_json=resolved.provenance,
+                                provenance_json=dict(resolved.provenance),
                                 content_sha256=resolved.content_sha256,
                             )
                         )

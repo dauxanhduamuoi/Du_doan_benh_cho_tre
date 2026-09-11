@@ -13,7 +13,6 @@ from app.config import (
     MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS,
     NCBI_API_KEY,
     NCBI_EMAIL,
-    NCBI_TOOL,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
     OLLAMA_TIMEOUT_SECONDS,
@@ -38,11 +37,15 @@ from app.services.medical_knowledge_draft_generator import (
     create_medical_knowledge_draft_generator,
     get_medical_knowledge_llm_configuration,
 )
-from app.services.pubmed_client import (
-    PubMedClient,
-    PubMedConfigurationError,
-    PubMedUnavailableError,
+from app.services.medical_evidence_provider import (
+    MedicalEvidenceProvider,
+    MedicalEvidenceProviderConfigurationError,
+    MedicalEvidenceProviderUnavailableError,
 )
+from app.services.medical_evidence_provider_factory import (
+    create_medical_evidence_provider_registry,
+)
+from app.services.pubmed_client import PubMedConfigurationError, PubMedUnavailableError
 
 
 router = APIRouter(
@@ -76,12 +79,12 @@ class ConnectionTestResult(BaseModel):
     message: str
 
 
-def get_status_pubmed_client() -> Generator[PubMedClient, None, None]:
-    client = PubMedClient(tool=NCBI_TOOL, email=NCBI_EMAIL, api_key=NCBI_API_KEY)
+def get_status_pubmed_client() -> Generator[MedicalEvidenceProvider, None, None]:
+    registry = create_medical_evidence_provider_registry()
     try:
-        yield client
+        yield registry.get("PUBMED")
     finally:
-        client.close()
+        registry.close()
 
 
 def get_status_llm_generator() -> Generator[MedicalKnowledgeDraftGenerator, None, None]:
@@ -137,13 +140,21 @@ def get_service_status(_current_user: User = Depends(require_staff_or_admin)):
 @router.post("/pubmed/test", response_model=ConnectionTestResult)
 def test_pubmed_connection(
     _current_user: User = Depends(require_staff_or_admin),
-    client: PubMedClient = Depends(get_status_pubmed_client),
+    client: MedicalEvidenceProvider = Depends(get_status_pubmed_client),
 ):
     try:
-        client.search_ids('"public health"[Title/Abstract]', 1)
-    except PubMedConfigurationError as exc:
+        if not NCBI_EMAIL:
+            raise MedicalEvidenceProviderConfigurationError(
+                "PubMed email configuration is missing"
+            )
+        if isinstance(client, MedicalEvidenceProvider):
+            client.search('"public health"[Title/Abstract]', 1)
+        else:
+            # Preserve test/application overrides that still provide the legacy client.
+            client.search_ids('"public health"[Title/Abstract]', 1)
+    except (MedicalEvidenceProviderConfigurationError, PubMedConfigurationError) as exc:
         raise HTTPException(status_code=503, detail="PubMed chưa được cấu hình đầy đủ.") from exc
-    except PubMedUnavailableError as exc:
+    except (MedicalEvidenceProviderUnavailableError, PubMedUnavailableError) as exc:
         raise HTTPException(status_code=502, detail="Hiện không thể kết nối PubMed.") from exc
     return {"ok": True, "message": "Kết nối PubMed thành công."}
 

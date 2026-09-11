@@ -5,9 +5,12 @@ from dataclasses import dataclass
 from app.medical_knowledge_draft_schemas import DraftGenerationContext, SourceAssessment
 from app.medical_knowledge_factors import normalize_factor
 from app.services.auto_evidence_relevance import pediatric_relevance
+from app.services.medical_evidence_provider import (
+    DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+    MedicalEvidenceTrustPolicy,
+)
 
 
-TRUSTED_AUTO_SOURCE_CLASSES = frozenset({"PUBMED", "PMC"})
 EVIDENCE_GATE_FAILURES = frozenset(
     {
         "NO_SEARCH_RESULTS",
@@ -84,6 +87,7 @@ def qualify_auto_evidence(
     context: DraftGenerationContext,
     selected,
     discovery_reason: str | None = None,
+    trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
 ) -> AutoEvidenceQualificationResult:
     """Apply the existing deterministic discovery/provenance safety policy.
 
@@ -119,7 +123,15 @@ def qualify_auto_evidence(
     snapshots: list[AutoQualifiedEvidenceSource] = []
     pediatric_found = False
     for source, content, source_input, trust_class, signals in selected:
-        if trust_class not in TRUSTED_AUTO_SOURCE_CLASSES:
+        provider_id = (
+            getattr(source, "provider_id", None)
+            or getattr(source, "source_type", None)
+            or source_input.source_type
+            or "PUBMED"
+        )
+        if not trust_policy.is_trusted(
+            provider_id=provider_id, trust_class=trust_class
+        ):
             return AutoEvidenceQualificationResult(False, "TRUSTED_SOURCE_REQUIRED")
         if signals.disease <= 0:
             return AutoEvidenceQualificationResult(False, "NO_DISEASE_RELEVANT_SOURCE")

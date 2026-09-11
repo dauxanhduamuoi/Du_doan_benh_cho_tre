@@ -382,7 +382,17 @@ class MedicalKnowledgeRepository:
         )
 
     def create_source(self, data: MedicalEvidenceSourceCreate) -> MedicalEvidenceSource:
-        source = MedicalEvidenceSource(**data.model_dump())
+        values = data.model_dump()
+        values["provider_id"] = (
+            values["provider_id"] or data.source_type
+        ).strip().upper()
+        values["external_id"] = (
+            (values["external_id"] or data.pmid or "").strip() or None
+        )
+        values["source_kind"] = values["source_kind"] or (
+            "RESEARCH_ARTICLE" if data.source_type == "PUBMED" else "OTHER"
+        )
+        source = MedicalEvidenceSource(**values)
         self.db.add(source)
         self.db.flush()
         return source
@@ -408,6 +418,32 @@ class MedicalKnowledgeRepository:
                 MedicalEvidenceSource.pmid == pmid,
             )
         )
+
+    def get_source_by_provider_external_id(
+        self, provider_id: str, external_id: str
+    ) -> MedicalEvidenceSource | None:
+        return self.db.scalar(
+            select(MedicalEvidenceSource).where(
+                MedicalEvidenceSource.provider_id == provider_id.strip().upper(),
+                MedicalEvidenceSource.external_id == external_id,
+            )
+        )
+
+    def get_sources_by_provider_external_ids(
+        self, provider_id: str, external_ids: list[str]
+    ) -> list[MedicalEvidenceSource]:
+        if not external_ids:
+            return []
+        sources = list(
+            self.db.scalars(
+                select(MedicalEvidenceSource).where(
+                    MedicalEvidenceSource.provider_id == provider_id.strip().upper(),
+                    MedicalEvidenceSource.external_id.in_(external_ids),
+                )
+            )
+        )
+        by_external_id = {source.external_id: source for source in sources}
+        return [by_external_id[value] for value in external_ids if value in by_external_id]
 
     def get_sources_by_pmids(self, pmids: list[str]) -> list[MedicalEvidenceSource]:
         if not pmids:

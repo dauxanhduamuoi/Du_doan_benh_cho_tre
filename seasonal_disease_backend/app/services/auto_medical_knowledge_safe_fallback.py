@@ -11,6 +11,10 @@ from app.services.medical_knowledge_population_policy import (
     PARENT_DISPLAYABLE_EVIDENCE,
     has_pediatric_direct_support,
 )
+from app.services.medical_evidence_provider import (
+    DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+    MedicalEvidenceTrustPolicy,
+)
 
 
 AutoGenerationMode = Literal["AI_FULL", "SAFE_FALLBACK"]
@@ -107,6 +111,7 @@ def evaluate_safe_fallback_eligibility(
     selected,
     proposal: AutoMedicalKnowledgeDraftProposal,
     failure_code: str,
+    trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
 ) -> SafeFallbackEligibility:
     """Build a bounded snapshot only after independent safety gates passed.
 
@@ -152,7 +157,15 @@ def evaluate_safe_fallback_eligibility(
     source_snapshots: list[SafeFallbackSourceSnapshot] = []
     for source, content, source_input, trust_class, signals in selected:
         assessment = assessment_by_source[source.id]
-        if trust_class not in {"PUBMED", "PMC"}:
+        provider_id = (
+            getattr(source, "provider_id", None)
+            or getattr(source, "source_type", None)
+            or source_input.source_type
+            or "PUBMED"
+        )
+        if not trust_policy.is_trusted(
+            provider_id=provider_id, trust_class=trust_class
+        ):
             return SafeFallbackEligibility(False, "TRUSTED_SOURCE_REQUIRED")
         if signals.disease <= 0:
             return SafeFallbackEligibility(False, "DISEASE_RELEVANCE_REQUIRED")

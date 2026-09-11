@@ -18,13 +18,9 @@ from app.config import (
     GROQ_API_KEY,
     GROQ_MODEL,
     GROQ_TIMEOUT_SECONDS,
-    MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
     MEDICAL_KNOWLEDGE_LLM_MAX_INPUT_CHARS,
     MEDICAL_KNOWLEDGE_LLM_PROVIDER,
     MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS,
-    NCBI_API_KEY,
-    NCBI_EMAIL,
-    NCBI_TOOL,
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
     OLLAMA_TIMEOUT_SECONDS,
@@ -47,12 +43,12 @@ from app.auto_medical_knowledge_schemas import (
     AutoMedicalKnowledgeDraftProposal,
 )
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
-from app.services.medical_evidence_content_service import MedicalEvidenceContentService
+from app.services.medical_evidence_provider_factory import (
+    create_medical_evidence_provider_registry,
+)
 from app.services.medical_knowledge_draft_generator import (
     create_medical_knowledge_draft_generator,
 )
-from app.services.pmc_client import PmcClient
-from app.services.pubmed_client import PubMedClient
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +79,7 @@ def process_auto_medical_knowledge_once() -> bool:
     except Exception:
         logger.exception("Auto Medical Knowledge runtime setting could not be read")
         return False
-    client = PubMedClient(tool=NCBI_TOOL, email=NCBI_EMAIL, api_key=NCBI_API_KEY)
+    provider_registry = create_medical_evidence_provider_registry()
     generator = create_medical_knowledge_draft_generator(
         provider=MEDICAL_KNOWLEDGE_LLM_PROVIDER,
         openai_api_key=OPENAI_API_KEY,
@@ -117,11 +113,7 @@ def process_auto_medical_knowledge_once() -> bool:
     try:
         with SessionLocal() as db:
             discovery = PubMedAutoEvidenceProvider(
-                client,
-                MedicalEvidenceContentService(
-                    PmcClient(client),
-                    max_chars_per_source=MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
-                ),
+                provider_registry.get("PUBMED"),
                 searches_per_topic=AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC,
                 results_per_search=AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH,
             )
@@ -146,9 +138,9 @@ def process_auto_medical_knowledge_once() -> bool:
             )
             return processor.process_next() is not None
     finally:
+        provider_registry.close()
         generator.close()
         basic_generator.close()
-        client.close()
 
 
 async def run_auto_medical_knowledge_worker(stop_event: asyncio.Event) -> None:

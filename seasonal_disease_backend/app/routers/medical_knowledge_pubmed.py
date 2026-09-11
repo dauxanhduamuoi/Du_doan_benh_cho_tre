@@ -6,12 +6,6 @@ from collections.abc import Generator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.config import (
-    MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
-    NCBI_API_KEY,
-    NCBI_EMAIL,
-    NCBI_TOOL,
-)
 from app.database import get_db
 from app.models import User
 from app.medical_knowledge_factors import normalize_factor
@@ -33,14 +27,17 @@ from app.services.medical_knowledge_pubmed_service import (
     PubMedArticleNotFoundError,
     get_medical_knowledge_options,
 )
-from app.services.pubmed_client import (
-    PubMedClient,
-    PubMedConfigurationError,
-    PubMedRateLimitError,
-    PubMedUnavailableError,
+from app.services.medical_evidence_provider import (
+    MedicalEvidenceProviderBadResponseError,
+    MedicalEvidenceProviderConfigurationError,
+    MedicalEvidenceProviderRateLimitedError,
+    MedicalEvidenceProviderTimeoutError,
+    MedicalEvidenceProviderUnavailableError,
 )
-from app.services.medical_evidence_content_service import MedicalEvidenceContentService
-from app.services.pmc_client import PmcClient
+from app.services.medical_evidence_provider_factory import (
+    create_medical_evidence_provider_registry,
+)
+from app.services.pubmed_client import PubMedRateLimitError, PubMedUnavailableError
 
 
 logger = logging.getLogger(__name__)
@@ -49,18 +46,11 @@ options_router = APIRouter(prefix="/api/medical-knowledge", tags=["Medical Knowl
 
 
 def get_pubmed_service(db: Session = Depends(get_db)) -> Generator[MedicalKnowledgePubMedService, None, None]:
-    client = PubMedClient(tool=NCBI_TOOL, email=NCBI_EMAIL, api_key=NCBI_API_KEY)
+    registry = create_medical_evidence_provider_registry()
     try:
-        yield MedicalKnowledgePubMedService(
-            db,
-            client,
-            evidence_content_service=MedicalEvidenceContentService(
-                PmcClient(client),
-                max_chars_per_source=MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
-            ),
-        )
+        yield MedicalKnowledgePubMedService(db, registry.get("PUBMED"))
     finally:
-        client.close()
+        registry.close()
 
 
 def _map_service_error(exc: Exception) -> HTTPException:
@@ -68,11 +58,19 @@ def _map_service_error(exc: Exception) -> HTTPException:
         return HTTPException(status_code=404, detail="PubMed article was not found")
     if isinstance(exc, DiseaseGroupNotFoundError):
         return HTTPException(status_code=404, detail=str(exc))
-    if isinstance(exc, (PubMedConfigurationError, DiseaseUniverseConfigurationError)):
+    if isinstance(exc, (MedicalEvidenceProviderConfigurationError, DiseaseUniverseConfigurationError)):
         return HTTPException(status_code=503, detail=str(exc))
-    if isinstance(exc, PubMedRateLimitError):
+    if isinstance(exc, (MedicalEvidenceProviderRateLimitedError, PubMedRateLimitError)):
         return HTTPException(status_code=503, detail="PubMed rate limit is temporarily unavailable")
-    if isinstance(exc, PubMedUnavailableError):
+    if isinstance(
+        exc,
+        (
+            MedicalEvidenceProviderTimeoutError,
+            MedicalEvidenceProviderBadResponseError,
+            MedicalEvidenceProviderUnavailableError,
+            PubMedUnavailableError,
+        ),
+    ):
         return HTTPException(status_code=502, detail=str(exc))
     logger.exception("Medical Knowledge PubMed operation failed")
     return HTTPException(status_code=500, detail="Medical Knowledge PubMed operation failed")

@@ -9,6 +9,7 @@ from .medical_knowledge_factor_schemas import GenericFactorSelector
 from .medical_knowledge_models import (
     EVIDENCE_CONTENT_KINDS,
     EVIDENCE_CONTENT_ORIGINS,
+    EVIDENCE_SOURCE_KINDS,
     EVIDENCE_LEVELS,
     EVIDENCE_SCOPES,
     REVISION_STATUSES,
@@ -64,6 +65,9 @@ class MedicalRevisionCreate(BaseModel):
 
 class MedicalEvidenceSourceCreate(BaseModel):
     source_type: str
+    provider_id: str | None = Field(default=None, max_length=40)
+    external_id: str | None = Field(default=None, max_length=255)
+    source_kind: str | None = Field(default=None, max_length=40)
     pmid: str | None = Field(default=None, max_length=32)
     doi: str | None = Field(default=None, max_length=255)
     title: str = Field(min_length=1)
@@ -79,6 +83,11 @@ class MedicalEvidenceSourceCreate(BaseModel):
     @classmethod
     def validate_source_type(cls, value: str) -> str:
         return _validate_choice(value, SOURCE_TYPES, "source_type")
+
+    @field_validator("source_kind")
+    @classmethod
+    def validate_source_kind(cls, value: str | None) -> str | None:
+        return _validate_choice(value, EVIDENCE_SOURCE_KINDS, "source_kind") if value else None
 
 
 class MedicalEvidenceContentCreate(BaseModel):

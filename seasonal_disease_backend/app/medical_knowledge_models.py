@@ -27,6 +27,14 @@ EVIDENCE_LEVELS = ("SUPPORTED", "LIMITED_OR_INDIRECT", "CONFLICTING", "INSUFFICI
 EVIDENCE_SCOPES = ("WHOLE_GROUP", "PARTIAL_GROUP")
 REVISION_STATUSES = ("DRAFT", "APPROVED", "REJECTED")
 SOURCE_TYPES = ("PUBMED", "WHO", "CDC", "OTHER")
+EVIDENCE_SOURCE_KINDS = (
+    "RESEARCH_ARTICLE",
+    "SYSTEMATIC_REVIEW",
+    "GUIDELINE",
+    "TECHNICAL_REPORT",
+    "HEALTH_GUIDANCE",
+    "OTHER",
+)
 SOURCE_ROLES = ("PRIMARY", "SUPPORTING")
 EVIDENCE_CONTENT_KINDS = ("ABSTRACT", "PMC_FULL_TEXT", "PMC_FULL_TEXT_EXCERPT")
 EVIDENCE_CONTENT_ORIGINS = ("NCBI_PUBMED", "NCBI_PMC")
@@ -213,10 +221,17 @@ class MedicalEvidenceSource(Base):
         Index("ix_medical_sources_pmid", "pmid"),
         Index("ix_medical_sources_doi", "doi"),
         Index("ix_medical_sources_type", "source_type"),
+        Index("ix_medical_sources_provider_external", "provider_id", "external_id"),
+        Index("ix_medical_sources_kind", "source_kind"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Additive V1 provider identity. source_type remains for API/backward
+    # compatibility; new provider-neutral code uses these three fields.
+    provider_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
     pmid: Mapped[str | None] = mapped_column(String(32), nullable=True)
     doi: Mapped[str | None] = mapped_column(String(255), nullable=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)

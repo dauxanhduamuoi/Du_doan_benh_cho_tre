@@ -58,6 +58,9 @@ from migrations.v013_auto_multi_tier_generation import (
     upgrade as upgrade_auto_multi_tier_generation,
 )
 from migrations.v014_auto_topic_visibility import upgrade as upgrade_auto_topic_visibility
+from migrations.v015_medical_evidence_providers import (
+    upgrade as upgrade_medical_evidence_providers,
+)
 
 
 @asynccontextmanager
@@ -77,6 +80,7 @@ async def lifespan(_: FastAPI):
     upgrade_auto_safe_fallback(engine)
     upgrade_auto_multi_tier_generation(engine)
     upgrade_auto_topic_visibility(engine)
+    upgrade_medical_evidence_providers(engine)
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)

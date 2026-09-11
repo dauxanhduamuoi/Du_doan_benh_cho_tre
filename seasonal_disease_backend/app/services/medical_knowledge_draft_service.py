@@ -47,6 +47,10 @@ from app.services.medical_knowledge_population_policy import (
     stored_source_assessment,
 )
 from app.services.medical_knowledge_prompt import build_generation_input
+from app.services.medical_evidence_provider import (
+    DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+    MedicalEvidenceTrustPolicy,
+)
 
 
 class DraftWorkflowValidationError(ValueError):
@@ -110,6 +114,7 @@ class MedicalKnowledgeDraftService:
         max_input_chars: int = MEDICAL_KNOWLEDGE_LLM_MAX_INPUT_CHARS,
         max_chars_per_source: int = MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
         persistence_attempts: int = 3,
+        source_trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
     ):
         self.db = db
         self.generator = generator
@@ -121,6 +126,7 @@ class MedicalKnowledgeDraftService:
         self.max_input_chars = max_input_chars
         self.max_chars_per_source = max(1, max_chars_per_source)
         self.persistence_attempts = max(1, persistence_attempts)
+        self.source_trust_policy = source_trust_policy
 
     def generate(self, request: DraftGenerationRequest, *, created_by: int | None) -> DraftRevisionResponse:
         context = self._generation_context(request)
@@ -346,7 +352,12 @@ class MedicalKnowledgeDraftService:
                 f"Selected sources are not in the current topic library: {outside_topic}",
                 code="DRAFT_SOURCE_NOT_IN_TOPIC",
             )
-        if any(source.source_type != "PUBMED" for source in sources):
+        if any(
+            not self.source_trust_policy.is_provider_trusted(
+                source.provider_id or source.source_type
+            )
+            for source in sources
+        ):
             raise DraftWorkflowValidationError(
                 "V1 draft generation accepts PubMed sources only",
                 code="DRAFT_PROPOSAL_INVALID",

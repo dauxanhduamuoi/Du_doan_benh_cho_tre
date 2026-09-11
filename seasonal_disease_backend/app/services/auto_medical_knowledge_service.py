@@ -28,7 +28,7 @@ from app.medical_knowledge_draft_schemas import (
     SourceAssessment,
 )
 from app.medical_knowledge_factors import normalize_factor
-from app.medical_knowledge_models import AutoMedicalKnowledgeRevision
+from app.medical_knowledge_models import AutoMedicalKnowledgeRevision, SOURCE_TYPES
 from app.models import DiseaseCode
 from app.medical_knowledge_schemas import (
     MedicalEvidenceContentCreate,
@@ -87,6 +87,10 @@ from app.config import (
 from app.services.medical_knowledge_population_policy import (
     PARENT_DISPLAYABLE_EVIDENCE,
     has_pediatric_direct_support,
+)
+from app.services.medical_evidence_provider import (
+    DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+    MedicalEvidenceTrustPolicy,
 )
 
 
@@ -536,6 +540,7 @@ def validate_auto_proposal_claims(
 def auto_revision_parent_eligible(
     revision: AutoMedicalKnowledgeRevision,
     source_rows,
+    trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
 ) -> bool:
     tier = AutoMedicalKnowledgeRepository.resolved_auto_tier(revision)
     method = AutoMedicalKnowledgeRepository.resolved_generation_method(revision)
@@ -560,12 +565,19 @@ def auto_revision_parent_eligible(
         return False
     assessments: list[SourceAssessment] = []
     for link, source, content in source_rows:
+        provider_id = (
+            getattr(source, "provider_id", None)
+            or getattr(source, "source_type", None)
+            or "PUBMED"
+        )
         if (
             source is None
             or content is None
             or content.source_id != source.id
             or not (content.evidence_text or "").strip()
-            or link.trust_class not in {"PUBMED", "PMC"}
+            or not trust_policy.is_trusted(
+                provider_id=provider_id, trust_class=link.trust_class
+            )
         ):
             return False
         relevance_note = (link.relevance_note or "").strip()
@@ -848,6 +860,7 @@ class AutoMedicalKnowledgeProcessor:
         auto_visible_default: bool,
         max_input_chars: int,
         clock: Callable[[], datetime] = datetime.utcnow,
+        trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
     ):
         self.db = db
         self.repository = AutoMedicalKnowledgeRepository(db)
@@ -867,6 +880,7 @@ class AutoMedicalKnowledgeProcessor:
         self.auto_visible_default = auto_visible_default
         self.max_input_chars = max_input_chars
         self.clock = clock
+        self.trust_policy = trust_policy
 
     def process_next(self) -> int | None:
         job_id = self.repository.claim_next_job(
@@ -979,7 +993,10 @@ class AutoMedicalKnowledgeProcessor:
             disease_aliases=disease_aliases,
         )
         if any(
-            candidate.trust_class not in {"PUBMED", "PMC"}
+            not self.trust_policy.is_trusted(
+                provider_id=candidate.record.provider_id,
+                trust_class=candidate.trust_class,
+            )
             for candidate in result.selected
         ):
             self._persist_insufficient(
@@ -1017,6 +1034,7 @@ class AutoMedicalKnowledgeProcessor:
             context=context,
             selected=selected,
             discovery_reason=result.diagnostics.insufficient_reason,
+            trust_policy=self.trust_policy,
         )
         if not qualification.eligible or qualification.snapshot is None:
             reason_code = qualification.reason_code
@@ -1661,22 +1679,37 @@ class AutoMedicalKnowledgeProcessor:
     def _persist_discovery(
         self, job_id: int, result: AutoDiscoveryResult
     ) -> list[tuple[object, object, DraftSourceInput, str, object]]:
-        selected_by_pmid: dict[
+        selected_by_identity: dict[
             str, tuple[object, object, DraftSourceInput, str, object]
         ] = {}
         now = self.clock()
         attempt, attempt_key, pipeline_version = self._attempt_metadata(job_id)
         for candidate in result.selected:
-            if candidate.trust_class not in {"PUBMED", "PMC"}:
+            record = candidate.record
+            if not self.trust_policy.is_trusted(
+                provider_id=record.provider_id,
+                trust_class=candidate.trust_class,
+            ):
                 raise AutoMedicalKnowledgeValidationError(
                     "Auto source provider is not implemented or trusted"
                 )
-            record = candidate.record
-            source = self.medical_repository.get_source_by_pmid(record.pmid)
+            source = self.medical_repository.get_source_by_provider_external_id(
+                record.provider_id, record.external_id
+            )
+            # Read legacy rows created before V015 without rewriting history.
+            if source is None and record.pmid:
+                source = self.medical_repository.get_source_by_pmid(record.pmid)
             if source is None:
                 source = self.medical_repository.create_source(
                     MedicalEvidenceSourceCreate(
-                        source_type="PUBMED",
+                        source_type=(
+                            record.provider_id
+                            if record.provider_id in SOURCE_TYPES
+                            else "OTHER"
+                        ),
+                        provider_id=record.provider_id,
+                        external_id=record.external_id,
+                        source_kind=record.source_kind.value,
                         pmid=record.pmid,
                         doi=record.doi,
                         title=record.title,
@@ -1709,7 +1742,7 @@ class AutoMedicalKnowledgeProcessor:
                     )
                 )
             publication_types = record.raw_metadata.get("publication_types", [])
-            selected_by_pmid[record.pmid] = (
+            selected_by_identity[record.external_id] = (
                 source,
                 content,
                 DraftSourceInput(
@@ -1742,7 +1775,7 @@ class AutoMedicalKnowledgeProcessor:
                 candidate.signals,
             )
         for audit in result.audit:
-            selected_row = selected_by_pmid.get(audit.pmid)
+            selected_row = selected_by_identity.get(audit.pmid)
             self.repository.add_discovery(
                 job_id=job_id,
                 source_id=selected_row[0].id if selected_row else None,
@@ -1803,7 +1836,9 @@ class AutoMedicalKnowledgeProcessor:
             discovered_at=now,
         )
         self.db.commit()
-        return [selected_by_pmid[item.record.pmid] for item in result.selected]
+        return [
+            selected_by_identity[item.record.external_id] for item in result.selected
+        ]
 
     def _persist_insufficient(
         self, job_id: int, topic_id: int, *, reason_code: str, reason: str
