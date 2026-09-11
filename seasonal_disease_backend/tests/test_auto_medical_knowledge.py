@@ -18,6 +18,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base
 from app.database import get_db
 from app.auto_medical_knowledge_schemas import (
+    AutoBasicMedicalKnowledgeProposal,
     AutoMedicalKnowledgeDraftProposal,
     AutoNumericClaimProposal,
 )
@@ -33,12 +34,14 @@ from app.medical_knowledge_models import (
     AutoMedicalKnowledgeProviderCooldown,
     AutoMedicalKnowledgeRevision,
     AutoMedicalKnowledgeTopicState,
+    AutoMedicalKnowledgeVisibilityAudit,
     MedicalEvidenceSource,
     MedicalKnowledgeRevision,
     MedicalKnowledgeTopic,
     MedicalKnowledgeTopicSource,
     MedicalRevisionSource,
 )
+from app.models import User
 from app.published_medical_knowledge_schemas import PublishedMedicalKnowledgeBatchRequest
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
 from app.routers.auto_medical_knowledge import router as auto_router
@@ -62,11 +65,13 @@ from app.services.auto_medical_numeric_validation import (
 )
 from app.medical_knowledge_factors import load_factor_values
 from app.services.auto_medical_knowledge_service import (
+    AUTO_BASIC_PARENT_WARNING,
     AUTO_PARENT_WARNING,
     AUTO_SAFE_FALLBACK_PARENT_WARNING,
     AUTO_OUTPUT_REPAIRABLE_FAILURE_CODES,
     MAX_AUTO_CONTRACT_REPAIR_ATTEMPTS,
     MAX_AUTO_GENERATION_CALLS,
+    MAX_AUTO_STRICT_GENERATION_CALLS,
     AutoMedicalKnowledgeAdminService,
     AutoMedicalKnowledgeProcessor,
     AutoMedicalKnowledgeQueueService,
@@ -81,6 +86,8 @@ from app.services.auto_medical_knowledge_safe_fallback import (
     factor_phrase_vi,
     is_safe_fallback_trigger,
 )
+from app.services.auto_evidence_qualification import qualify_auto_evidence
+from app.services.auto_medical_knowledge_basic import validate_basic_proposal
 from app.services.medical_knowledge_draft_generator import (
     DraftGeneratorOutputError,
     DraftGeneratorRateLimitError,
@@ -105,6 +112,8 @@ from migrations.v011_auto_numeric_claim_contract import (
     upgrade as upgrade_auto_numeric_claim_contract,
 )
 from migrations.v012_auto_safe_fallback import upgrade as upgrade_auto_safe_fallback
+from migrations.v013_auto_multi_tier_generation import upgrade as upgrade_auto_multi_tier
+from migrations.v014_auto_topic_visibility import upgrade as upgrade_auto_topic_visibility
 
 
 NOW = datetime(2026, 8, 28, 9, 0, 0)
@@ -373,6 +382,33 @@ class FakeGenerator:
         )
 
 
+class FakeBasicGenerator:
+    model_name = "deterministic-basic-model"
+
+    def __init__(self, *, summary="Các nghiên cứu ghi nhận một mối liên hệ ở trẻ em.", source_ids=None, result="SUPPORTED", error=None):
+        self.summary = summary
+        self.source_ids = source_ids
+        self.result = result
+        self.error = error
+        self.calls = 0
+        self.contexts = []
+
+    def generate(self, context, **_kwargs):
+        self.calls += 1
+        self.contexts.append(context)
+        if self.error is not None:
+            raise self.error
+        return AutoBasicMedicalKnowledgeProposal(
+            result=self.result,
+            summary_vi=self.summary if self.result == "SUPPORTED" else None,
+            source_ids=(
+                self.source_ids
+                if self.source_ids is not None
+                else ([context.sources[0].source_id] if self.result == "SUPPORTED" else [])
+            ),
+        )
+
+
 class RiskyGenerator(FakeGenerator):
     def __init__(self, text, numeric_claims=()):
         super().__init__()
@@ -598,6 +634,7 @@ def processor(
     discovery,
     generator,
     *,
+    basic_generator=None,
     visible=True,
     provider_name=None,
     cooldown_seconds=300,
@@ -609,6 +646,7 @@ def processor(
         db,
         discovery,
         generator,
+        basic_generator,
         disease_manifest_path=manifest,
         disease_catalog_path=catalog,
         max_sources=10,
@@ -658,6 +696,27 @@ def generate_safe_fallback_auto(db, disease_files):
     return q, discovery, generator
 
 
+def test_admin_overview_resolves_disease_name_once_for_jobs_and_revisions(
+    db, disease_files, monkeypatch
+):
+    q, _discovery, _generator = generate_ready_auto(db, disease_files)
+    calls = []
+
+    def deployed_contexts(manifest_path, catalog_path):
+        calls.append((manifest_path, catalog_path))
+        return {"5": ("Tiêu chảy - Gastroenteritis", "A09")}
+
+    monkeypatch.setattr(
+        "app.services.auto_medical_knowledge_service.load_deployed_disease_contexts",
+        deployed_contexts,
+    )
+    overview = AutoMedicalKnowledgeAdminService(db, queue_service=q).overview()
+
+    assert len(calls) == 1
+    assert overview.jobs[0].disease_group_name == "Tiêu chảy - Gastroenteritis"
+    assert overview.revisions[0].disease_group_name == "Tiêu chảy - Gastroenteritis"
+
+
 def test_feature_disabled_is_zero_write_and_zero_external_work(db):
     disabled = queue(db, enabled=False)
     discovery = FakeDiscovery()
@@ -684,7 +743,7 @@ def test_auto_demand_generation_e2e(db, disease_files):
     assert discovery.calls == generator.calls == 1
     assert len(result.items) == 1
     assert result.items[0].knowledge_type == "AUTO"
-    assert result.items[0].generation_mode == "AI_FULL"
+    assert result.items[0].auto_tier == "STRICT"
     assert result.items[0].warning == AUTO_PARENT_WARNING
     assert result.items[0].sources[0].pmid == "40123456"
     prompt_payload = json.loads(build_auto_generation_input(generator.contexts[0]))
@@ -747,8 +806,11 @@ def test_unsupported_provider_trust_class_fails_closed(db, disease_files):
     q.enqueue_selectors(request().items)
     processor(db, disease_files, FakeDiscovery(trust_class="WHO"), FakeGenerator()).process_next()
     job = db.scalar(select(AutoMedicalKnowledgeJob))
-    assert job.status == "FAILED"
-    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeRevision)) == 0
+    assert job.status == "INSUFFICIENT"
+    assert job.last_error_code is None
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert revision.generation_status == "INSUFFICIENT"
+    assert revision.short_explanation_vi is None
 
 
 @pytest.mark.parametrize(
@@ -784,7 +846,7 @@ def test_reviewed_overrides_auto_e2e_and_withdraw_restores_auto(db, disease_file
     enable_fallback(db)
     initial_auto = parent(db, q).read_batch(request()).items[0]
     assert initial_auto.knowledge_type == "AUTO"
-    assert initial_auto.generation_mode == "SAFE_FALLBACK"
+    assert initial_auto.auto_tier == "BASIC"
 
     canonical_topic = db.scalar(
         select(MedicalKnowledgeTopic).where(MedicalKnowledgeTopic.disease_group_id == "5")
@@ -816,21 +878,167 @@ def test_reviewed_overrides_auto_e2e_and_withdraw_restores_auto(db, disease_file
     db.commit()
     restored = parent(db, q).read_batch(request()).items[0]
     assert restored.knowledge_type == "AUTO"
-    assert restored.generation_mode == "SAFE_FALLBACK"
+    assert restored.auto_tier == "BASIC"
 
 
-def test_reviewed_only_and_manual_visibility_are_independent(db, disease_files):
+def test_parent_display_gate_and_default_auto_visibility_are_independent(
+    db, disease_files
+):
     q, _discovery, _generator = generate_ready_auto(db, disease_files)
     assert parent(db, q).read_batch(request()).items == []
     enable_fallback(db)
     revision = db.scalar(select(AutoMedicalKnowledgeRevision))
     revision.is_visible = False
     db.commit()
+    # Legacy false is not evidence that staff explicitly hid the canonical topic.
+    assert parent(db, q).read_batch(request()).items[0].knowledge_type == "AUTO"
+
+
+def test_eligible_strict_is_automatic_when_legacy_auto_default_is_false(
+    db, disease_files
+):
+    q = queue(db)
+    settings = AutoMedicalKnowledgeRepository(db).get_settings()
+    assert settings.auto_visible_default is False
+    settings.display_mode = "REVIEWED_WITH_AUTO_FALLBACK"
+    db.commit()
+    q.enqueue_selectors(request().items)
+
+    processor(db, disease_files, FakeDiscovery(), FakeGenerator()).process_next()
+
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert revision.auto_tier == "STRICT"
+    assert parent(db, q).read_batch(request()).items[0].auto_tier == "STRICT"
+
+
+def _visibility_actor(db, *, username="visibility-staff", role="staff"):
+    actor = User(
+        username=username,
+        password_hash="not-used-in-test",
+        role=role,
+        is_active=True,
+    )
+    db.add(actor)
+    db.commit()
+    return actor
+
+
+def _set_topic_hidden(db, q, *, hidden, actor):
+    return AutoMedicalKnowledgeAdminService(
+        db, queue_service=q
+    ).set_topic_visibility(
+        disease_group_id="5",
+        factor_type="WEATHER",
+        factor_key="precipitation",
+        factor_value=None,
+        weather_factor="precipitation",
+        hidden=hidden,
+        actor_user_id=actor.id,
+    )
+
+
+def test_topic_hide_unhide_is_immediate_audited_and_does_not_generate(
+    db, disease_files
+):
+    q, _discovery, _generator = generate_ready_auto(db, disease_files)
+    enable_fallback(db)
+    actor = _visibility_actor(db)
+    before_jobs = db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob))
+    before_revisions = db.scalar(
+        select(func.count()).select_from(AutoMedicalKnowledgeRevision)
+    )
+
+    topic, state = _set_topic_hidden(db, q, hidden=True, actor=actor)
+    assert state.is_hidden_by_staff is True
+    assert state.hidden_at is not None
+    hidden_revision = AutoMedicalKnowledgeAdminService(
+        db, queue_service=q
+    ).overview().revisions[0]
+    assert hidden_revision.auto_display_eligible is True
+    assert hidden_revision.topic_hidden_by_staff is True
+    assert hidden_revision.is_visible is False
     assert parent(db, q).read_batch(request()).items == []
 
-    admin = AutoMedicalKnowledgeAdminService(db, queue_service=q)
-    admin.set_visibility(revision.id, is_visible=True)
+    _set_topic_hidden(db, q, hidden=False, actor=actor)
+    unhidden_revision = AutoMedicalKnowledgeAdminService(
+        db, queue_service=q
+    ).overview().revisions[0]
+    assert unhidden_revision.topic_hidden_by_staff is False
+    assert unhidden_revision.is_visible is True
     assert parent(db, q).read_batch(request()).items[0].knowledge_type == "AUTO"
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == before_jobs
+    assert db.scalar(
+        select(func.count()).select_from(AutoMedicalKnowledgeRevision)
+    ) == before_revisions
+    audits = list(
+        db.scalars(
+            select(AutoMedicalKnowledgeVisibilityAudit).order_by(
+                AutoMedicalKnowledgeVisibilityAudit.id
+            )
+        )
+    )
+    assert [(row.topic_id, row.action, row.actor_user_id) for row in audits] == [
+        (topic.id, "HIDE_AUTO_TOPIC", actor.id),
+        (topic.id, "UNHIDE_AUTO_TOPIC", actor.id),
+    ]
+
+
+@pytest.mark.parametrize("tier", ["STRICT", "BASIC"])
+def test_hidden_topic_stays_hidden_after_regeneration(db, disease_files, tier):
+    q, _discovery, _generator = generate_ready_auto(db, disease_files)
+    enable_fallback(db)
+    actor = _visibility_actor(db, username=f"visibility-{tier.lower()}")
+    topic, _state = _set_topic_hidden(db, q, hidden=True, actor=actor)
+
+    result = q.regenerate_topic(request().items[0])
+    assert result.created is True
+    strict_generator = FakeGenerator(fail=tier == "BASIC")
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        strict_generator,
+        basic_generator=FakeBasicGenerator() if tier == "BASIC" else None,
+    ).process_next()
+
+    revisions = list(
+        db.scalars(
+            select(AutoMedicalKnowledgeRevision)
+            .where(AutoMedicalKnowledgeRevision.topic_id == topic.id)
+            .order_by(AutoMedicalKnowledgeRevision.id)
+        )
+    )
+    assert len(revisions) == 2
+    assert revisions[-1].auto_tier == tier
+    assert db.get(AutoMedicalKnowledgeTopicState, topic.id).is_hidden_by_staff is True
+    assert parent(db, q).read_batch(request()).items == []
+
+
+def test_hide_while_job_is_generating_cannot_be_overwritten(db, disease_files):
+    q = queue(db)
+    job_id = q.enqueue_selectors(request().items)[0]
+    repository = AutoMedicalKnowledgeRepository(db)
+    assert repository.claim_next_job(now=NOW, max_retries=3) == job_id
+    actor = _visibility_actor(db, username="during-generation")
+    topic_id = repository.get_job(job_id).topic_id
+
+    class HideDuringGeneration(FakeGenerator):
+        observed_status = None
+
+        def generate(self, context, **kwargs):
+            self.observed_status = db.get(AutoMedicalKnowledgeJob, job_id).status
+            _set_topic_hidden(db, q, hidden=True, actor=actor)
+            return super().generate(context, **kwargs)
+
+    generator = HideDuringGeneration()
+
+    processor(db, disease_files, FakeDiscovery(), generator)._process(job_id)
+
+    assert generator.observed_status == "GENERATING"
+    assert db.get(AutoMedicalKnowledgeJob, job_id).status == "READY"
+    assert db.get(AutoMedicalKnowledgeTopicState, topic_id).is_hidden_by_staff is True
+    enable_fallback(db)
+    assert parent(db, q).read_batch(request()).items == []
 
 
 def test_failed_job_can_be_retried_without_creating_duplicate(db, disease_files):
@@ -841,6 +1049,147 @@ def test_failed_job_can_be_retried_without_creating_duplicate(db, disease_files)
     AutoMedicalKnowledgeAdminService(db, queue_service=q).retry_job(job.id)
     assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 1
     assert db.get(AutoMedicalKnowledgeJob, job.id).status == "QUEUED"
+
+
+def test_admin_regenerate_insufficient_creates_new_job_and_preserves_history(
+    db, disease_files
+):
+    q = queue(db)
+    old_job_id = q.enqueue_selectors(request().items)[0]
+    processor(
+        db, disease_files, FakeDiscovery(empty=True), FakeGenerator()
+    ).process_next()
+    old_revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+
+    result = q.regenerate_topic(request().items[0])
+
+    jobs = list(db.scalars(select(AutoMedicalKnowledgeJob).order_by(AutoMedicalKnowledgeJob.id)))
+    assert result.created is True
+    assert result.outcome == "CREATED"
+    assert result.job_id != old_job_id
+    assert result.job_status == "QUEUED"
+    assert [job.status for job in jobs] == ["INSUFFICIENT", "QUEUED"]
+    assert db.get(AutoMedicalKnowledgeRevision, old_revision.id) is old_revision
+    assert old_revision.generation_status == "INSUFFICIENT"
+
+    fresh_discovery = FakeDiscovery()
+    processor(
+        db, disease_files, fresh_discovery, FakeGenerator()
+    ).process_next()
+    overview = AutoMedicalKnowledgeAdminService(db, queue_service=q).overview()
+    assert fresh_discovery.calls == 1
+    assert [job.id for job in overview.jobs[:2]] == [result.job_id, old_job_id]
+    assert overview.jobs[0].status == "READY"
+    assert overview.jobs[0].is_current_attempt is True
+    assert overview.jobs[1].status == "INSUFFICIENT"
+    assert overview.jobs[1].is_current_attempt is False
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeRevision)) == 2
+
+
+def test_admin_regenerate_failed_creates_new_job(db, disease_files):
+    q = queue(db)
+    old_job_id = q.enqueue_selectors(request().items)[0]
+    processor(
+        db, disease_files, FakeDiscovery(fail=True), FakeGenerator()
+    ).process_next()
+
+    result = q.regenerate_topic(request().items[0])
+
+    assert result.created is True
+    assert result.job_id != old_job_id
+    assert db.get(AutoMedicalKnowledgeJob, old_job_id).status == "FAILED"
+    assert db.get(AutoMedicalKnowledgeJob, result.job_id).status == "QUEUED"
+
+
+def test_admin_regenerate_ready_creates_new_job_and_preserves_revision(
+    db, disease_files
+):
+    q = queue(db)
+    old_job_id = q.enqueue_selectors(request().items)[0]
+    processor(db, disease_files, FakeDiscovery(), FakeGenerator()).process_next()
+    old_revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+
+    result = q.regenerate_topic(request().items[0])
+
+    assert result.created is True
+    assert result.job_id != old_job_id
+    assert db.get(AutoMedicalKnowledgeJob, old_job_id).status == "READY"
+    assert db.get(AutoMedicalKnowledgeRevision, old_revision.id) is old_revision
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeRevision)) == 1
+
+
+@pytest.mark.parametrize("active_status", ["QUEUED", "SEARCHING", "GENERATING"])
+def test_admin_regenerate_returns_exact_active_job_without_duplicate(
+    db, active_status
+):
+    q = queue(db)
+    active_id = q.enqueue_selectors(request().items)[0]
+    repository = AutoMedicalKnowledgeRepository(db)
+    if active_status != "QUEUED":
+        repository.set_job_status(active_id, active_status)
+        db.commit()
+
+    result = q.regenerate_topic(request().items[0])
+
+    assert result.created is False
+    assert result.outcome == "ALREADY_ACTIVE"
+    assert result.job_id == active_id
+    assert result.job_status == active_status
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 1
+
+
+def test_admin_regenerate_waiting_retry_does_not_create_duplicate(db):
+    q = queue(db)
+    job_id = q.enqueue_selectors(request().items)[0]
+    repository = AutoMedicalKnowledgeRepository(db)
+    repository.set_job_status(
+        job_id,
+        "FAILED",
+        next_retry_at=NOW + timedelta(minutes=5),
+        finished_at=NOW,
+        last_error_code="LLM_RATE_LIMITED",
+    )
+    db.commit()
+
+    result = q.regenerate_topic(request().items[0], provider="groq")
+
+    assert result.created is False
+    assert result.outcome == "WAITING_RETRY"
+    assert result.job_id == job_id
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 1
+
+
+def test_admin_regenerate_provider_cooldown_does_not_create_job(db):
+    q = queue(db)
+    AutoMedicalKnowledgeRepository(db).set_provider_cooldown(
+        "groq",
+        cooldown_until=NOW + timedelta(minutes=5),
+        reason="LLM_RATE_LIMITED",
+        now=NOW,
+    )
+    db.commit()
+
+    result = q.regenerate_topic(request().items[0], provider="groq")
+
+    assert result.created is False
+    assert result.outcome == "PROVIDER_COOLDOWN"
+    assert result.job_id is None
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 0
+
+
+def test_parent_enqueue_keeps_terminal_dedup_while_admin_can_regenerate(
+    db, disease_files
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    processor(
+        db, disease_files, FakeDiscovery(empty=True), FakeGenerator()
+    ).process_next()
+
+    assert q.enqueue_selectors(request().items, trigger_type="PARENT") == []
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 1
+    assert q.regenerate_topic(request().items[0]).created is True
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == 2
 
 
 def test_restart_recovery_makes_interrupted_job_retryable(db):
@@ -1351,7 +1700,8 @@ def test_semantic_safety_failure_is_never_automatically_retried(db, disease_file
 
 def test_contract_repair_policy_is_centralized_and_fail_closed():
     assert MAX_AUTO_CONTRACT_REPAIR_ATTEMPTS == 1
-    assert MAX_AUTO_GENERATION_CALLS == 2
+    assert MAX_AUTO_STRICT_GENERATION_CALLS == 2
+    assert MAX_AUTO_GENERATION_CALLS == 3
     assert AUTO_OUTPUT_REPAIRABLE_FAILURE_CODES == {
         "AUTO_OUTPUT_NUMERIC_CLAIM_KIND_MISMATCH",
         "AUTO_OUTPUT_NUMERIC_CLAIM_UNDECLARED",
@@ -1399,7 +1749,7 @@ def test_contract_repair_removes_unnecessary_number_and_persists_only_final(
     ).overview().jobs[0].diagnostics
 
     assert job.status == "READY"
-    assert generator.calls == MAX_AUTO_GENERATION_CALLS == 2
+    assert generator.calls == MAX_AUTO_STRICT_GENERATION_CALLS == 2
     assert discovery.calls == 1
     assert len(generator.contexts) == 2
     assert generator.contexts[0].model_dump() == generator.contexts[1].model_dump()
@@ -1549,7 +1899,7 @@ def test_shared_budget_prevents_structural_retry_plus_contract_third_call(
 
     job = db.scalar(select(AutoMedicalKnowledgeJob))
     revision = db.scalar(select(AutoMedicalKnowledgeRevision))
-    assert generator.calls == MAX_AUTO_GENERATION_CALLS == 2
+    assert generator.calls == MAX_AUTO_STRICT_GENERATION_CALLS == 2
     assert job.status == "READY"
     assert job.last_error_code is None
     assert revision.generation_mode == "SAFE_FALLBACK"
@@ -2138,8 +2488,15 @@ def test_pediatric_direct_label_without_pediatric_evidence_has_specific_code(db,
     q.enqueue_selectors(request().items)
     processor(db, disease_files, AdultEvidenceDiscovery(), FakeGenerator()).process_next()
     job = db.scalar(select(AutoMedicalKnowledgeJob))
-    assert job.last_error_code == "AUTO_OUTPUT_PEDIATRIC_CLAIM_INVALID"
-    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeRevision)) == 0
+    assert job.status == "INSUFFICIENT"
+    assert job.last_error_code is None
+    diagnostic = AutoMedicalKnowledgeAdminService(
+        db, queue_service=q
+    ).overview().jobs[0].diagnostics
+    assert diagnostic.insufficient_reason == "NO_PEDIATRIC_RELEVANT_SOURCE"
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert revision.generation_status == "INSUFFICIENT"
+    assert revision.short_explanation_vi is None
 
 
 def test_unsupported_source_design_claim_has_specific_code(db, disease_files):
@@ -2162,7 +2519,7 @@ def test_current_attempt_and_pipeline_version_are_persisted(db, disease_files):
     assert jobs[0].status == "READY"
     assert jobs[1].is_current_attempt is False
     assert jobs[0].legacy is False
-    assert jobs[0].pipeline_version == "auto_medical_knowledge_v3_safe_fallback"
+    assert jobs[0].pipeline_version == "auto_medical_knowledge_v4_multi_tier"
 
 
 def test_failed_attempt_history_remains_after_same_job_reaches_ready(db, disease_files):
@@ -2203,6 +2560,37 @@ def test_runtime_toggle_api_authorization(db, role, expected):
     assert AutoMedicalKnowledgeRepository(db).get_settings().enabled is (role == "admin")
 
 
+@pytest.mark.parametrize(("role", "expected"), [("admin", 200), ("staff", 403)])
+def test_regenerate_api_requires_admin_and_returns_typed_created_state(
+    db, role, expected
+):
+    queue(db)
+    app = FastAPI()
+    app.include_router(auto_router)
+    app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(role=role)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/medical-knowledge/auto/regenerate",
+            json={"disease_group_id": "5", "weather_factor": "precipitation"},
+        )
+    assert response.status_code == expected
+    if role == "admin":
+        assert response.json() == {
+            "ok": True,
+            "job_id": 1,
+            "revision_id": None,
+            "topic_id": None,
+            "created": True,
+            "outcome": "CREATED",
+            "job_status": "QUEUED",
+            "message": "Đã tạo yêu cầu mới.",
+        }
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeJob)) == (
+        1 if role == "admin" else 0
+    )
+
+
 def test_public_caller_cannot_toggle_runtime(db):
     app = FastAPI()
     app.include_router(auto_router)
@@ -2213,6 +2601,41 @@ def test_public_caller_cannot_toggle_runtime(db):
         )
     assert response.status_code == 401
     assert AutoMedicalKnowledgeRepository(db).get_settings().enabled is False
+
+
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [("admin", 200), ("staff", 200), ("parent", 403)],
+)
+def test_topic_visibility_api_authorization_and_strict_selector(
+    db, disease_files, role, expected
+):
+    q, _discovery, _generator = generate_ready_auto(db, disease_files)
+    actor = _visibility_actor(db, username=f"api-{role}", role=role)
+    app = FastAPI()
+    app.include_router(auto_router)
+    app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_current_user] = lambda: actor
+    payload = {
+        "disease_group_id": "5",
+        "factor_type": "WEATHER",
+        "factor_key": "precipitation",
+        "factor_value": None,
+        "weather_factor": "precipitation",
+        "hidden": True,
+    }
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/medical-knowledge/auto/topics/visibility", json=payload
+        )
+        extra_response = client.post(
+            "/api/medical-knowledge/auto/topics/visibility",
+            json={**payload, "revision_id": 999},
+        )
+    assert response.status_code == expected
+    assert extra_response.status_code in ({422} if expected == 200 else {403})
+    state = db.scalar(select(AutoMedicalKnowledgeTopicState))
+    assert state.is_hidden_by_staff is (expected == 200)
 
 
 def _numeric_contract(
@@ -2905,10 +3328,11 @@ def test_parent_safe_fallback_exposes_only_safe_mode_warning_and_references(
     item = parent(db, q).read_batch(request()).items[0]
     assert generator.calls == 2
     assert item.knowledge_type == "AUTO"
-    assert item.generation_mode == "SAFE_FALLBACK"
+    assert item.auto_tier == "BASIC"
     assert item.warning == AUTO_SAFE_FALLBACK_PARENT_WARNING
     assert item.sources[0].pmid == "40123456"
     assert "3 groups" not in item.detailed_explanation_vi
+    assert not hasattr(item, "generation_mode")
     assert not hasattr(item, "fallback_reason_code")
 
 
@@ -2956,7 +3380,7 @@ def test_safe_fallback_trigger_allow_list_excludes_semantic_and_initial_provider
     ) is False
 
 
-def test_temp_database_startup_lifespan_applies_v012_and_serves_root(
+def test_temp_database_startup_lifespan_applies_v014_and_serves_root(
     tmp_path, monkeypatch
 ):
     import app.main as main_module
@@ -2992,7 +3416,32 @@ def test_temp_database_startup_lifespan_applies_v012_and_serves_root(
                 "PRAGMA table_info(auto_medical_knowledge_revisions)"
             ).fetchall()
         }
-        assert {"generation_mode", "fallback_reason_code"} <= columns
+        assert {
+            "generation_mode",
+            "fallback_reason_code",
+            "auto_tier",
+            "generation_method",
+            "strict_failure_code",
+            "strict_failure_stage",
+        } <= columns
+        state_columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(auto_medical_knowledge_topic_states)"
+            )
+        }
+        assert {"is_hidden_by_staff", "hidden_at"} <= state_columns
+        assert connection.exec_driver_sql(
+            "SELECT COUNT(*) FROM auto_medical_knowledge_visibility_audits"
+        ).scalar_one() == 0
+        assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+        setting_columns = {
+            row[1]
+            for row in connection.exec_driver_sql(
+                "PRAGMA table_info(auto_medical_knowledge_settings)"
+            ).fetchall()
+        }
+        assert "basic_fallback_enabled" in setting_columns
         assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
     temp_engine.dispose()
 
@@ -3010,3 +3459,382 @@ def test_numeric_contract_v2_legacy_revision_remains_readable_and_parent_eligibl
     assert AutoMedicalKnowledgeRepository(db).get_revision_numeric_claims(revision.id) == []
     assert state.current_revision_id == revision.id
     assert parent(db, q).read_batch(request()).items[0].knowledge_type == "AUTO"
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        ("disease", "NO_DISEASE_RELEVANT_SOURCE"),
+        ("factor", "NO_FACTOR_RELEVANT_SOURCE"),
+        ("pediatric", "NO_PEDIATRIC_RELEVANT_SOURCE"),
+        ("trust", "TRUSTED_SOURCE_REQUIRED"),
+        ("provenance", "SOURCE_PROVENANCE_MISMATCH"),
+        ("conflicting", "CONFLICTING_EVIDENCE"),
+        ("insufficient", "NO_USABLE_EVIDENCE"),
+    ],
+)
+def test_multi_tier_shared_evidence_qualification_fails_independently(
+    mutation, reason
+):
+    context, selected, _proposal = _safe_fallback_policy_inputs()
+    row = selected[0]
+    discovery_reason = None
+    if mutation == "disease":
+        row = (*row[:4], RelevanceSignals(0, 1, 1))
+    elif mutation == "factor":
+        row = (*row[:4], RelevanceSignals(1, 0, 1))
+    elif mutation == "pediatric":
+        row = (*row[:4], RelevanceSignals(1, 1, 0))
+    elif mutation == "trust":
+        row = (*row[:3], "WHO", row[4])
+    elif mutation == "provenance":
+        row = (row[0], SimpleNamespace(id=2, source_id=99), *row[2:])
+    elif mutation == "conflicting":
+        discovery_reason = "CONFLICTING_EVIDENCE"
+    elif mutation == "insufficient":
+        discovery_reason = "NO_USABLE_EVIDENCE"
+    result = qualify_auto_evidence(
+        topic_id=7,
+        context=context,
+        selected=[row],
+        discovery_reason=discovery_reason,
+    )
+    assert result.eligible is False
+    assert result.reason_code == reason
+    assert result.snapshot is None
+
+
+def test_multi_tier_shared_evidence_qualification_preserves_exact_provenance():
+    context, selected, _proposal = _safe_fallback_policy_inputs()
+    result = qualify_auto_evidence(topic_id=7, context=context, selected=selected)
+    assert result.eligible is True
+    assert result.snapshot.validated_source_ids == (1,)
+    assert result.snapshot.validated_evidence_content_ids == (2,)
+    assert result.snapshot.pediatric_support is True
+
+
+def test_multi_tier_strict_success_never_calls_basic(db, disease_files):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    strict = FakeGenerator()
+    basic = FakeBasicGenerator()
+    processor(
+        db, disease_files, FakeDiscovery(), strict, basic_generator=basic
+    ).process_next()
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert strict.calls == 1
+    assert basic.calls == 0
+    assert revision.auto_tier == "STRICT"
+    assert revision.generation_method == "AI"
+
+
+def test_multi_tier_strict_numeric_failure_discards_prose_and_uses_basic(
+    db, disease_files
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    failed_prose = "STRICT_FAILED_SENTINEL used 3 groups."
+    strict = ContractRepairGenerator(
+        initial_text=failed_prose,
+        repaired_text=failed_prose,
+    )
+    basic = FakeBasicGenerator()
+    processor(
+        db, disease_files, FakeDiscovery(), strict, basic_generator=basic
+    ).process_next()
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert strict.calls == 2
+    assert basic.calls == 1
+    assert revision.generation_status == "READY"
+    assert revision.auto_tier == "BASIC"
+    assert revision.generation_method == "AI"
+    assert revision.generation_mode is None
+    assert revision.strict_failure_code == "AUTO_OUTPUT_NUMERIC_CLAIM_UNDECLARED"
+    assert "STRICT_FAILED_SENTINEL" not in revision.detailed_explanation_vi
+
+
+@pytest.mark.parametrize(
+    "strict",
+    [
+        RiskyGenerator("Mưa gây ra bệnh ở trẻ em."),
+        FakeGenerator(fail=True),
+    ],
+)
+def test_multi_tier_generated_content_or_provider_failure_may_downgrade(
+    db, disease_files, strict
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    basic = FakeBasicGenerator()
+    processor(
+        db, disease_files, FakeDiscovery(), strict, basic_generator=basic
+    ).process_next()
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert revision.auto_tier == "BASIC"
+    assert revision.generation_method == "AI"
+    assert basic.calls == 1
+
+
+@pytest.mark.parametrize(
+    "summary",
+    [
+        "Nghiên cứu ghi nhận mức 1.07 ở trẻ em.",
+        "Nghiên cứu ghi nhận 27% ở trẻ em.",
+        "Mưa gây ra bệnh ở trẻ em.",
+        "Con bạn nên dùng thuốc điều trị.",
+    ],
+)
+def test_multi_tier_invalid_basic_output_uses_safe_template(
+    db, disease_files, summary
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    strict = FakeGenerator(fail=True)
+    basic = FakeBasicGenerator(summary=summary)
+    processor(
+        db, disease_files, FakeDiscovery(), strict, basic_generator=basic
+    ).process_next()
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    assert strict.calls == 1
+    assert basic.calls == 1
+    assert revision.auto_tier == "BASIC"
+    assert revision.generation_method == "SAFE_TEMPLATE"
+    assert revision.generation_mode == "SAFE_FALLBACK"
+    assert not any(token in revision.detailed_explanation_vi for token in ("1.07", "27%", "gây ra", "dùng thuốc"))
+
+
+def test_multi_tier_basic_invented_source_never_persists(db, disease_files):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    basic = FakeBasicGenerator(source_ids=[999])
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        FakeGenerator(fail=True),
+        basic_generator=basic,
+    ).process_next()
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    links = AutoMedicalKnowledgeRepository(db).get_revision_sources(revision.id)
+    assert revision.generation_method == "SAFE_TEMPLATE"
+    assert {source.id for _link, source, _content in links} == {1}
+
+
+def test_multi_tier_basic_rate_limit_propagates_and_persists_cooldown(
+    db, disease_files
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    strict = FakeGenerator(fail=True)
+    basic = FakeBasicGenerator(
+        error=DraftGeneratorRateLimitError(
+            "provider detail must not be persisted", retry_after_seconds=120
+        )
+    )
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        strict,
+        basic_generator=basic,
+        provider_name="groq",
+        retry_delay_seconds=30,
+    ).process_next()
+
+    job = db.scalar(select(AutoMedicalKnowledgeJob))
+    cooldown = db.get(AutoMedicalKnowledgeProviderCooldown, "GROQ")
+    assert strict.calls == 1
+    assert basic.calls == 1
+    assert job.status == "FAILED"
+    assert job.last_error_code == "LLM_RATE_LIMITED"
+    assert job.next_retry_at == NOW + timedelta(seconds=120)
+    assert cooldown.cooldown_until == NOW + timedelta(seconds=120)
+    assert db.scalar(select(func.count()).select_from(AutoMedicalKnowledgeRevision)) == 0
+
+
+def test_multi_tier_final_basic_rate_limit_uses_template_and_keeps_cooldown(
+    db, disease_files
+):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    job = db.scalar(select(AutoMedicalKnowledgeJob))
+    job.attempt_count = 2
+    db.commit()
+    strict = FakeGenerator(fail=True)
+    basic = FakeBasicGenerator(
+        error=DraftGeneratorRateLimitError(
+            "provider detail must not be persisted", retry_after_seconds=120
+        )
+    )
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        strict,
+        basic_generator=basic,
+        provider_name="groq",
+        retry_delay_seconds=30,
+    ).process_next()
+
+    db.refresh(job)
+    revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+    cooldown = db.get(AutoMedicalKnowledgeProviderCooldown, "GROQ")
+    assert strict.calls == 1
+    assert basic.calls == 1
+    assert job.status == "READY"
+    assert revision.auto_tier == "BASIC"
+    assert revision.generation_method == "SAFE_TEMPLATE"
+    assert cooldown.cooldown_until == NOW + timedelta(seconds=120)
+
+
+def test_multi_tier_evidence_failure_makes_zero_generation_calls(db, disease_files):
+    q = queue(db)
+    q.enqueue_selectors(request().items)
+    strict = FakeGenerator()
+    basic = FakeBasicGenerator()
+    processor(
+        db, disease_files, AdultEvidenceDiscovery(), strict, basic_generator=basic
+    ).process_next()
+    job = db.scalar(select(AutoMedicalKnowledgeJob))
+    assert job.status == "INSUFFICIENT"
+    assert strict.calls == 0
+    assert basic.calls == 0
+
+
+def test_multi_tier_basic_never_replaces_existing_strict_current(db, disease_files):
+    q = queue(db)
+    settings = AutoMedicalKnowledgeRepository(db).get_settings()
+    settings.auto_visible_default = True
+    db.commit()
+    q.enqueue_selectors(request().items)
+    processor(
+        db, disease_files, FakeDiscovery(), FakeGenerator()
+    ).process_next()
+    strict_revision = db.scalar(select(AutoMedicalKnowledgeRevision))
+
+    q.enqueue_selectors(request().items, trigger_type="ADMIN", force=True)
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        FakeGenerator(fail=True),
+        basic_generator=FakeBasicGenerator(),
+    ).process_next()
+    revisions = list(db.scalars(select(AutoMedicalKnowledgeRevision).order_by(AutoMedicalKnowledgeRevision.id)))
+    state = db.scalar(select(AutoMedicalKnowledgeTopicState))
+    assert len(revisions) == 2
+    assert revisions[1].auto_tier == "BASIC"
+    assert state.current_revision_id == strict_revision.id
+
+
+def test_multi_tier_parent_basic_dto_is_safe(db, disease_files):
+    q = queue(db)
+    settings = AutoMedicalKnowledgeRepository(db).get_settings()
+    settings.auto_visible_default = False
+    settings.display_mode = "REVIEWED_WITH_AUTO_FALLBACK"
+    db.commit()
+    q.enqueue_selectors(request().items)
+    processor(
+        db,
+        disease_files,
+        FakeDiscovery(),
+        FakeGenerator(fail=True),
+        basic_generator=FakeBasicGenerator(),
+    ).process_next()
+    item = parent(db, q).read_batch(request()).items[0]
+    assert item.auto_tier == "BASIC"
+    assert item.warning == AUTO_BASIC_PARENT_WARNING
+    payload = item.model_dump()
+    assert not {
+        "generation_mode",
+        "generation_method",
+        "strict_failure_code",
+        "strict_failure_stage",
+        "fallback_reason_code",
+        "numeric_claims",
+        "diagnostics",
+    } & payload.keys()
+
+
+def test_v013_is_additive_idempotent_and_preserves_legacy_mapping():
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE auto_medical_knowledge_revisions ("
+            "id INTEGER PRIMARY KEY, generation_mode VARCHAR(20), marker TEXT)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE auto_medical_knowledge_settings (id INTEGER PRIMARY KEY)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO auto_medical_knowledge_revisions VALUES (1,'AI_FULL','unchanged')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO auto_medical_knowledge_settings VALUES (1)"
+        )
+    upgrade_auto_multi_tier(engine)
+    upgrade_auto_multi_tier(engine)
+    with engine.connect() as connection:
+        row = connection.exec_driver_sql(
+            "SELECT generation_mode,auto_tier,generation_method,marker "
+            "FROM auto_medical_knowledge_revisions WHERE id=1"
+        ).one()
+        assert row == ("AI_FULL", None, None, "unchanged")
+        assert connection.exec_driver_sql(
+            "SELECT basic_fallback_enabled FROM auto_medical_knowledge_settings WHERE id=1"
+        ).scalar_one() == 1
+        assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    engine.dispose()
+
+
+def test_v014_is_idempotent_preserves_legacy_prose_and_does_not_invent_hides():
+    engine = create_engine("sqlite://")
+    with engine.begin() as connection:
+        connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+        connection.exec_driver_sql(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE medical_knowledge_topics (id INTEGER PRIMARY KEY)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE auto_medical_knowledge_revisions ("
+            "id INTEGER PRIMARY KEY, short_explanation_vi TEXT, is_visible BOOLEAN NOT NULL)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE auto_medical_knowledge_topic_states ("
+            "topic_id INTEGER PRIMARY KEY, current_revision_id INTEGER, "
+            "request_count INTEGER NOT NULL DEFAULT 0, first_requested_at DATETIME, "
+            "last_requested_at DATETIME, created_at DATETIME NOT NULL, "
+            "updated_at DATETIME NOT NULL, "
+            "FOREIGN KEY(topic_id) REFERENCES medical_knowledge_topics(id), "
+            "FOREIGN KEY(current_revision_id) REFERENCES auto_medical_knowledge_revisions(id))"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO medical_knowledge_topics VALUES (7)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO auto_medical_knowledge_revisions VALUES "
+            "(11,'legacy prose unchanged',0)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO auto_medical_knowledge_topic_states VALUES "
+            "(7,11,0,NULL,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"
+        )
+
+    upgrade_auto_topic_visibility(engine)
+    upgrade_auto_topic_visibility(engine)
+    with engine.connect() as connection:
+        assert connection.exec_driver_sql(
+            "SELECT is_hidden_by_staff,hidden_at "
+            "FROM auto_medical_knowledge_topic_states WHERE topic_id=7"
+        ).one() == (0, None)
+        assert connection.exec_driver_sql(
+            "SELECT short_explanation_vi,is_visible "
+            "FROM auto_medical_knowledge_revisions WHERE id=11"
+        ).one() == ("legacy prose unchanged", 0)
+        assert connection.exec_driver_sql(
+            "SELECT COUNT(*) FROM auto_medical_knowledge_visibility_audits"
+        ).scalar_one() == 0
+        assert connection.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
+    engine.dispose()

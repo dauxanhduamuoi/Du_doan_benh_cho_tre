@@ -21,13 +21,91 @@ export const FACTOR_GROUP_LABELS: Record<MedicalFactorType, string> = {
   WEATHER: 'Thời tiết',
 };
 
+export const FACTOR_FILTER_LABELS: Record<MedicalFactorType, string> = {
+  AGE: 'Độ tuổi',
+  SEX: 'Giới tính',
+  SEASONALITY: 'Thời điểm trong năm',
+  WEATHER: 'Thời tiết',
+};
+
 export const WEATHER_FACTOR_LABELS: Record<string, string> = {
   temperature: 'Nhiệt độ',
   humidity: 'Độ ẩm',
   precipitation: 'Mưa / lượng mưa',
+  rain: 'Mưa',
   wind: 'Gió',
   weather_condition: 'Điều kiện thời tiết',
 };
+
+export type MedicalFactorIconName =
+  | 'temperature'
+  | 'humidity'
+  | 'rain'
+  | 'wind'
+  | 'weather'
+  | 'age'
+  | 'sex'
+  | 'seasonality';
+
+export interface MedicalFactorPresentation {
+  title: string;
+  shortLabel: string;
+  categoryLabel: string;
+  iconName: MedicalFactorIconName;
+  accessibilityLabel: string;
+  searchTerms: string[];
+}
+
+const FACTOR_PRESENTATIONS: Record<
+  MedicalFactorType,
+  { title: string; categoryLabel: string; iconName: MedicalFactorIconName }
+> = {
+  AGE: { title: 'Độ tuổi', categoryLabel: 'Đặc điểm trẻ', iconName: 'age' },
+  SEX: { title: 'Giới tính', categoryLabel: 'Đặc điểm trẻ', iconName: 'sex' },
+  SEASONALITY: {
+    title: 'Thời điểm trong năm',
+    categoryLabel: 'Yếu tố thời gian',
+    iconName: 'seasonality',
+  },
+  WEATHER: { title: 'Yếu tố thời tiết', categoryLabel: 'Thời tiết', iconName: 'weather' },
+};
+
+const WEATHER_ICON_NAMES: Record<string, MedicalFactorIconName> = {
+  temperature: 'temperature',
+  humidity: 'humidity',
+  precipitation: 'rain',
+  rain: 'rain',
+  wind: 'wind',
+  weather_condition: 'weather',
+};
+
+export function getFactorPresentation(
+  factor: MedicalFactorSelector,
+): MedicalFactorPresentation {
+  const base = FACTOR_PRESENTATIONS[factor.factor_type];
+  const baseTitle = factor.factor_type === 'WEATHER'
+    ? WEATHER_FACTOR_LABELS[factor.factor_key] ?? base.title
+    : base.title;
+  const title = factor.factor_value ? `${baseTitle}: ${factor.factor_value}` : baseTitle;
+  return {
+    title,
+    shortLabel: baseTitle,
+    categoryLabel: base.categoryLabel,
+    iconName: factor.factor_type === 'WEATHER'
+      ? WEATHER_ICON_NAMES[factor.factor_key] ?? base.iconName
+      : base.iconName,
+    accessibilityLabel: `${title}, ${base.categoryLabel}`,
+    searchTerms: [
+      title,
+      baseTitle,
+      base.categoryLabel,
+      factor.factor_type,
+      factor.factor_key,
+      factor.factor_value ?? '',
+      factor.weather_factor ?? '',
+    ],
+  };
+}
 
 export function factorOptionId(option: Pick<ExplanationFactorOption, 'type' | 'key'>): string {
   return `${option.type}:${option.key}`;

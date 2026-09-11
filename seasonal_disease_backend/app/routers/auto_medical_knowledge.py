@@ -9,11 +9,12 @@ from app.auto_medical_knowledge_schemas import (
     AutoMedicalKnowledgeOverviewResponse,
     AutoMedicalKnowledgeSettingsPatch,
     AutoMedicalKnowledgeSettingsResponse,
-    AutoVisibilityRequest,
+    AutoTopicVisibilityRequest,
 )
 from app.config import (
     AUTO_MEDICAL_KNOWLEDGE_INSUFFICIENT_STALE_DAYS,
     AUTO_MEDICAL_KNOWLEDGE_MAX_RETRIES,
+    MEDICAL_KNOWLEDGE_LLM_PROVIDER,
 )
 from app.database import get_db
 from app.models import User
@@ -75,22 +76,29 @@ def update_auto_settings(
     return service.update_settings(**payload.model_dump(exclude_unset=True))
 
 
-@router.post("/revisions/{revision_id}/visibility", response_model=AutoActionResponse)
-def set_auto_visibility(
-    revision_id: int,
-    payload: AutoVisibilityRequest,
-    _admin: User = Depends(require_admin),
+@router.post("/topics/visibility", response_model=AutoActionResponse)
+def set_auto_topic_visibility(
+    payload: AutoTopicVisibilityRequest,
+    actor: User = Depends(require_staff_or_admin),
     service: AutoMedicalKnowledgeAdminService = Depends(get_auto_admin_service),
 ):
     try:
-        revision = service.set_visibility(revision_id, is_visible=payload.is_visible)
+        topic, state = service.set_topic_visibility(
+            disease_group_id=payload.disease_group_id,
+            factor_type=str(payload.factor_type),
+            factor_key=str(payload.factor_key),
+            factor_value=payload.factor_value,
+            weather_factor=payload.weather_factor,
+            hidden=payload.hidden,
+            actor_user_id=actor.id,
+        )
         return AutoActionResponse(
             ok=True,
-            revision_id=revision.id,
+            topic_id=topic.id,
             message=(
-                "Đã cho phép hiển thị nội dung Auto. Đây không phải phê duyệt y khoa."
-                if revision.is_visible
-                else "Đã ẩn nội dung Auto khỏi phụ huynh."
+                "Đã ẩn chủ đề Auto khỏi phụ huynh."
+                if state.is_hidden_by_staff
+                else "Đã hiển thị lại chủ đề Auto theo chính sách hiện hành."
             ),
         )
     except Exception as exc:
@@ -117,11 +125,22 @@ def regenerate_auto_topic(
     queue: AutoMedicalKnowledgeQueueService = Depends(get_auto_queue_service),
 ):
     try:
-        job_ids = queue.enqueue_selectors([payload], trigger_type="ADMIN", force=True)
-        if not job_ids:
-            raise AutoMedicalKnowledgeConflictError(
-                "Auto Medical Knowledge đang tắt hoặc topic đã có job đang xử lý"
-            )
-        return AutoActionResponse(ok=True, job_id=job_ids[0], message="Đã xếp hàng tạo lại Auto Knowledge.")
+        result = queue.regenerate_topic(
+            payload, provider=MEDICAL_KNOWLEDGE_LLM_PROVIDER
+        )
+        messages = {
+            "CREATED": "Đã tạo yêu cầu mới.",
+            "ALREADY_ACTIVE": "Chủ đề đã có yêu cầu đang xử lý.",
+            "WAITING_RETRY": "Chủ đề đang chờ đến thời điểm thử lại.",
+            "PROVIDER_COOLDOWN": "Dịch vụ AI đang chờ hết thời gian giới hạn lượt gọi.",
+        }
+        return AutoActionResponse(
+            ok=True,
+            job_id=result.job_id,
+            created=result.created,
+            outcome=result.outcome,
+            job_status=result.job_status,
+            message=messages[result.outcome],
+        )
     except Exception as exc:
         raise _map_error(exc) from exc

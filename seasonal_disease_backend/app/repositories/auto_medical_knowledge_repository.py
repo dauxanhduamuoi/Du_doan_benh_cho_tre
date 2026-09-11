@@ -15,6 +15,7 @@ from app.medical_knowledge_models import (
     AutoMedicalKnowledgeRevisionSource,
     AutoMedicalKnowledgeSetting,
     AutoMedicalKnowledgeTopicState,
+    AutoMedicalKnowledgeVisibilityAudit,
     MedicalEvidenceContent,
     MedicalEvidenceSource,
     MedicalKnowledgeTopic,
@@ -63,6 +64,27 @@ class AutoMedicalKnowledgeRepository:
     def get_topic(self, topic_id: int) -> MedicalKnowledgeTopic | None:
         return self.db.get(MedicalKnowledgeTopic, topic_id)
 
+    def get_topic_by_selector(
+        self,
+        *,
+        disease_group_id: str,
+        factor_type: str,
+        factor_key: str,
+        factor_value: str | None,
+    ) -> MedicalKnowledgeTopic | None:
+        return self.db.scalar(
+            select(MedicalKnowledgeTopic).where(
+                MedicalKnowledgeTopic.disease_group_id == disease_group_id,
+                MedicalKnowledgeTopic.factor_type == factor_type,
+                MedicalKnowledgeTopic.factor_key == factor_key,
+                func.coalesce(MedicalKnowledgeTopic.factor_value, "")
+                == (factor_value or ""),
+            )
+        )
+
+    def get_state(self, topic_id: int) -> AutoMedicalKnowledgeTopicState | None:
+        return self.db.get(AutoMedicalKnowledgeTopicState, topic_id)
+
     def ensure_state(self, topic_id: int, *, now: datetime) -> AutoMedicalKnowledgeTopicState:
         self.db.execute(
             sqlite_insert(AutoMedicalKnowledgeTopicState)
@@ -98,6 +120,41 @@ class AutoMedicalKnowledgeRepository:
         )
         self.db.flush()
         return self.db.get(AutoMedicalKnowledgeTopicState, topic_id)
+
+    def set_topic_hidden(
+        self,
+        topic_id: int,
+        *,
+        hidden: bool,
+        actor_user_id: int,
+        now: datetime,
+    ) -> AutoMedicalKnowledgeTopicState:
+        """Persist the topic policy and audit event in the caller's transaction."""
+        state = self.ensure_state(topic_id, now=now)
+        state.is_hidden_by_staff = hidden
+        state.hidden_at = now if hidden else None
+        state.updated_at = now
+        self.db.add(
+            AutoMedicalKnowledgeVisibilityAudit(
+                topic_id=topic_id,
+                action="HIDE_AUTO_TOPIC" if hidden else "UNHIDE_AUTO_TOPIC",
+                actor_user_id=actor_user_id,
+                created_at=now,
+            )
+        )
+        self.db.flush()
+        return state
+
+    def list_visibility_audits(
+        self, topic_id: int
+    ) -> list[AutoMedicalKnowledgeVisibilityAudit]:
+        return list(
+            self.db.scalars(
+                select(AutoMedicalKnowledgeVisibilityAudit)
+                .where(AutoMedicalKnowledgeVisibilityAudit.topic_id == topic_id)
+                .order_by(AutoMedicalKnowledgeVisibilityAudit.id)
+            )
+        )
 
     def get_active_job(self, topic_id: int) -> AutoMedicalKnowledgeJob | None:
         return self.db.scalar(
@@ -331,6 +388,46 @@ class AutoMedicalKnowledgeRepository:
             .values(current_revision_id=revision_id, updated_at=now)
         )
 
+    @staticmethod
+    def resolved_auto_tier(revision: AutoMedicalKnowledgeRevision) -> str | None:
+        if revision.generation_status != "READY":
+            return None
+        if revision.auto_tier in {"STRICT", "BASIC"}:
+            return revision.auto_tier
+        return "BASIC" if revision.generation_mode == "SAFE_FALLBACK" else "STRICT"
+
+    @staticmethod
+    def resolved_generation_method(
+        revision: AutoMedicalKnowledgeRevision,
+    ) -> str | None:
+        if revision.generation_status != "READY":
+            return None
+        if revision.generation_method in {"AI", "SAFE_TEMPLATE"}:
+            return revision.generation_method
+        return "SAFE_TEMPLATE" if revision.generation_mode == "SAFE_FALLBACK" else "AI"
+
+    def set_current_revision_if_preferred(
+        self, topic_id: int, revision_id: int, *, now: datetime
+    ) -> bool:
+        """Preserve READY Strict > READY Basic > Insufficient centrally."""
+
+        candidate = self.db.get(AutoMedicalKnowledgeRevision, revision_id)
+        if candidate is None or candidate.topic_id != topic_id:
+            raise RuntimeError("Auto revision does not belong to the canonical topic")
+        current = self.get_current_revision(topic_id)
+
+        def priority(revision: AutoMedicalKnowledgeRevision | None) -> int:
+            if revision is None:
+                return 0
+            if revision.generation_status != "READY":
+                return 10
+            return 30 if self.resolved_auto_tier(revision) == "STRICT" else 20
+
+        if priority(candidate) < priority(current):
+            return False
+        self.set_current_revision(topic_id, revision_id, now=now)
+        return True
+
     def add_revision_source(self, **values) -> AutoMedicalKnowledgeRevisionSource:
         link = AutoMedicalKnowledgeRevisionSource(**values)
         self.db.add(link)
@@ -398,12 +495,23 @@ class AutoMedicalKnowledgeRepository:
 
     def current_revisions_for_selectors(
         self, selectors: list[tuple[str, str, str, str | None]]
-    ) -> dict[tuple[str, str, str, str | None], tuple[MedicalKnowledgeTopic, AutoMedicalKnowledgeRevision]]:
+    ) -> dict[
+        tuple[str, str, str, str | None],
+        tuple[
+            MedicalKnowledgeTopic,
+            AutoMedicalKnowledgeRevision,
+            AutoMedicalKnowledgeTopicState,
+        ],
+    ]:
         if not selectors:
             return {}
         normalized = {(a, b, c, d or "") for a, b, c, d in selectors}
         rows = self.db.execute(
-            select(MedicalKnowledgeTopic, AutoMedicalKnowledgeRevision)
+            select(
+                MedicalKnowledgeTopic,
+                AutoMedicalKnowledgeRevision,
+                AutoMedicalKnowledgeTopicState,
+            )
             .join(
                 AutoMedicalKnowledgeTopicState,
                 AutoMedicalKnowledgeTopicState.topic_id == MedicalKnowledgeTopic.id,
@@ -415,7 +523,7 @@ class AutoMedicalKnowledgeRepository:
             )
         )
         result = {}
-        for topic, revision in rows:
+        for topic, revision, state in rows:
             key = (
                 topic.disease_group_id,
                 topic.factor_type,
@@ -423,7 +531,11 @@ class AutoMedicalKnowledgeRepository:
                 topic.factor_value or "",
             )
             if key in normalized:
-                result[(key[0], key[1], key[2], topic.factor_value)] = (topic, revision)
+                result[(key[0], key[1], key[2], topic.factor_value)] = (
+                    topic,
+                    revision,
+                    state,
+                )
         return result
 
     def get_settings(self) -> AutoMedicalKnowledgeSetting:
@@ -434,6 +546,7 @@ class AutoMedicalKnowledgeRepository:
                 enabled=False,
                 display_mode="REVIEWED_ONLY",
                 auto_visible_default=False,
+                basic_fallback_enabled=True,
                 updated_at=datetime.utcnow(),
             )
             self.db.add(settings)
@@ -461,10 +574,20 @@ class AutoMedicalKnowledgeRepository:
 
     def list_current_revisions(
         self, *, limit: int = 100
-    ) -> list[tuple[AutoMedicalKnowledgeRevision, MedicalKnowledgeTopic]]:
+    ) -> list[
+        tuple[
+            AutoMedicalKnowledgeRevision,
+            MedicalKnowledgeTopic,
+            AutoMedicalKnowledgeTopicState,
+        ]
+    ]:
         return list(
             self.db.execute(
-                select(AutoMedicalKnowledgeRevision, MedicalKnowledgeTopic)
+                select(
+                    AutoMedicalKnowledgeRevision,
+                    MedicalKnowledgeTopic,
+                    AutoMedicalKnowledgeTopicState,
+                )
                 .join(
                     AutoMedicalKnowledgeTopicState,
                     AutoMedicalKnowledgeTopicState.current_revision_id

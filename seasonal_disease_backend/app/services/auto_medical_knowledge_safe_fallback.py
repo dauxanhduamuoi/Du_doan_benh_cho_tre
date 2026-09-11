@@ -222,8 +222,8 @@ class AutoSafeFallbackRenderer:
         )
         limitations = (
             "Mối liên hệ được ghi nhận không chứng minh quan hệ nhân quả. "
-            "Đây là bản giải thích tự động rút gọn vì bản giải thích đầy đủ "
-            "không vượt qua kiểm tra kỹ thuật đầu ra."
+            "Nội dung chỉ tóm tắt bằng chứng ở mức nhóm và không thay thế "
+            "đánh giá của nhân viên y tế."
         )
         assessments = [
             SourceAssessment(

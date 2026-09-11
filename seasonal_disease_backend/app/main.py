@@ -54,6 +54,10 @@ from migrations.v011_auto_numeric_claim_contract import (
     upgrade as upgrade_auto_numeric_claim_contract,
 )
 from migrations.v012_auto_safe_fallback import upgrade as upgrade_auto_safe_fallback
+from migrations.v013_auto_multi_tier_generation import (
+    upgrade as upgrade_auto_multi_tier_generation,
+)
+from migrations.v014_auto_topic_visibility import upgrade as upgrade_auto_topic_visibility
 
 
 @asynccontextmanager
@@ -71,6 +75,8 @@ async def lifespan(_: FastAPI):
     upgrade_auto_medical_knowledge_provider_cooldown(engine)
     upgrade_auto_numeric_claim_contract(engine)
     upgrade_auto_safe_fallback(engine)
+    upgrade_auto_multi_tier_generation(engine)
+    upgrade_auto_topic_visibility(engine)
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)

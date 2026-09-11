@@ -103,6 +103,7 @@ def raise_structured_draft_validation_error(
 
 ProposalT = TypeVar("ProposalT", bound=BaseModel)
 _SAFE_ENUMS = {
+    "result": {"SUPPORTED", "INSUFFICIENT"},
     "evidence_level": {
         "SUPPORTED", "LIMITED_OR_INDIRECT", "CONFLICTING", "INSUFFICIENT"
     },
@@ -198,7 +199,7 @@ def parse_medical_draft_output(
     """Normalize formatting only, then validate schema and exact provenance."""
 
     value = _normalized_json_object(output_text)
-    for field in ("evidence_level", "evidence_scope"):
+    for field in ("result", "evidence_level", "evidence_scope"):
         if field in value:
             value[field] = _normalize_safe_enum(value[field], field)
     assessments = value.get("source_assessments")
@@ -226,32 +227,33 @@ def parse_medical_draft_output(
             field=str(missing[0]),
         )
 
-    if not isinstance(assessments, list):
-        _raise_structural(
-            "AUTO_OUTPUT_SCHEMA_INVALID",
-            "source_assessments must be an array.",
-            field="source_assessments",
-        )
     selected_ids = [source.source_id for source in context.sources]
-    returned_ids = [
-        item.get("source_id") for item in assessments if isinstance(item, dict)
-    ]
-    if (
-        len(returned_ids) != len(assessments)
-        or len(returned_ids) != len(selected_ids)
-        or len(set(returned_ids)) != len(returned_ids)
-        or set(returned_ids) != set(selected_ids)
-    ):
-        unexpected = next(
-            (item for item in returned_ids if isinstance(item, int) and item not in selected_ids),
-            None,
-        )
-        _raise_structural(
-            "AUTO_OUTPUT_SOURCE_SET_MISMATCH",
-            "Provider output must assess every selected source ID exactly once.",
-            field="source_assessments",
-            source_id=unexpected,
-        )
+    if "source_assessments" in proposal_model.model_fields:
+        if not isinstance(assessments, list):
+            _raise_structural(
+                "AUTO_OUTPUT_SCHEMA_INVALID",
+                "source_assessments must be an array.",
+                field="source_assessments",
+            )
+        returned_ids = [
+            item.get("source_id") for item in assessments if isinstance(item, dict)
+        ]
+        if (
+            len(returned_ids) != len(assessments)
+            or len(returned_ids) != len(selected_ids)
+            or len(set(returned_ids)) != len(returned_ids)
+            or set(returned_ids) != set(selected_ids)
+        ):
+            unexpected = next(
+                (item for item in returned_ids if isinstance(item, int) and item not in selected_ids),
+                None,
+            )
+            _raise_structural(
+                "AUTO_OUTPUT_SOURCE_SET_MISMATCH",
+                "Provider output must assess every selected source ID exactly once.",
+                field="source_assessments",
+                source_id=unexpected,
+            )
 
     try:
         return proposal_model.model_validate(value)

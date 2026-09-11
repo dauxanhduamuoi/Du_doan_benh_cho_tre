@@ -59,6 +59,7 @@ AUTO_TRUST_CLASSES = (
 )
 AUTO_DISCOVERY_DECISIONS = ("SELECTED", "SKIPPED")
 AUTO_DISPLAY_MODES = ("REVIEWED_ONLY", "REVIEWED_WITH_AUTO_FALLBACK")
+AUTO_TOPIC_VISIBILITY_ACTIONS = ("HIDE_AUTO_TOPIC", "UNHIDE_AUTO_TOPIC")
 AUTO_NUMERIC_CLAIM_KINDS = (
     "COUNT",
     "PERCENTAGE",
@@ -396,6 +397,14 @@ class AutoMedicalKnowledgeRevision(Base):
             name="ck_auto_mk_generation_mode",
         ),
         CheckConstraint(
+            "auto_tier IS NULL OR auto_tier IN ('STRICT','BASIC')",
+            name="ck_auto_mk_auto_tier",
+        ),
+        CheckConstraint(
+            "generation_method IS NULL OR generation_method IN ('AI','SAFE_TEMPLATE')",
+            name="ck_auto_mk_generation_method",
+        ),
+        CheckConstraint(
             "fallback_reason_code IS NULL OR fallback_reason_code IN "
             "('CONTRACT_REPAIR_EXHAUSTED','REPAIR_PROVIDER_FAILURE','REPAIR_STRUCTURAL_FAILURE')",
             name="ck_auto_mk_fallback_reason",
@@ -428,6 +437,10 @@ class AutoMedicalKnowledgeRevision(Base):
     prompt_version: Mapped[str] = mapped_column(String(100), nullable=False)
     generation_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     fallback_reason_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    auto_tier: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    generation_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    strict_failure_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    strict_failure_stage: Mapped[str | None] = mapped_column(String(40), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     source_retrieved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
@@ -449,10 +462,36 @@ class AutoMedicalKnowledgeTopicState(Base):
     request_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     first_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    is_hidden_by_staff: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    hidden_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+
+class AutoMedicalKnowledgeVisibilityAudit(Base):
+    __tablename__ = "auto_medical_knowledge_visibility_audits"
+    __table_args__ = (
+        CheckConstraint(
+            _allowed("action", AUTO_TOPIC_VISIBILITY_ACTIONS),
+            name="ck_auto_mk_visibility_audit_action",
+        ),
+        Index("ix_auto_mk_visibility_audits_topic", "topic_id", "created_at"),
+        Index("ix_auto_mk_visibility_audits_actor", "actor_user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    topic_id: Mapped[int] = mapped_column(
+        ForeignKey("medical_knowledge_topics.id", ondelete="CASCADE"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String(24), nullable=False)
+    actor_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class AutoMedicalKnowledgeRevisionSource(Base):
@@ -567,6 +606,10 @@ class AutoMedicalKnowledgeSetting(Base):
         ),
         CheckConstraint("auto_visible_default IN (0,1)", name="ck_auto_mk_settings_visible"),
         CheckConstraint("enabled IN (0,1)", name="ck_auto_mk_settings_enabled"),
+        CheckConstraint(
+            "basic_fallback_enabled IN (0,1)",
+            name="ck_auto_mk_settings_basic_fallback_enabled",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
@@ -575,6 +618,7 @@ class AutoMedicalKnowledgeSetting(Base):
         String(40), default="REVIEWED_ONLY", nullable=False
     )
     auto_visible_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    basic_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )

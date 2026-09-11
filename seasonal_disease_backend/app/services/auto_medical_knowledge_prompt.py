@@ -8,6 +8,7 @@ from app.services.medical_knowledge_prompt import SYSTEM_INSTRUCTIONS
 
 
 AUTO_MEDICAL_KNOWLEDGE_V2_PROMPT_VERSION = "medical_knowledge_auto_v2_numeric_claims"
+AUTO_MEDICAL_KNOWLEDGE_BASIC_PROMPT_VERSION = "medical_knowledge_auto_basic_v1"
 
 
 AUTO_SYSTEM_INSTRUCTIONS = SYSTEM_INSTRUCTIONS + """
@@ -35,6 +36,20 @@ Auto Medical Knowledge rules:
 - A simple restatement of explicit canonical topic context, such as the supplied age bucket, is not a new medical numeric claim.
 - For INSUFFICIENT or CONFLICTING, use the structured safe outcome, set explanation fields to null, and return numeric_claims as an empty array.
 - Before returning, scan short_explanation_vi, detailed_explanation_vi, and limitations_vi. For every medically meaningful numeric occurrence, either provide exactly one numeric_claim or remove the numeric detail.
+"""
+
+BASIC_AUTO_SYSTEM_INSTRUCTIONS = """You create a short parent-facing qualitative explanation.
+Use ONLY the supplied selected medical evidence. Explain whether the sources report an
+association between the selected disease group and factor in children.
+
+Rules:
+- Return only the requested JSON schema.
+- Use at most two or three short Vietnamese sentences in summary_vi.
+- Use qualitative wording only; do not use numbers, statistics, dates, ratios, or measurements.
+- Do not describe biological mechanisms or claim causation.
+- Do not diagnose, recommend treatment, or give personalized advice.
+- Do not invent source IDs. source_ids may reference only supplied selected sources.
+- Return INSUFFICIENT when even a cautious qualitative association is unsupported.
 """
 
 
@@ -67,6 +82,23 @@ def build_auto_generation_input(context: DraftGenerationContext) -> str:
             "support": "Each declaration must quote an exact excerpt from its selected source evidence_text.",
             "insufficient": "INSUFFICIENT and CONFLICTING require numeric_claims=[].",
         },
+    }
+    return json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
+
+
+def build_auto_basic_generation_input(context: DraftGenerationContext) -> str:
+    envelope = {
+        "task": "Create one short qualitative Vietnamese parent-facing explanation.",
+        "canonical_topic": {
+            "disease_group_id": context.disease_group_id,
+            "disease_group_name": context.disease_group_name,
+            "factor_type": context.factor_type,
+            "factor_key": context.factor_key,
+            "factor_value": context.factor_value,
+            "population": "pediatric group-level only",
+        },
+        "qualified_selected_evidence": [source.model_dump() for source in context.sources],
+        "privacy_boundary": "No patient or Parent personal data is present.",
     }
     return json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
 

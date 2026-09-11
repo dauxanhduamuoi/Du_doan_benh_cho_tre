@@ -17,8 +17,8 @@ from app.published_medical_knowledge_schemas import (
 from app.repositories.medical_knowledge_repository import MedicalKnowledgeRepository
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
 from app.services.auto_medical_knowledge_service import (
-    AUTO_PARENT_WARNING,
-    AUTO_SAFE_FALLBACK_PARENT_WARNING,
+    AUTO_BASIC_PARENT_WARNING,
+    AUTO_STRICT_PARENT_WARNING,
     AutoMedicalKnowledgeQueueService,
     auto_revision_parent_eligible,
 )
@@ -174,7 +174,7 @@ class PublishedMedicalKnowledgeReadService:
             return PublishedMedicalKnowledgeItem(
                 disease_group_id=topic.disease_group_id,
                 knowledge_type="REVIEWED",
-                generation_mode=None,
+                auto_tier=None,
                 warning=None,
                 factor_type=topic.factor_type,
                 factor_key=topic.factor_key,
@@ -191,7 +191,11 @@ class PublishedMedicalKnowledgeReadService:
         except ValidationError:
             return None
 
-    def _safe_auto_item(self, topic, revision) -> PublishedMedicalKnowledgeItem | None:
+    def _safe_auto_item(
+        self, topic, revision, state
+    ) -> PublishedMedicalKnowledgeItem | None:
+        if state.is_hidden_by_staff is True:
+            return None
         source_rows = self.auto_repository.get_revision_sources(revision.id)
         if not auto_revision_parent_eligible(revision, source_rows):
             return None
@@ -212,14 +216,15 @@ class PublishedMedicalKnowledgeReadService:
             except ValidationError:
                 return None
         try:
+            auto_tier = self.auto_repository.resolved_auto_tier(revision)
             return PublishedMedicalKnowledgeItem(
                 disease_group_id=topic.disease_group_id,
                 knowledge_type="AUTO",
-                generation_mode=revision.generation_mode or "AI_FULL",
+                auto_tier=auto_tier,
                 warning=(
-                    AUTO_SAFE_FALLBACK_PARENT_WARNING
-                    if revision.generation_mode == "SAFE_FALLBACK"
-                    else AUTO_PARENT_WARNING
+                    AUTO_BASIC_PARENT_WARNING
+                    if auto_tier == "BASIC"
+                    else AUTO_STRICT_PARENT_WARNING
                 ),
                 factor_type=topic.factor_type,
                 factor_key=topic.factor_key,

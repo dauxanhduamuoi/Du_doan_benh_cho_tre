@@ -37,10 +37,15 @@ from app.database import SessionLocal
 from app.services.auto_evidence_discovery import PubMedAutoEvidenceProvider
 from app.services.auto_medical_knowledge_prompt import (
     AUTO_SYSTEM_INSTRUCTIONS,
+    BASIC_AUTO_SYSTEM_INSTRUCTIONS,
     build_auto_generation_input,
+    build_auto_basic_generation_input,
 )
 from app.services.auto_medical_knowledge_service import AutoMedicalKnowledgeProcessor
-from app.auto_medical_knowledge_schemas import AutoMedicalKnowledgeDraftProposal
+from app.auto_medical_knowledge_schemas import (
+    AutoBasicMedicalKnowledgeProposal,
+    AutoMedicalKnowledgeDraftProposal,
+)
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
 from app.services.medical_evidence_content_service import MedicalEvidenceContentService
 from app.services.medical_knowledge_draft_generator import (
@@ -94,6 +99,21 @@ def process_auto_medical_knowledge_once() -> bool:
         input_builder=build_auto_generation_input,
         proposal_model=AutoMedicalKnowledgeDraftProposal,
     )
+    basic_generator = create_medical_knowledge_draft_generator(
+        provider=MEDICAL_KNOWLEDGE_LLM_PROVIDER,
+        openai_api_key=OPENAI_API_KEY,
+        openai_model=OPENAI_MODEL,
+        openai_timeout_seconds=MEDICAL_KNOWLEDGE_LLM_TIMEOUT_SECONDS,
+        ollama_base_url=OLLAMA_BASE_URL,
+        ollama_model=OLLAMA_MODEL,
+        ollama_timeout_seconds=OLLAMA_TIMEOUT_SECONDS,
+        groq_api_key=GROQ_API_KEY,
+        groq_model=GROQ_MODEL,
+        groq_timeout_seconds=GROQ_TIMEOUT_SECONDS,
+        system_instructions=BASIC_AUTO_SYSTEM_INSTRUCTIONS,
+        input_builder=build_auto_basic_generation_input,
+        proposal_model=AutoBasicMedicalKnowledgeProposal,
+    )
     try:
         with SessionLocal() as db:
             discovery = PubMedAutoEvidenceProvider(
@@ -109,6 +129,7 @@ def process_auto_medical_knowledge_once() -> bool:
                 db,
                 discovery,
                 generator,
+                basic_generator,
                 disease_manifest_path=WEATHER_AI_V3_MODEL_MANIFEST,
                 disease_catalog_path=WEATHER_AI_V3_DISEASE_CATALOG,
                 max_sources=AUTO_MEDICAL_KNOWLEDGE_MAX_SOURCES,
@@ -126,6 +147,7 @@ def process_auto_medical_knowledge_once() -> bool:
             return processor.process_next() is not None
     finally:
         generator.close()
+        basic_generator.close()
         client.close()
 
 

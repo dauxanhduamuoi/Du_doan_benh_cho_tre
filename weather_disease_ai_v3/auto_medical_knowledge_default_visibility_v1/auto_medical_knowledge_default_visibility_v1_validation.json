@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "global_auto_display_gate": true,
+  "eligible_auto_default_visible": true,
+  "manual_per_revision_allow_required": false,
+  "topic_level_hide": true,
+  "hide_persists_across_revisions": true,
+  "unhide_restores_current_eligible": true,
+  "reviewed_precedes_auto": true,
+  "strict_precedes_basic": true,
+  "insufficient_not_visible": true,
+  "unsafe_not_visible": true,
+  "regeneration_independent": true,
+  "generation_does_not_clear_hide": true,
+  "parent_dto_safe": true,
+  "database_business_logic_sqlite_specific": false,
+  "legacy_false_mapped_to_hidden": false,
+  "visibility_audit_actions": [
+    "HIDE_AUTO_TOPIC",
+    "UNHIDE_AUTO_TOPIC"
+  ],
+  "backend_focused_tests_passed": 19,
+  "frontend_focused_tests_passed": 55,
+  "typescript_typecheck_passed": true,
+  "frontend_production_build_passed": true,
+  "manual_browser_smoke_test_required_after_deployment": true,
+  "live_external_services_called": false,
+  "production_data_changed": false
+}

@@ -6,7 +6,10 @@ import type {
   WeatherAIPredictResponse,
   WeatherAITier1Factor,
 } from '@/lib/api';
-import { PublishedMedicalKnowledgeSections } from './WeatherAIResults';
+import {
+  medicalKnowledgeReviewLabel,
+  PublishedMedicalKnowledgeSections,
+} from './WeatherAIResults';
 import { buildPublishedMedicalKnowledgeSelectors } from './publishedMedicalKnowledge';
 
 function factor(
@@ -100,6 +103,22 @@ const item: PublishedMedicalKnowledgeItem = {
 };
 
 describe('published Medical Knowledge selector mapping', () => {
+  it('uses the three Parent-facing review labels and maps legacy Auto rows', () => {
+    expect(medicalKnowledgeReviewLabel(item)).toBe('Đã kiểm duyệt y khoa');
+    expect(medicalKnowledgeReviewLabel({
+      ...item,
+      knowledge_type: 'AUTO',
+      auto_tier: 'STRICT',
+      warning: 'Auto warning',
+    })).toBe('Tự động – Kiểm tra nâng cao');
+    expect(medicalKnowledgeReviewLabel({
+      ...item,
+      knowledge_type: 'AUTO',
+      auto_tier: 'BASIC',
+      warning: 'Auto warning',
+    })).toBe('Tự động – Giải thích cơ bản');
+  });
+
   it('uses canonical Tier-1 identifiers, positive ordering, and deterministic deduplication', () => {
     const selectors = buildPublishedMedicalKnowledgeSelectors(response([
       prediction('17', [
@@ -194,12 +213,12 @@ describe('published Medical Knowledge parent presentation', () => {
     render(<PublishedMedicalKnowledgeSections items={[{
       ...item,
       knowledge_type: 'AUTO',
-      generation_mode: 'SAFE_FALLBACK',
+      auto_tier: 'BASIC',
       warning,
     }]} />);
     expect(screen.getByText(/nội dung được tạo tự động/i)).toBeVisible();
     expect(screen.getByText(warning)).toBeVisible();
-    expect(screen.getByText('Giải thích tự động rút gọn')).toBeVisible();
+    expect(screen.getByText('Tự động – Giải thích cơ bản')).toBeVisible();
     expect(screen.queryByText(/Đã được kiểm duyệt/)).not.toBeInTheDocument();
   });
 

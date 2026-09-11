@@ -15,6 +15,11 @@ from app.config import MEDICAL_KNOWLEDGE_LLM_MAX_SOURCES
 
 
 AutoDisplayMode = Literal["REVIEWED_ONLY", "REVIEWED_WITH_AUTO_FALLBACK"]
+AutoTier = Literal["STRICT", "BASIC"]
+AutoGenerationMethod = Literal["AI", "SAFE_TEMPLATE"]
+AutoRegenerationOutcome = Literal[
+    "CREATED", "ALREADY_ACTIVE", "WAITING_RETRY", "PROVIDER_COOLDOWN"
+]
 AutoJobStatus = Literal[
     "QUEUED", "SEARCHING", "GENERATING", "READY", "INSUFFICIENT", "FAILED", "CANCELLED"
 ]
@@ -108,12 +113,46 @@ class AutoMedicalKnowledgeDraftProposal(BaseModel):
         return self
 
 
+class AutoBasicMedicalKnowledgeProposal(BaseModel):
+    """Intentionally small qualitative-only provider contract."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    result: Literal["SUPPORTED", "INSUFFICIENT"]
+    summary_vi: str | None = Field(default=None, max_length=1200)
+    source_ids: list[int] = Field(default_factory=list, max_length=MEDICAL_KNOWLEDGE_LLM_MAX_SOURCES)
+
+    @field_validator("summary_vi", mode="before")
+    @classmethod
+    def normalize_summary(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @field_validator("source_ids")
+    @classmethod
+    def unique_positive_source_ids(cls, values: list[int]):
+        if any(value <= 0 for value in values) or len(values) != len(set(values)):
+            raise ValueError("source_ids must contain unique positive IDs")
+        return values
+
+    @model_validator(mode="after")
+    def validate_result_path(self):
+        if self.result == "SUPPORTED" and (not self.summary_vi or not self.source_ids):
+            raise ValueError("SUPPORTED requires summary_vi and at least one source_id")
+        if self.result == "INSUFFICIENT" and (self.summary_vi or self.source_ids):
+            raise ValueError("INSUFFICIENT must not contain summary_vi or source_ids")
+        return self
+
+
 class AutoMedicalKnowledgeSettingsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool
     display_mode: AutoDisplayMode
     auto_visible_default: bool
+    basic_fallback_enabled: bool
 
 
 class AutoMedicalKnowledgeSettingsPatch(BaseModel):
@@ -122,6 +161,7 @@ class AutoMedicalKnowledgeSettingsPatch(BaseModel):
     enabled: bool | None = None
     display_mode: AutoDisplayMode | None = None
     auto_visible_default: bool | None = None
+    basic_fallback_enabled: bool | None = None
 
 
 class AutoProviderCooldownResponse(BaseModel):
@@ -166,6 +206,11 @@ class AutoDiscoveryDiagnosticsResponse(BaseModel):
     contract_repair_reason: str | None = None
     contract_repair_calls: int | None = None
     contract_repair_result: str | None = None
+    basic_attempted: bool | None = None
+    basic_calls: int | None = None
+    basic_result: str | None = None
+    strict_failure_code: str | None = None
+    strict_failure_stage: str | None = None
     failure: "AutoFailureDiagnosticResponse | None" = None
 
 
@@ -204,6 +249,11 @@ class AutoFailureDiagnosticResponse(BaseModel):
     contract_repair_reason: str | None = None
     contract_repair_calls: int | None = None
     contract_repair_result: str | None = None
+    basic_attempted: bool | None = None
+    basic_calls: int | None = None
+    basic_result: str | None = None
+    strict_failure_code: str | None = None
+    strict_failure_stage: str | None = None
 
 
 class AutoAttemptHistoryResponse(BaseModel):
@@ -223,6 +273,7 @@ class AutoMedicalKnowledgeJobResponse(BaseModel):
     id: int
     topic_id: int
     disease_group_id: str
+    disease_group_name: str
     factor_type: str
     factor_key: str
     factor_value: str | None
@@ -265,9 +316,14 @@ class AutoMedicalKnowledgeRevisionResponse(GenericFactorSelector):
     id: int
     topic_id: int
     disease_group_id: str
+    disease_group_name: str
     revision_number: int
     generation_status: Literal["READY", "INSUFFICIENT"]
     generation_mode: Literal["AI_FULL", "SAFE_FALLBACK"] | None = None
+    auto_tier: AutoTier | None = None
+    generation_method: AutoGenerationMethod | None = None
+    strict_failure_code: str | None = None
+    strict_failure_stage: str | None = None
     fallback_reason_code: Literal[
         "CONTRACT_REPAIR_EXHAUSTED",
         "REPAIR_PROVIDER_FAILURE",
@@ -279,6 +335,9 @@ class AutoMedicalKnowledgeRevisionResponse(GenericFactorSelector):
     detailed_explanation_vi: str | None
     limitations_vi: str | None
     is_visible: bool
+    auto_display_eligible: bool
+    topic_hidden_by_staff: bool
+    topic_hidden_at: datetime | None
     llm_model: str | None
     prompt_version: str
     generated_at: datetime
@@ -296,10 +355,11 @@ class AutoMedicalKnowledgeOverviewResponse(BaseModel):
     revisions: list[AutoMedicalKnowledgeRevisionResponse]
 
 
-class AutoVisibilityRequest(BaseModel):
+class AutoTopicVisibilityRequest(GenericFactorSelector):
     model_config = ConfigDict(extra="forbid")
 
-    is_visible: bool
+    disease_group_id: str = Field(min_length=1, max_length=100)
+    hidden: bool
 
 
 class AutoEnqueueRequest(GenericFactorSelector):
@@ -314,4 +374,8 @@ class AutoActionResponse(BaseModel):
     ok: bool
     job_id: int | None = None
     revision_id: int | None = None
+    topic_id: int | None = None
+    created: bool | None = None
+    outcome: AutoRegenerationOutcome | None = None
+    job_status: AutoJobStatus | None = None
     message: str

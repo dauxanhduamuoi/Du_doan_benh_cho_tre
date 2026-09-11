@@ -773,7 +773,7 @@ export interface PublishedMedicalKnowledgeCitation {
 export interface PublishedMedicalKnowledgeItem {
   disease_group_id: string;
   knowledge_type: 'REVIEWED' | 'AUTO';
-  generation_mode?: 'AI_FULL' | 'SAFE_FALLBACK' | null;
+  auto_tier?: 'STRICT' | 'BASIC' | null;
   warning: string | null;
   factor_type: 'WEATHER' | 'AGE' | 'SEX' | 'SEASONALITY';
   factor_key: string;
@@ -822,8 +822,8 @@ function safePublishedMedicalKnowledgeResponse(value: unknown): PublishedMedical
     });
     return typeof row.disease_group_id === 'string'
       && (row.knowledge_type === 'REVIEWED' || row.knowledge_type === 'AUTO')
-      && (row.generation_mode === undefined || row.generation_mode === null
-        || row.generation_mode === 'AI_FULL' || row.generation_mode === 'SAFE_FALLBACK')
+      && (row.auto_tier === undefined || row.auto_tier === null
+        || row.auto_tier === 'STRICT' || row.auto_tier === 'BASIC')
       && (row.knowledge_type === 'AUTO'
         ? typeof row.warning === 'string' && row.warning.trim().length > 0
         : row.warning === null)

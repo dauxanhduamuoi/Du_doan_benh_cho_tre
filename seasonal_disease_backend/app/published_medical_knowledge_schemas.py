@@ -48,7 +48,7 @@ class PublishedMedicalKnowledgeItem(GenericFactorSelector):
 
     disease_group_id: str = Field(pattern=r"^[0-9]{1,6}$")
     knowledge_type: Literal["REVIEWED", "AUTO"]
-    generation_mode: Literal["AI_FULL", "SAFE_FALLBACK"] | None = None
+    auto_tier: Literal["STRICT", "BASIC"] | None = None
     warning: str | None = Field(default=None, max_length=500)
     revision_id: int = Field(gt=0)
     evidence_level: ParentEvidenceLevel

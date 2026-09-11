@@ -1,0 +1,88 @@
+{
+  "status": "PASS",
+  "git": {
+    "branch": "feature/medical-knowledge-v1-20260820",
+    "commit": "b72a9594fd265d67b988ae3b03ec316c1e2061bb",
+    "working_tree_clean_before": true
+  },
+  "architecture": {
+    "shared_evidence_qualification": true,
+    "strict_tier_preserved": true,
+    "basic_tier_added": true,
+    "safe_template_reused": true,
+    "failed_strict_prose_reused": false,
+    "numeric_contract_removed_from_strict": false,
+    "numeric_contract_used_by_basic": false
+  },
+  "evidence_gate": {
+    "disease_required": true,
+    "factor_required": true,
+    "pediatric_required": true,
+    "provenance_required": true,
+    "insufficient_stops_generation": true,
+    "conflicting_stops_generation": true
+  },
+  "tiers": {
+    "strict_label": "Tự động – Kiểm tra nâng cao",
+    "basic_label": "Tự động – Giải thích cơ bản",
+    "reviewed_precedes_strict": true,
+    "strict_precedes_basic": true,
+    "safe_template_is_basic_subtype": true
+  },
+  "basic": {
+    "small_schema": true,
+    "numeric_claims": false,
+    "statistics_allowed": false,
+    "mechanism_allowed": false,
+    "causal_claim_allowed": false,
+    "personalized_diagnosis_allowed": false,
+    "source_subset_validated": true,
+    "max_llm_calls": 1
+  },
+  "provider_budget": {
+    "strict_max_calls": 2,
+    "basic_max_calls": 1,
+    "total_max_calls": 3,
+    "safe_template_extra_calls": 0,
+    "cooldown_preserved": true
+  },
+  "legacy": {
+    "ai_full_readable": true,
+    "safe_fallback_readable": true,
+    "historical_medical_text_rewritten": false
+  },
+  "e2e": {
+    "strict": "PASS",
+    "basic": "PASS",
+    "safe_template": "PASS",
+    "insufficient": "PASS",
+    "priority": "PASS",
+    "reviewed_precedence": "PASS",
+    "parent_basic_safe_dto": "PASS"
+  },
+  "tests": {
+    "focused_backend_passed": 264,
+    "focused_backend_failed": 0,
+    "focused_frontend_passed": 79,
+    "focused_frontend_failed": 0,
+    "typecheck_pass": true,
+    "build_pass": true,
+    "startup_pass": true,
+    "foreign_key_check_pass": true
+  },
+  "external_calls": {
+    "groq": 0,
+    "groq_result": "NOT_RUN",
+    "pubmed": 0,
+    "pmc": 0
+  },
+  "integrity": {
+    "reviewed_business_data_modified": false,
+    "historical_auto_content_rewritten": false,
+    "production_jobs_retried": false
+  },
+  "remaining_limitations": [
+    "Live provider and PubMed/PMC availability were intentionally not exercised."
+  ],
+  "user_manual_test_required": false
+}

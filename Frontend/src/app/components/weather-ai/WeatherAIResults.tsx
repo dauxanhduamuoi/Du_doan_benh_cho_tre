@@ -52,6 +52,13 @@ export function evidenceStatusLabel(status?: string | null): string | null {
   return null;
 }
 
+export function medicalKnowledgeReviewLabel(item: PublishedMedicalKnowledgeItem): string {
+  if (item.knowledge_type === 'REVIEWED') return 'Đã kiểm duyệt y khoa';
+  return item.auto_tier === 'BASIC'
+    ? 'Tự động – Giải thích cơ bản'
+    : 'Tự động – Kiểm tra nâng cao';
+}
+
 export function isSafeSourceUrl(value: string): boolean {
   try {
     return new URL(value).protocol === 'https:';
@@ -324,6 +331,9 @@ export function PublishedMedicalKnowledgeSections({
               <h4 className="flex items-center gap-2 text-sm font-bold text-teal-950">
                 <BookOpen size={17} aria-hidden="true" /> Giải thích y khoa
               </h4>
+              <p className="mt-1 text-xs font-bold text-violet-900">
+                {medicalKnowledgeReviewLabel(item)}
+              </p>
               <p className="mt-1 text-xs leading-5 text-slate-600">
                 {factorLabel(item)} — {item.knowledge_type === 'AUTO'
                   ? 'nội dung được tạo tự động từ bằng chứng tin cậy.'
@@ -339,9 +349,6 @@ export function PublishedMedicalKnowledgeSections({
               <Info size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
               <p>{item.warning}</p>
             </div>
-          )}
-          {item.knowledge_type === 'AUTO' && item.generation_mode === 'SAFE_FALLBACK' && (
-            <p className="mt-2 text-xs font-semibold text-violet-900">Giải thích tự động rút gọn</p>
           )}
           <p className="mt-3 text-sm leading-6 text-slate-800">{item.short_explanation_vi}</p>
           <details className="mt-3 rounded-xl border border-teal-100 bg-white/80 px-3 py-2 text-sm text-slate-700">

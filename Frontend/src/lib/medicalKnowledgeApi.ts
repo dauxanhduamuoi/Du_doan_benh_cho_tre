@@ -49,6 +49,7 @@ export interface AutoMedicalKnowledgeSettings {
   enabled: boolean;
   display_mode: AutoMedicalKnowledgeDisplayMode;
   auto_visible_default: boolean;
+  basic_fallback_enabled: boolean;
 }
 
 export interface AutoDiscoveryDiagnostics {
@@ -89,7 +90,7 @@ export interface AutoDiscoveryDiagnostics {
     refusal_present?: boolean | null;
     incomplete?: boolean | null;
     structured_field_detected?: string | null;
-    call_purpose?: 'INITIAL' | 'STRUCTURAL_RETRY' | 'CONTRACT_REPAIR' | null;
+    call_purpose?: 'INITIAL' | 'STRUCTURAL_RETRY' | 'CONTRACT_REPAIR' | 'BASIC' | null;
     generation_call_number?: number | null;
     response_format_type?: string | null;
     provider_validation_stage?: string | null;
@@ -104,6 +105,11 @@ export interface AutoDiscoveryDiagnostics {
     contract_repair_reason?: string | null;
     contract_repair_calls?: number | null;
     contract_repair_result?: string | null;
+    basic_attempted?: boolean | null;
+    basic_calls?: number | null;
+    basic_result?: string | null;
+    strict_failure_code?: string | null;
+    strict_failure_stage?: string | null;
   } | null;
 }
 
@@ -111,6 +117,7 @@ export interface AutoMedicalKnowledgeJob {
   id: number;
   topic_id: number;
   disease_group_id: string;
+  disease_group_name: string;
   factor_type: MedicalFactorType;
   factor_key: string;
   factor_value: string | null;
@@ -156,9 +163,14 @@ export interface AutoMedicalKnowledgeRevision extends MedicalFactorSelector {
   id: number;
   topic_id: number;
   disease_group_id: string;
+  disease_group_name: string;
   revision_number: number;
   generation_status: 'READY' | 'INSUFFICIENT';
   generation_mode?: 'AI_FULL' | 'SAFE_FALLBACK' | null;
+  auto_tier?: 'STRICT' | 'BASIC' | null;
+  generation_method?: 'AI' | 'SAFE_TEMPLATE' | null;
+  strict_failure_code?: string | null;
+  strict_failure_stage?: string | null;
   fallback_reason_code?: 'CONTRACT_REPAIR_EXHAUSTED' | 'REPAIR_PROVIDER_FAILURE' | 'REPAIR_STRUCTURAL_FAILURE' | null;
   evidence_level: EvidenceLevel;
   evidence_scope: EvidenceScope | null;
@@ -166,6 +178,9 @@ export interface AutoMedicalKnowledgeRevision extends MedicalFactorSelector {
   detailed_explanation_vi: string | null;
   limitations_vi: string | null;
   is_visible: boolean;
+  auto_display_eligible: boolean;
+  topic_hidden_by_staff: boolean;
+  topic_hidden_at: string | null;
   llm_model: string | null;
   prompt_version: string;
   generated_at: string;
@@ -425,6 +440,7 @@ export function updateAutoMedicalKnowledgeSettings(payload: {
   enabled?: boolean;
   display_mode?: AutoMedicalKnowledgeDisplayMode;
   auto_visible_default?: boolean;
+  basic_fallback_enabled?: boolean;
 }): Promise<AutoMedicalKnowledgeSettings> {
   return request<AutoMedicalKnowledgeSettings>('/api/medical-knowledge/auto/settings', {
     method: 'PATCH',
@@ -433,14 +449,22 @@ export function updateAutoMedicalKnowledgeSettings(payload: {
   });
 }
 
-export function setAutoMedicalKnowledgeVisibility(
-  revisionId: number,
-  isVisible: boolean,
-): Promise<{ ok: boolean; revision_id: number; message: string }> {
-  return request(`/api/medical-knowledge/auto/revisions/${revisionId}/visibility`, {
+export function setAutoMedicalKnowledgeTopicVisibility(
+  diseaseGroupId: string,
+  factor: MedicalFactorSelector,
+  hidden: boolean,
+): Promise<{ ok: boolean; topic_id: number; message: string }> {
+  return request('/api/medical-knowledge/auto/topics/visibility', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_visible: isVisible }),
+    body: JSON.stringify({
+      disease_group_id: diseaseGroupId,
+      factor_type: factor.factor_type,
+      factor_key: factor.factor_key,
+      factor_value: factor.factor_value,
+      weather_factor: factor.weather_factor,
+      hidden,
+    }),
   });
 }
 
@@ -453,17 +477,30 @@ export function retryAutoMedicalKnowledgeJob(
 export function regenerateAutoMedicalKnowledge(
   diseaseGroupId: string,
   factor: MedicalFactorSelector,
-): Promise<{ ok: boolean; job_id: number; message: string }> {
+): Promise<{
+  ok: boolean;
+  job_id: number | null;
+  created: boolean;
+  outcome: 'CREATED' | 'ALREADY_ACTIVE' | 'WAITING_RETRY' | 'PROVIDER_COOLDOWN';
+  job_status: AutoMedicalKnowledgeJobStatus | null;
+  message: string;
+}> {
   return request('/api/medical-knowledge/auto/regenerate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ disease_group_id: diseaseGroupId, ...factor }),
+    body: JSON.stringify({
+      disease_group_id: diseaseGroupId,
+      factor_type: factor.factor_type,
+      factor_key: factor.factor_key,
+      factor_value: factor.factor_value,
+      weather_factor: factor.weather_factor,
+    }),
   });
 }
 
 export function autoMedicalKnowledgeErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 403) return 'Chỉ admin mới có thể thay đổi hiển thị hoặc chạy lại Auto Knowledge.';
+    if (error.status === 403) return 'Bạn không có quyền thay đổi hiển thị hoặc chạy lại Auto Knowledge.';
     if (error.status === 409) return 'Chủ đề đã có job đang xử lý hoặc trạng thái hiện tại không thể chạy lại.';
     if (error.status === 422) return 'Auto Knowledge này chưa đủ điều kiện an toàn để hiển thị.';
   }

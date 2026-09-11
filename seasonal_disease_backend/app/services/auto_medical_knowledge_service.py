@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Callable, Iterable
 
@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auto_medical_knowledge_schemas import (
+    AutoBasicMedicalKnowledgeProposal,
     AutoAttemptHistoryResponse,
     AutoFailureDiagnosticResponse,
     AutoDiscoveryDiagnosticsResponse,
@@ -45,6 +46,17 @@ from app.services.auto_evidence_discovery import (
     AutoEvidenceDiscoveryProvider,
 )
 from app.services.auto_evidence_relevance import build_disease_aliases
+from app.services.auto_evidence_qualification import (
+    AutoEvidenceQualificationResult,
+    AutoEvidenceQualificationSnapshot,
+    qualify_auto_evidence,
+)
+from app.services.auto_medical_knowledge_basic import (
+    AutoBasicValidationError,
+    render_basic_insufficient,
+    render_basic_supported,
+    validate_basic_proposal,
+)
 from app.services.auto_medical_numeric_validation import (
     NumericClaimContractViolation,
     NumericEvidenceSnapshot,
@@ -54,8 +66,6 @@ from app.services.auto_medical_numeric_validation import (
 )
 from app.services.auto_medical_knowledge_safe_fallback import (
     AutoSafeFallbackRenderer,
-    SafeFallbackEligibilitySnapshot,
-    evaluate_safe_fallback_eligibility,
     is_safe_fallback_trigger,
     safe_fallback_reason_code,
 )
@@ -80,14 +90,23 @@ from app.services.medical_knowledge_population_policy import (
 )
 
 
-AUTO_PARENT_WARNING = "Giải thích tự động bởi AI — chưa được nhân viên y tế kiểm duyệt."
-AUTO_SAFE_FALLBACK_PARENT_WARNING = (
-    f"{AUTO_PARENT_WARNING} Nội dung tự động rút gọn từ các nguồn y khoa đã tìm được."
+AUTO_STRICT_PARENT_WARNING = (
+    "Nội dung được tạo tự động từ các nguồn y khoa và đã vượt qua các bước kiểm tra "
+    "nâng cao của hệ thống. Nội dung chưa được nhân viên y tế kiểm duyệt."
 )
+AUTO_BASIC_PARENT_WARNING = (
+    "Nội dung giải thích ngắn được tạo tự động từ các nguồn y khoa phù hợp. "
+    "Nội dung chưa được nhân viên y tế kiểm duyệt."
+)
+# Backward-compatible exported names.
+AUTO_PARENT_WARNING = AUTO_STRICT_PARENT_WARNING
+AUTO_SAFE_FALLBACK_PARENT_WARNING = AUTO_BASIC_PARENT_WARNING
 
-AUTO_PIPELINE_VERSION = "auto_medical_knowledge_v3_safe_fallback"
+AUTO_PIPELINE_VERSION = "auto_medical_knowledge_v4_multi_tier"
 MAX_AUTO_CONTRACT_REPAIR_ATTEMPTS = 1
-MAX_AUTO_GENERATION_CALLS = 2
+MAX_AUTO_STRICT_GENERATION_CALLS = 2
+MAX_AUTO_BASIC_GENERATION_CALLS = 1
+MAX_AUTO_GENERATION_CALLS = 3
 AUTO_OUTPUT_REPAIRABLE_FAILURE_CODES = frozenset(
     {
         "AUTO_OUTPUT_NUMERIC_CLAIM_KIND_MISMATCH",
@@ -161,21 +180,36 @@ def is_auto_output_repairable(failure_code: str) -> bool:
 
 @dataclass
 class AutoGenerationCallBudget:
-    """One shared budget for initial generation, structural retry, and repair."""
+    """One hard budget with separate Strict and Basic tier caps."""
 
     max_calls: int = MAX_AUTO_GENERATION_CALLS
     calls: int = 0
+    strict_calls: int = 0
+    basic_calls: int = 0
 
     @property
     def remaining(self) -> int:
         return self.max_calls - self.calls
 
-    def call(self, invoke):
-        if self.remaining <= 0:
+    @property
+    def strict_remaining(self) -> int:
+        return min(MAX_AUTO_STRICT_GENERATION_CALLS - self.strict_calls, self.remaining)
+
+    @property
+    def basic_remaining(self) -> int:
+        return min(MAX_AUTO_BASIC_GENERATION_CALLS - self.basic_calls, self.remaining)
+
+    def call(self, invoke, *, tier: str = "STRICT"):
+        remaining = self.strict_remaining if tier == "STRICT" else self.basic_remaining
+        if remaining <= 0:
             raise AutoMedicalKnowledgeValidationError(
                 "Auto generation call budget is exhausted"
             )
         self.calls += 1
+        if tier == "STRICT":
+            self.strict_calls += 1
+        else:
+            self.basic_calls += 1
         return invoke()
 
 
@@ -185,6 +219,11 @@ class AutoContractRepairTrace:
     reason: str | None = None
     calls: int = 0
     result: str = "NOT_REQUIRED"
+    basic_attempted: bool = False
+    basic_calls: int = 0
+    basic_result: str = "NOT_REQUIRED"
+    strict_failure_code: str | None = None
+    strict_failure_stage: str | None = None
 
 
 @dataclass(frozen=True)
@@ -194,6 +233,21 @@ class AutoProposalValidationResult:
     insufficient_reason: str | None
     generation_mode: str = "AI_FULL"
     fallback_reason_code: str | None = None
+    auto_tier: str = "STRICT"
+    generation_method: str = "AI"
+    strict_failure_code: str | None = None
+    strict_failure_stage: str | None = None
+    selected_source_ids: tuple[int, ...] = ()
+    llm_model: str | None = None
+    prompt_version: str | None = None
+
+
+@dataclass(frozen=True)
+class AutoRegenerationResult:
+    job_id: int | None
+    job_status: str | None
+    created: bool
+    outcome: str
 
 
 def _attach_contract_repair_trace(
@@ -206,6 +260,11 @@ def _attach_contract_repair_trace(
         "contract_repair_reason": trace.reason,
         "contract_repair_calls": trace.calls,
         "contract_repair_result": trace.result,
+        "basic_attempted": trace.basic_attempted,
+        "basic_calls": trace.basic_calls,
+        "basic_result": trace.basic_result,
+        "strict_failure_code": trace.strict_failure_code,
+        "strict_failure_stage": trace.strict_failure_stage,
         "generation_calls": budget.calls,
         "max_generation_calls": budget.max_calls,
     }
@@ -318,6 +377,11 @@ def _safe_failure_detail(exc: Exception, code: str) -> dict:
             "contract_repair_reason",
             "contract_repair_calls",
             "contract_repair_result",
+            "basic_attempted",
+            "basic_calls",
+            "basic_result",
+            "strict_failure_code",
+            "strict_failure_stage",
             "generation_calls",
             "max_generation_calls",
         ):
@@ -473,16 +537,18 @@ def auto_revision_parent_eligible(
     revision: AutoMedicalKnowledgeRevision,
     source_rows,
 ) -> bool:
+    tier = AutoMedicalKnowledgeRepository.resolved_auto_tier(revision)
+    method = AutoMedicalKnowledgeRepository.resolved_generation_method(revision)
     if (
         revision.generation_status != "READY"
-        or revision.is_visible is not True
         or revision.evidence_level not in PARENT_DISPLAYABLE_EVIDENCE
         or not revision.short_explanation_vi
         or not revision.detailed_explanation_vi
         or not revision.limitations_vi
-        or (revision.generation_mode or "AI_FULL") not in {"AI_FULL", "SAFE_FALLBACK"}
+        or tier not in {"STRICT", "BASIC"}
+        or method not in {"AI", "SAFE_TEMPLATE"}
         or (
-            revision.generation_mode == "SAFE_FALLBACK"
+            method == "SAFE_TEMPLATE"
             and revision.fallback_reason_code
             not in {
                 "CONTRACT_REPAIR_EXHAUSTED",
@@ -551,6 +617,123 @@ class AutoMedicalKnowledgeQueueService:
             except Exception:
                 # Public reads must remain available; only Auto enqueue fails closed.
                 self.allowed_disease_group_ids = set()
+
+    def _add_enqueued_marker(self, job_id: int, *, now: datetime) -> None:
+        self.repository.add_discovery(
+            job_id=job_id,
+            source_id=None,
+            provider="AUTO_PIPELINE",
+            trust_class="PUBMED",
+            decision="SKIPPED",
+            reason_code="PIPELINE_ENQUEUED",
+            metadata_json={"pipeline_version": AUTO_PIPELINE_VERSION},
+            discovered_at=now,
+        )
+
+    def regenerate_topic(
+        self, selector, *, provider: str | None = None
+    ) -> AutoRegenerationResult:
+        """Create a fresh Admin job for a terminal canonical topic.
+
+        Active work, a scheduled retry, and provider cooldown are returned as
+        typed non-creating outcomes. Historical jobs and revisions are never
+        changed or reused.
+        """
+
+        try:
+            runtime_enabled = self.repository.is_runtime_enabled()
+        except Exception:
+            self.db.rollback()
+            raise AutoMedicalKnowledgeConflictError(
+                "Không đọc được trạng thái Auto Medical Knowledge"
+            )
+        if not runtime_enabled:
+            raise AutoMedicalKnowledgeConflictError(
+                "Auto Medical Knowledge đang tắt"
+            )
+        if selector.disease_group_id not in self.allowed_disease_group_ids:
+            raise AutoMedicalKnowledgeNotFoundError(
+                "Nhóm bệnh không thuộc mô hình đang triển khai"
+            )
+        try:
+            factor = normalize_factor(
+                factor_type=selector.factor_type,
+                factor_key=selector.factor_key,
+                factor_value=selector.factor_value,
+                weather_factor=getattr(selector, "weather_factor", None),
+            )
+        except ValueError as exc:
+            raise AutoMedicalKnowledgeValidationError(str(exc)) from exc
+
+        now = self.clock()
+        try:
+            topic = self.repository.get_or_create_topic(
+                disease_group_id=selector.disease_group_id,
+                factor_type=factor.factor_type,
+                factor_key=factor.factor_key,
+                factor_value=factor.factor_value,
+                weather_factor=factor.weather_factor,
+            )
+            self.repository.ensure_state(topic.id, now=now)
+            active = self.repository.get_active_job(topic.id)
+            if active is not None:
+                self.db.commit()
+                return AutoRegenerationResult(
+                    active.id, active.status, False, "ALREADY_ACTIVE"
+                )
+
+            latest = self.repository.get_latest_job(topic.id)
+            if (
+                latest is not None
+                and latest.status == "FAILED"
+                and latest.next_retry_at is not None
+                and latest.next_retry_at > now
+            ):
+                self.db.commit()
+                return AutoRegenerationResult(
+                    latest.id, latest.status, False, "WAITING_RETRY"
+                )
+
+            if provider and self.repository.get_active_provider_cooldown(
+                provider, now=now
+            ) is not None:
+                self.db.commit()
+                return AutoRegenerationResult(
+                    latest.id if latest is not None else None,
+                    latest.status if latest is not None else None,
+                    False,
+                    "PROVIDER_COOLDOWN",
+                )
+
+            job = self.repository.create_job_if_runtime_enabled(
+                topic.id, trigger_type="ADMIN", now=now
+            )
+            if job is None:
+                self.db.rollback()
+                raise AutoMedicalKnowledgeConflictError(
+                    "Auto Medical Knowledge đang tắt"
+                )
+            self._add_enqueued_marker(job.id, now=now)
+            self.db.commit()
+            return AutoRegenerationResult(job.id, job.status, True, "CREATED")
+        except IntegrityError:
+            # The partial unique index is the final race-safe guard. Return the
+            # concurrent active job instead of creating or reporting another.
+            self.db.rollback()
+            topic = self.repository.get_or_create_topic(
+                disease_group_id=selector.disease_group_id,
+                factor_type=factor.factor_type,
+                factor_key=factor.factor_key,
+                factor_value=factor.factor_value,
+                weather_factor=factor.weather_factor,
+            )
+            active = self.repository.get_active_job(topic.id)
+            self.db.commit()
+            if active is None:
+                raise
+            return AutoRegenerationResult(
+                active.id, active.status, False, "ALREADY_ACTIVE"
+            )
 
     def enqueue_selectors(
         self,
@@ -626,16 +809,7 @@ class AutoMedicalKnowledgeQueueService:
                 if job is None:
                     self.db.rollback()
                     continue
-                self.repository.add_discovery(
-                    job_id=job.id,
-                    source_id=None,
-                    provider="AUTO_PIPELINE",
-                    trust_class="PUBMED",
-                    decision="SKIPPED",
-                    reason_code="PIPELINE_ENQUEUED",
-                    metadata_json={"pipeline_version": AUTO_PIPELINE_VERSION},
-                    discovered_at=now,
-                )
+                self._add_enqueued_marker(job.id, now=now)
                 self.db.commit()
                 job_ids.append(job.id)
             except IntegrityError:
@@ -660,6 +834,7 @@ class AutoMedicalKnowledgeProcessor:
         db: Session,
         discovery: AutoEvidenceDiscoveryProvider,
         generator: MedicalKnowledgeDraftGenerator,
+        basic_generator: MedicalKnowledgeDraftGenerator | None = None,
         *,
         disease_manifest_path,
         disease_catalog_path,
@@ -679,6 +854,7 @@ class AutoMedicalKnowledgeProcessor:
         self.medical_repository = MedicalKnowledgeRepository(db)
         self.discovery = discovery
         self.generator = generator
+        self.basic_generator = basic_generator
         self.disease_manifest_path = str(disease_manifest_path)
         self.disease_catalog_path = str(disease_catalog_path)
         self.max_sources = min(10, max(1, max_sources))
@@ -793,6 +969,7 @@ class AutoMedicalKnowledgeProcessor:
                 "weather_factor": topic.weather_factor,
             },
         )()
+        final_retry_attempt = job.attempt_count >= self.max_retries
         self.db.rollback()
 
         result = self.discovery.discover(
@@ -801,6 +978,17 @@ class AutoMedicalKnowledgeProcessor:
             max_sources=self.max_sources,
             disease_aliases=disease_aliases,
         )
+        if any(
+            candidate.trust_class not in {"PUBMED", "PMC"}
+            for candidate in result.selected
+        ):
+            self._persist_insufficient(
+                job_id,
+                topic_snapshot.id,
+                reason_code="TRUSTED_SOURCE_REQUIRED",
+                reason="Các nguồn tìm thấy không đạt chính sách nguồn tin cậy.",
+            )
+            return
         selected = self._persist_discovery(job_id, result)
         if not selected:
             insufficient_reason = (
@@ -824,6 +1012,24 @@ class AutoMedicalKnowledgeProcessor:
             weather_factor=topic_snapshot.weather_factor,
             sources=[item[2] for item in selected],
         )
+        qualification = qualify_auto_evidence(
+            topic_id=topic_snapshot.id,
+            context=context,
+            selected=selected,
+            discovery_reason=result.diagnostics.insufficient_reason,
+        )
+        if not qualification.eligible or qualification.snapshot is None:
+            reason_code = qualification.reason_code
+            self._persist_insufficient(
+                job_id,
+                topic_snapshot.id,
+                reason_code=reason_code,
+                reason=_INSUFFICIENT_MESSAGES.get(
+                    reason_code,
+                    "Bằng chứng không đạt cổng xác nhận độc lập cho nội dung Auto.",
+                ),
+            )
+            return
         from app.services.auto_medical_knowledge_prompt import build_auto_generation_input
 
         if len(build_auto_generation_input(context)) > self.max_input_chars:
@@ -833,12 +1039,26 @@ class AutoMedicalKnowledgeProcessor:
         validation, budget, repair_trace = self._generate_and_validate_proposal(
             context,
             selected,
+            qualification=qualification,
+            basic_fallback_enabled=(
+                self.repository.get_settings().basic_fallback_enabled
+            ),
+            allow_rate_limit_safe_template=final_retry_attempt,
             topic_id=topic_snapshot.id,
             allowed_context_text=topic_snapshot.factor_value or "",
             metadata_disease_group_ids=(topic_snapshot.disease_group_id,),
         )
         self._persist_generation_diagnostic(job_id, budget, repair_trace)
         proposal = validation.proposal
+        persistence_selected = (
+            [
+                item
+                for item in selected
+                if item[0].id in set(validation.selected_source_ids)
+            ]
+            if validation.selected_source_ids
+            else selected
+        )
         verified_numeric_claims = validation.verified_numeric_claims
         insufficient_reason = validation.insufficient_reason
         if insufficient_reason:
@@ -846,29 +1066,39 @@ class AutoMedicalKnowledgeProcessor:
                 job_id,
                 topic_snapshot.id,
                 proposal,
-                selected,
+                persistence_selected,
                 generation_status="INSUFFICIENT",
                 visible=False,
                 insufficient_reason=insufficient_reason,
                 verified_numeric_claims=verified_numeric_claims,
+                generation_mode=validation.generation_mode,
+                fallback_reason_code=validation.fallback_reason_code,
+                auto_tier=validation.auto_tier,
+                generation_method=validation.generation_method,
+                strict_failure_code=validation.strict_failure_code,
+                strict_failure_stage=validation.strict_failure_stage,
+                llm_model=validation.llm_model,
+                prompt_version=validation.prompt_version,
             )
             return
-        # The persisted admin setting is authoritative; the environment value
-        # only seeds this singleton during migration.
-        visible = (
-            self.repository.get_settings().auto_visible_default
-            and proposal.evidence_level in PARENT_DISPLAYABLE_EVIDENCE
-        )
         self._persist_proposal(
             job_id,
             topic_snapshot.id,
             proposal,
-            selected,
+            persistence_selected,
             generation_status="READY",
-            visible=visible,
+            # Legacy compatibility mirror only. Parent visibility is now the
+            # global display gate + revision safety + durable topic hide state.
+            visible=True,
             verified_numeric_claims=verified_numeric_claims,
             generation_mode=validation.generation_mode,
             fallback_reason_code=validation.fallback_reason_code,
+            auto_tier=validation.auto_tier,
+            generation_method=validation.generation_method,
+            strict_failure_code=validation.strict_failure_code,
+            strict_failure_stage=validation.strict_failure_stage,
+            llm_model=validation.llm_model,
+            prompt_version=validation.prompt_version,
         )
 
     def _validate_generated_proposal(
@@ -925,6 +1155,9 @@ class AutoMedicalKnowledgeProcessor:
         context: DraftGenerationContext,
         selected,
         *,
+        qualification: AutoEvidenceQualificationResult,
+        basic_fallback_enabled: bool,
+        allow_rate_limit_safe_template: bool,
         topic_id: int,
         allowed_context_text: str,
         metadata_disease_group_ids: tuple[str, ...],
@@ -933,7 +1166,7 @@ class AutoMedicalKnowledgeProcessor:
         AutoGenerationCallBudget,
         AutoContractRepairTrace,
     ]:
-        """Generate, classify a typed failure, and run at most one repair."""
+        """Run Strict, then Basic, then the deterministic stability floor."""
 
         from app.services.auto_medical_knowledge_prompt import (
             build_auto_contract_repair_input,
@@ -941,115 +1174,251 @@ class AutoMedicalKnowledgeProcessor:
 
         budget = AutoGenerationCallBudget()
         trace = AutoContractRepairTrace()
-        safe_snapshot: SafeFallbackEligibilitySnapshot | None = None
+        snapshot = qualification.snapshot
+        if not qualification.eligible or snapshot is None:
+            raise AutoMedicalKnowledgeValidationError(
+                "Generation cannot start before evidence qualification passes"
+            )
+        strict_failure: Exception | None = None
         try:
             proposal = self._generate_with_structural_retry(context, budget)
-        except Exception as exc:
-            trace.result = (
-                "RATE_LIMITED"
-                if isinstance(exc, DraftGeneratorRateLimitError)
-                else "NOT_ELIGIBLE"
-            )
+        except DraftGeneratorRateLimitError as exc:
+            trace.result = "RATE_LIMITED"
             raise _attach_contract_repair_trace(exc, trace, budget)
-
-        try:
-            validation = self._validate_generated_proposal(
-                proposal,
-                selected,
-                allowed_context_text=allowed_context_text,
-                metadata_disease_group_ids=metadata_disease_group_ids,
-            )
-        except AutoOutputSafetyError as exc:
-            if not is_auto_output_repairable(exc.code):
-                trace.result = "NOT_ELIGIBLE"
-                raise _attach_contract_repair_trace(exc, trace, budget)
-            eligibility = evaluate_safe_fallback_eligibility(
-                topic_id=topic_id,
-                context=context,
-                selected=selected,
-                proposal=proposal,
-                failure_code=exc.code,
-            )
-            safe_snapshot = eligibility.snapshot if eligibility.eligible else None
-            trace.attempted = True
-            trace.reason = exc.code
-            if budget.remaining <= 0:
-                if safe_snapshot is not None:
-                    fallback = self._render_and_validate_safe_fallback(
-                        safe_snapshot,
-                        selected,
-                        allowed_context_text=allowed_context_text,
-                        metadata_disease_group_ids=metadata_disease_group_ids,
-                        reason_code="CONTRACT_REPAIR_EXHAUSTED",
-                    )
-                    trace.result = "SAFE_FALLBACK"
-                    return fallback, budget, trace
-                trace.result = "FAILED"
-                raise _attach_contract_repair_trace(exc, trace, budget)
-
+        except Exception as exc:
+            strict_failure = exc
+        else:
             try:
-                self._assert_repair_provider_available()
-                repair_input = build_auto_contract_repair_input(
-                    context,
+                validation = self._validate_generated_proposal(
                     proposal,
-                    failure_code=exc.code,
-                    field=exc.field,
-                    numeric_value=exc.numeric_value,
-                )
-                if (
-                    len(repair_input) > self.max_input_chars
-                ):
-                    raise AutoMedicalKnowledgeValidationError(
-                        "Auto contract repair exceeds total input bound"
-                    )
-                trace.calls += 1
-                repaired_proposal = self._call_generator(
-                    context,
-                    budget,
-                    call_purpose="CONTRACT_REPAIR",
-                    user_input_override=repair_input,
-                )
-                repaired_validation = self._validate_generated_proposal(
-                    repaired_proposal,
                     selected,
                     allowed_context_text=allowed_context_text,
                     metadata_disease_group_ids=metadata_disease_group_ids,
                 )
-            except Exception as repair_exc:
-                repair_code = classify_auto_failure(repair_exc, new_pipeline=True)
-                if safe_snapshot is not None and is_safe_fallback_trigger(
-                    repair_code, "CONTRACT_REPAIR"
-                ):
-                    fallback = self._render_and_validate_safe_fallback(
-                        safe_snapshot,
+            except AutoOutputSafetyError as exc:
+                strict_failure = exc
+                if is_auto_output_repairable(exc.code):
+                    trace.attempted = True
+                    trace.reason = exc.code
+                    if budget.strict_remaining > 0:
+                        try:
+                            self._assert_repair_provider_available()
+                            repair_input = build_auto_contract_repair_input(
+                                context,
+                                proposal,
+                                failure_code=exc.code,
+                                field=exc.field,
+                                numeric_value=exc.numeric_value,
+                            )
+                            if len(repair_input) > self.max_input_chars:
+                                raise AutoMedicalKnowledgeValidationError(
+                                    "Auto contract repair exceeds total input bound"
+                                )
+                            trace.calls += 1
+                            repaired_proposal = self._call_generator(
+                                context,
+                                budget,
+                                call_purpose="CONTRACT_REPAIR",
+                                user_input_override=repair_input,
+                            )
+                            repaired_validation = self._validate_generated_proposal(
+                                repaired_proposal,
+                                selected,
+                                allowed_context_text=allowed_context_text,
+                                metadata_disease_group_ids=metadata_disease_group_ids,
+                            )
+                        except DraftGeneratorRateLimitError as repair_exc:
+                            trace.result = "RATE_LIMITED"
+                            raise _attach_contract_repair_trace(
+                                repair_exc, trace, budget
+                            )
+                        except Exception as repair_exc:
+                            strict_failure = repair_exc
+                            trace.result = "FAILED"
+                        else:
+                            trace.result = "SUCCESS"
+                            return (
+                                replace(
+                                    repaired_validation,
+                                    llm_model=self.generator.model_name,
+                                    prompt_version=self.prompt_version,
+                                ),
+                                budget,
+                                trace,
+                            )
+                    else:
+                        trace.result = "FAILED"
+            except Exception as exc:
+                strict_failure = exc
+            else:
+                return (
+                    replace(
+                        validation,
+                        llm_model=self.generator.model_name,
+                        prompt_version=self.prompt_version,
+                    ),
+                    budget,
+                    trace,
+                )
+
+        if strict_failure is None:
+            raise AutoMedicalKnowledgeValidationError(
+                "Strict generation ended without a result"
+            )
+        strict_code = classify_auto_failure(strict_failure, new_pipeline=True)
+        provider_diagnostics = getattr(strict_failure, "provider_diagnostics", {})
+        trace.strict_failure_code = strict_code
+        trace.strict_failure_stage = (
+            provider_diagnostics.get("call_purpose")
+            if isinstance(provider_diagnostics, dict)
+            else None
+        ) or "STRICT_VALIDATION"
+        if not basic_fallback_enabled:
+            trace.basic_result = "DISABLED"
+            raise _attach_contract_repair_trace(strict_failure, trace, budget)
+
+        return self._generate_basic_or_safe_template(
+            context,
+            selected,
+            snapshot=snapshot,
+            strict_failure=strict_failure,
+            allowed_context_text=allowed_context_text,
+            metadata_disease_group_ids=metadata_disease_group_ids,
+            budget=budget,
+            trace=trace,
+            allow_rate_limit_safe_template=allow_rate_limit_safe_template,
+        )
+
+    def _generate_basic_or_safe_template(
+        self,
+        context: DraftGenerationContext,
+        selected,
+        *,
+        snapshot: AutoEvidenceQualificationSnapshot,
+        strict_failure: Exception,
+        allowed_context_text: str,
+        metadata_disease_group_ids: tuple[str, ...],
+        budget: AutoGenerationCallBudget,
+        trace: AutoContractRepairTrace,
+        allow_rate_limit_safe_template: bool,
+    ) -> tuple[AutoProposalValidationResult, AutoGenerationCallBudget, AutoContractRepairTrace]:
+        if self.basic_generator is None:
+            strict_code = classify_auto_failure(strict_failure, new_pipeline=True)
+            if not trace.attempted or not is_safe_fallback_trigger(
+                strict_code, "CONTRACT_REPAIR"
+            ):
+                trace.basic_result = "UNAVAILABLE"
+                raise _attach_contract_repair_trace(strict_failure, trace, budget)
+            fallback = self._render_and_validate_safe_fallback(
+                snapshot,
+                selected,
+                allowed_context_text=allowed_context_text,
+                metadata_disease_group_ids=metadata_disease_group_ids,
+                reason_code=safe_fallback_reason_code(strict_code),
+                strict_failure_code=trace.strict_failure_code,
+                strict_failure_stage=trace.strict_failure_stage,
+            )
+            trace.basic_result = "SAFE_TEMPLATE"
+            trace.result = "SAFE_FALLBACK"
+            return fallback, budget, trace
+
+        trace.basic_attempted = self.basic_generator is not None
+        basic_failure: Exception | None = None
+        if self.basic_generator is not None and budget.basic_remaining > 0:
+            try:
+                self._assert_repair_provider_available()
+                trace.basic_calls += 1
+                basic_proposal = self._call_basic_generator(context, budget)
+                source_ids = validate_basic_proposal(basic_proposal, snapshot)
+                if basic_proposal.result == "INSUFFICIENT":
+                    rendered = render_basic_insufficient(snapshot)
+                    validation = self._validate_generated_proposal(
+                        rendered,
                         selected,
                         allowed_context_text=allowed_context_text,
                         metadata_disease_group_ids=metadata_disease_group_ids,
-                        reason_code=safe_fallback_reason_code(repair_code),
                     )
-                    trace.result = "SAFE_FALLBACK"
-                    return fallback, budget, trace
-                trace.result = (
-                    "RATE_LIMITED"
-                    if isinstance(repair_exc, DraftGeneratorRateLimitError)
-                    else "FAILED"
+                    trace.basic_result = "INSUFFICIENT"
+                    return (
+                        replace(
+                            validation,
+                            auto_tier="BASIC",
+                            generation_method="AI",
+                            generation_mode=None,
+                            strict_failure_code=trace.strict_failure_code,
+                            strict_failure_stage=trace.strict_failure_stage,
+                            llm_model=self.basic_generator.model_name,
+                            prompt_version="medical_knowledge_auto_basic_v1",
+                        ),
+                        budget,
+                        trace,
+                    )
+                selected_for_basic = [
+                    item for item in selected if item[0].id in set(source_ids)
+                ]
+                rendered = render_basic_supported(basic_proposal, snapshot, source_ids)
+                validation = self._validate_generated_proposal(
+                    rendered,
+                    selected_for_basic,
+                    allowed_context_text=allowed_context_text,
+                    metadata_disease_group_ids=metadata_disease_group_ids,
                 )
-                raise _attach_contract_repair_trace(repair_exc, trace, budget)
-            trace.result = "SUCCESS"
-            return repaired_validation, budget, trace
-        except Exception as exc:
-            trace.result = "NOT_ELIGIBLE"
-            raise _attach_contract_repair_trace(exc, trace, budget)
-        return validation, budget, trace
+            except DraftGeneratorRateLimitError as exc:
+                if not allow_rate_limit_safe_template:
+                    trace.basic_result = "RATE_LIMITED"
+                    raise _attach_contract_repair_trace(exc, trace, budget)
+                self._record_provider_cooldown(exc)
+                basic_failure = exc
+            except Exception as exc:
+                basic_failure = exc
+            else:
+                trace.basic_result = "SUCCESS"
+                return (
+                    replace(
+                        validation,
+                        auto_tier="BASIC",
+                        generation_method="AI",
+                        generation_mode=None,
+                        strict_failure_code=trace.strict_failure_code,
+                        strict_failure_stage=trace.strict_failure_stage,
+                        selected_source_ids=source_ids,
+                        llm_model=self.basic_generator.model_name,
+                        prompt_version="medical_knowledge_auto_basic_v1",
+                    ),
+                    budget,
+                    trace,
+                )
+        reason_code = (
+            "REPAIR_STRUCTURAL_FAILURE"
+            if isinstance(
+                basic_failure,
+                (DraftGeneratorStructuredOutputError, AutoBasicValidationError),
+            )
+            else "REPAIR_PROVIDER_FAILURE"
+        )
+        fallback = self._render_and_validate_safe_fallback(
+            snapshot,
+            selected,
+            allowed_context_text=allowed_context_text,
+            metadata_disease_group_ids=metadata_disease_group_ids,
+            reason_code=reason_code,
+            strict_failure_code=trace.strict_failure_code,
+            strict_failure_stage=trace.strict_failure_stage,
+        )
+        trace.basic_result = "SAFE_TEMPLATE"
+        trace.result = "SAFE_FALLBACK"
+        return fallback, budget, trace
 
     def _render_and_validate_safe_fallback(
         self,
-        snapshot: SafeFallbackEligibilitySnapshot,
+        snapshot: AutoEvidenceQualificationSnapshot,
         selected,
         *,
         allowed_context_text: str,
         metadata_disease_group_ids: tuple[str, ...],
         reason_code: str,
+        strict_failure_code: str | None,
+        strict_failure_stage: str | None,
     ) -> AutoProposalValidationResult:
         proposal = AutoSafeFallbackRenderer().render(snapshot)
         validation = self._validate_generated_proposal(
@@ -1068,6 +1437,31 @@ class AutoMedicalKnowledgeProcessor:
             insufficient_reason=None,
             generation_mode="SAFE_FALLBACK",
             fallback_reason_code=reason_code,
+            auto_tier="BASIC",
+            generation_method="SAFE_TEMPLATE",
+            strict_failure_code=strict_failure_code,
+            strict_failure_stage=strict_failure_stage,
+            llm_model=None,
+            prompt_version="medical_knowledge_auto_safe_template_v1",
+        )
+
+    def _record_provider_cooldown(self, exc: DraftGeneratorRateLimitError) -> None:
+        """Persist a Basic rate limit even when the final retry uses a template."""
+
+        if not self.provider_name:
+            return
+        now = self.clock()
+        retry_after = getattr(exc, "retry_after_seconds", None)
+        cooldown_seconds = (
+            retry_after
+            if retry_after is not None and retry_after >= 0
+            else self.rate_limit_cooldown_seconds
+        )
+        self.repository.set_provider_cooldown(
+            self.provider_name,
+            cooldown_until=now + timedelta(seconds=cooldown_seconds),
+            reason="LLM_RATE_LIMITED",
+            now=now,
         )
 
     def _assert_repair_provider_available(self) -> None:
@@ -1108,7 +1502,7 @@ class AutoMedicalKnowledgeProcessor:
             except DraftGeneratorStructuredOutputError:
                 if (
                     attempts >= self.max_structural_retries
-                    or budget.remaining <= 0
+                    or budget.strict_remaining <= 0
                 ):
                     raise
                 attempts += 1
@@ -1133,7 +1527,8 @@ class AutoMedicalKnowledgeProcessor:
                 lambda: self.generator.generate(
                     context,
                     **generation_options,
-                )
+                ),
+                tier="STRICT",
             )
         except Exception as exc:
             raise _attach_generation_call_context(
@@ -1141,6 +1536,32 @@ class AutoMedicalKnowledgeProcessor:
                 call_purpose=call_purpose,
                 generation_call_number=call_number,
             )
+
+    def _call_basic_generator(
+        self,
+        context: DraftGenerationContext,
+        budget: AutoGenerationCallBudget,
+    ) -> AutoBasicMedicalKnowledgeProposal:
+        if self.basic_generator is None:
+            raise AutoMedicalKnowledgeValidationError("Basic generator is unavailable")
+        call_number = budget.calls + 1
+        try:
+            proposal = budget.call(
+                lambda: self.basic_generator.generate(context),
+                tier="BASIC",
+            )
+        except Exception as exc:
+            raise _attach_generation_call_context(
+                exc,
+                call_purpose="BASIC",
+                generation_call_number=call_number,
+            )
+        if not isinstance(proposal, AutoBasicMedicalKnowledgeProposal):
+            raise AutoBasicValidationError(
+                "AUTO_BASIC_SCHEMA_INVALID",
+                "Basic provider returned a proposal for a different contract.",
+            )
+        return proposal
 
     def _persist_generation_diagnostic(
         self,
@@ -1167,6 +1588,12 @@ class AutoMedicalKnowledgeProcessor:
                 "contract_repair_reason": trace.reason,
                 "contract_repair_calls": trace.calls,
                 "contract_repair_result": trace.result,
+                "strict_calls": budget.strict_calls,
+                "basic_attempted": trace.basic_attempted,
+                "basic_calls": budget.basic_calls,
+                "basic_result": trace.basic_result,
+                "strict_failure_code": trace.strict_failure_code,
+                "strict_failure_stage": trace.strict_failure_stage,
             },
             discovered_at=self.clock(),
         )
@@ -1397,11 +1824,15 @@ class AutoMedicalKnowledgeProcessor:
             prompt_version=self.prompt_version,
             generation_mode=None,
             fallback_reason_code=None,
+            auto_tier=None,
+            generation_method=None,
+            strict_failure_code=None,
+            strict_failure_stage=None,
             generated_at=now,
             source_retrieved_at=None,
             created_at=now,
         )
-        self.repository.set_current_revision(topic_id, revision.id, now=now)
+        self.repository.set_current_revision_if_preferred(topic_id, revision.id, now=now)
         self.repository.set_job_status(
             job_id, "INSUFFICIENT", finished_at=now, last_error_code=None
         )
@@ -1450,6 +1881,12 @@ class AutoMedicalKnowledgeProcessor:
         verified_numeric_claims: tuple[VerifiedNumericClaim, ...] = (),
         generation_mode: str | None = "AI_FULL",
         fallback_reason_code: str | None = None,
+        auto_tier: str | None = "STRICT",
+        generation_method: str | None = "AI",
+        strict_failure_code: str | None = None,
+        strict_failure_stage: str | None = None,
+        llm_model: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         now = self.clock()
         retrieved = max(item[1].retrieved_at for item in selected)
@@ -1472,10 +1909,14 @@ class AutoMedicalKnowledgeProcessor:
             ),
             limitations_vi=proposal.limitations_vi,
             is_visible=visible,
-            llm_model=self.generator.model_name,
-            prompt_version=self.prompt_version,
+            llm_model=llm_model,
+            prompt_version=prompt_version or self.prompt_version,
             generation_mode=generation_mode,
             fallback_reason_code=fallback_reason_code,
+            auto_tier=auto_tier,
+            generation_method=generation_method,
+            strict_failure_code=strict_failure_code,
+            strict_failure_stage=strict_failure_stage,
             generated_at=now,
             source_retrieved_at=retrieved,
             created_at=now,
@@ -1507,7 +1948,7 @@ class AutoMedicalKnowledgeProcessor:
                 support_end=claim.support_end,
                 support_sha256=claim.support_sha256,
             )
-        self.repository.set_current_revision(topic_id, revision.id, now=now)
+        self.repository.set_current_revision_if_preferred(topic_id, revision.id, now=now)
         self.repository.set_job_status(
             job_id,
             "READY" if generation_status == "READY" else "INSUFFICIENT",
@@ -1536,6 +1977,15 @@ class AutoMedicalKnowledgeAdminService:
             MEDICAL_KNOWLEDGE_LLM_PROVIDER
         )
         now = datetime.utcnow()
+        disease_contexts = load_deployed_disease_contexts(
+            WEATHER_AI_V3_MODEL_MANIFEST,
+            WEATHER_AI_V3_DISEASE_CATALOG,
+        )
+
+        def disease_name(disease_group_id: str) -> str:
+            context = disease_contexts.get(disease_group_id)
+            return context[0] if context is not None else "Nhóm bệnh chưa xác định"
+
         job_rows = self.repository.list_jobs()
         latest_by_topic: dict[int, int] = {}
         for job, topic in job_rows:
@@ -1545,6 +1995,7 @@ class AutoMedicalKnowledgeAdminService:
                 id=job.id,
                 topic_id=topic.id,
                 disease_group_id=topic.disease_group_id,
+                disease_group_name=disease_name(topic.disease_group_id),
                 factor_type=topic.factor_type,
                 factor_key=topic.factor_key,
                 factor_value=topic.factor_value,
@@ -1567,13 +2018,22 @@ class AutoMedicalKnowledgeAdminService:
             )
             for job, topic in job_rows
         ]
-        revisions = [self._revision_response(revision, topic) for revision, topic in self.repository.list_current_revisions()]
+        revisions = [
+            self._revision_response(
+                revision,
+                topic,
+                state,
+                disease_group_name=disease_name(topic.disease_group_id),
+            )
+            for revision, topic, state in self.repository.list_current_revisions()
+        ]
         self.db.commit()
         return AutoMedicalKnowledgeOverviewResponse(
             settings=AutoMedicalKnowledgeSettingsResponse(
                 enabled=settings.enabled,
                 display_mode=settings.display_mode,
                 auto_visible_default=settings.auto_visible_default,
+                basic_fallback_enabled=settings.basic_fallback_enabled,
             ),
             provider_cooldown=(
                 AutoProviderCooldownResponse(
@@ -1590,12 +2050,16 @@ class AutoMedicalKnowledgeAdminService:
             revisions=revisions,
         )
 
-    def _revision_response(self, revision, topic) -> AutoMedicalKnowledgeRevisionResponse:
+    def _revision_response(
+        self, revision, topic, state, *, disease_group_name: str
+    ) -> AutoMedicalKnowledgeRevisionResponse:
         source_rows = self.repository.get_revision_sources(revision.id)
+        eligible = auto_revision_parent_eligible(revision, source_rows)
         return AutoMedicalKnowledgeRevisionResponse(
             id=revision.id,
             topic_id=topic.id,
             disease_group_id=topic.disease_group_id,
+            disease_group_name=disease_group_name,
             factor_type=topic.factor_type,
             factor_key=topic.factor_key,
             factor_value=topic.factor_value,
@@ -1603,17 +2067,30 @@ class AutoMedicalKnowledgeAdminService:
             revision_number=revision.revision_number,
             generation_status=revision.generation_status,
             generation_mode=(
-                revision.generation_mode or "AI_FULL"
+                (
+                    revision.generation_mode
+                    if revision.generation_mode is not None
+                    else ("AI_FULL" if revision.auto_tier is None else None)
+                )
                 if revision.generation_status == "READY"
                 else None
             ),
+            auto_tier=self.repository.resolved_auto_tier(revision),
+            generation_method=self.repository.resolved_generation_method(revision),
+            strict_failure_code=revision.strict_failure_code,
+            strict_failure_stage=revision.strict_failure_stage,
             fallback_reason_code=revision.fallback_reason_code,
             evidence_level=revision.evidence_level,
             evidence_scope=revision.evidence_scope,
             short_explanation_vi=revision.short_explanation_vi,
             detailed_explanation_vi=revision.detailed_explanation_vi,
             limitations_vi=revision.limitations_vi,
-            is_visible=revision.is_visible,
+            # Keep the old response field as an effective compatibility value;
+            # it is no longer a mutable per-revision approval flag.
+            is_visible=eligible and not state.is_hidden_by_staff,
+            auto_display_eligible=eligible,
+            topic_hidden_by_staff=state.is_hidden_by_staff,
+            topic_hidden_at=state.hidden_at,
             llm_model=revision.llm_model,
             prompt_version=revision.prompt_version,
             generated_at=revision.generated_at,
@@ -1738,6 +2215,11 @@ class AutoMedicalKnowledgeAdminService:
             contract_repair_reason=repair_metadata.get("contract_repair_reason"),
             contract_repair_calls=repair_metadata.get("contract_repair_calls"),
             contract_repair_result=repair_metadata.get("contract_repair_result"),
+            basic_attempted=repair_metadata.get("basic_attempted"),
+            basic_calls=repair_metadata.get("basic_calls"),
+            basic_result=repair_metadata.get("basic_result"),
+            strict_failure_code=repair_metadata.get("strict_failure_code"),
+            strict_failure_stage=repair_metadata.get("strict_failure_stage"),
             failure=(
                 AutoFailureDiagnosticResponse(
                     code=str(failure_rows[-1].metadata_json.get("code")),
@@ -1813,6 +2295,17 @@ class AutoMedicalKnowledgeAdminService:
                     contract_repair_result=failure_rows[-1].metadata_json.get(
                         "contract_repair_result"
                     ),
+                    basic_attempted=failure_rows[-1].metadata_json.get(
+                        "basic_attempted"
+                    ),
+                    basic_calls=failure_rows[-1].metadata_json.get("basic_calls"),
+                    basic_result=failure_rows[-1].metadata_json.get("basic_result"),
+                    strict_failure_code=failure_rows[-1].metadata_json.get(
+                        "strict_failure_code"
+                    ),
+                    strict_failure_stage=failure_rows[-1].metadata_json.get(
+                        "strict_failure_stage"
+                    ),
                 )
                 if failure_rows else None
             ),
@@ -1861,7 +2354,8 @@ class AutoMedicalKnowledgeAdminService:
         return sorted(entries.values(), key=lambda item: item.created_at, reverse=True)
 
     def update_settings(
-        self, *, enabled=None, display_mode=None, auto_visible_default=None
+        self, *, enabled=None, display_mode=None, auto_visible_default=None,
+        basic_fallback_enabled=None,
     ):
         settings = self.repository.get_settings()
         if enabled is not None:
@@ -1870,33 +2364,55 @@ class AutoMedicalKnowledgeAdminService:
             settings.display_mode = display_mode
         if auto_visible_default is not None:
             settings.auto_visible_default = auto_visible_default
+        if basic_fallback_enabled is not None:
+            settings.basic_fallback_enabled = basic_fallback_enabled
         settings.updated_at = datetime.utcnow()
         self.db.commit()
         return AutoMedicalKnowledgeSettingsResponse(
             enabled=settings.enabled,
             display_mode=settings.display_mode,
             auto_visible_default=settings.auto_visible_default,
+            basic_fallback_enabled=settings.basic_fallback_enabled,
         )
 
-    def set_visibility(self, revision_id: int, *, is_visible: bool):
-        revision = self.db.get(AutoMedicalKnowledgeRevision, revision_id)
-        if revision is None:
-            raise AutoMedicalKnowledgeNotFoundError("Auto revision was not found")
-        rows = self.repository.get_revision_sources(revision.id)
-        if is_visible and not auto_revision_parent_eligible(
-            revision, rows
-        ):
-            # Eligibility helper expects visibility true; evaluate a temporary flip.
-            revision.is_visible = True
-            eligible = auto_revision_parent_eligible(revision, rows)
-            revision.is_visible = False
-            if not eligible:
-                raise AutoMedicalKnowledgeValidationError(
-                    "Auto revision is not eligible for Parent display"
-                )
-        revision.is_visible = is_visible
+    def set_topic_visibility(
+        self,
+        *,
+        disease_group_id: str,
+        factor_type: str,
+        factor_key: str,
+        factor_value: str | None,
+        weather_factor: str | None,
+        hidden: bool,
+        actor_user_id: int,
+    ):
+        try:
+            factor = normalize_factor(
+                factor_type=factor_type,
+                factor_key=factor_key,
+                factor_value=factor_value,
+                weather_factor=weather_factor,
+            )
+        except (TypeError, ValueError) as exc:
+            raise AutoMedicalKnowledgeValidationError(str(exc)) from exc
+        topic = self.repository.get_topic_by_selector(
+            disease_group_id=disease_group_id.strip(),
+            factor_type=factor.factor_type,
+            factor_key=factor.factor_key,
+            factor_value=factor.factor_value,
+        )
+        if topic is None:
+            raise AutoMedicalKnowledgeNotFoundError(
+                "Canonical Auto Medical Knowledge topic was not found"
+            )
+        state = self.repository.set_topic_hidden(
+            topic.id,
+            hidden=hidden,
+            actor_user_id=actor_user_id,
+            now=datetime.utcnow(),
+        )
         self.db.commit()
-        return revision
+        return topic, state
 
     def retry_job(self, job_id: int) -> int:
         job = self.repository.get_job(job_id)

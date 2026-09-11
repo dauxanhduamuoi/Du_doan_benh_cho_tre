@@ -437,7 +437,10 @@ export default function MedicalKnowledgeResearchPage() {
       )}
 
       {knowledgeView === 'auto' ? (
-        <AutoMedicalKnowledgePanel canManage={user?.role === 'admin'} />
+        <AutoMedicalKnowledgePanel
+          canManage={user?.role === 'admin'}
+          canManageVisibility={user?.role === 'admin' || user?.role === 'staff'}
+        />
       ) : optionsLoading ? (
         <div role="status" className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-10 text-sm text-slate-500">
           <Loader2 size={18} className="animate-spin" /> Đang tải danh mục nghiên cứu…
