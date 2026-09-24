@@ -155,12 +155,15 @@ def pubmed_provider(*, content=None, error=None):
     return PubMedMedicalEvidenceProvider(client, FakeContentService(content)), client
 
 
-def test_production_registry_contains_only_real_pubmed_provider():
+def test_production_registry_contains_real_pubmed_and_who_providers():
     registry = create_medical_evidence_provider_registry()
     try:
-        assert [item.provider_id for item in registry.list_descriptors()] == ["PUBMED"]
+        assert [item.provider_id for item in registry.list_descriptors()] == ["PUBMED", "WHO"]
         assert MedicalEvidenceCapability.FULL_TEXT_ENRICHMENT in registry.get(
             "pubmed"
+        ).descriptor.capabilities
+        assert MedicalEvidenceCapability.FULL_TEXT_ENRICHMENT not in registry.get(
+            "who"
         ).descriptor.capabilities
     finally:
         registry.close()

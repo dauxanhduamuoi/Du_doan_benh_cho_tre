@@ -140,6 +140,9 @@ class PubMedImportResponse(BaseModel):
 
 class MedicalKnowledgeTopicSourceItem(BaseModel):
     source_id: int
+    provider_id: str = "PUBMED"
+    external_id: str | None = None
+    source_kind: str = "RESEARCH_ARTICLE"
     pmid: str | None
     title: str
     journal: str | None
@@ -147,6 +150,10 @@ class MedicalKnowledgeTopicSourceItem(BaseModel):
     doi: str | None
     pmcid: str | None
     content_kind: str | None
+    url: str | None = None
+    license_name: str | None = None
+    license_url: str | None = None
+    usable_for_draft: bool = False
     added_at: datetime
 
 

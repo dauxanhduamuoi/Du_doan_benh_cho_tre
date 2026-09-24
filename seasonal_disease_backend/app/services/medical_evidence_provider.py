@@ -57,6 +57,10 @@ class MedicalEvidenceProviderDescriptor:
     provider_id: str
     display_name: str
     capabilities: frozenset[MedicalEvidenceCapability]
+    description: str = "Nguồn bằng chứng y khoa đã đăng ký."
+    settings_display_name: str | None = None
+    max_search_results: int = 25
+    exact_identifier_types: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -90,6 +94,10 @@ class NormalizedMedicalEvidence:
     license_url: str | None = None
     provenance: Mapping[str, object] = field(default_factory=dict)
     provider_metadata: Mapping[str, object] = field(default_factory=dict)
+    # Populated by the provider normalizer from article-owned fields only.
+    article_mesh_terms: tuple[str, ...] = ()
+    article_subject_terms: tuple[str, ...] = ()
+    article_keywords: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         provider_id = self.provider_id.strip().upper()
@@ -137,6 +145,35 @@ class NormalizedMedicalEvidence:
 class MedicalEvidenceSearchResult:
     total_count: int
     sources: tuple[NormalizedMedicalEvidence, ...]
+    fetched_count: int | None = None
+    normalized_count: int | None = None
+    page_number: int | None = None
+    pages_count: int | None = None
+
+
+@dataclass(frozen=True)
+class ReviewedMedicalEvidenceRetrievalPolicy:
+    batch_size: int
+    max_pages: int
+    max_raw_candidates: int
+
+
+@dataclass(frozen=True)
+class ReviewedMedicalEvidenceQuery:
+    disease_terms: tuple[str, ...]
+    factor_type: str
+    factor_key: str
+    factor_value: str | None
+    weather_factor: str | None
+    year_from: int | None
+    year_to: int | None
+
+
+@dataclass(frozen=True)
+class ReviewedMedicalEvidenceQueryAttempt:
+    level: str
+    query: str
+    relevance: str
 
 
 @runtime_checkable
@@ -144,6 +181,9 @@ class MedicalEvidenceProvider(Protocol):
     descriptor: MedicalEvidenceProviderDescriptor
 
     def search(self, query: str, max_results: int) -> MedicalEvidenceSearchResult:
+        ...
+
+    def build_reviewed_query(self, context: ReviewedMedicalEvidenceQuery) -> str:
         ...
 
     def lookup(self, external_id: str) -> NormalizedMedicalEvidence | None:
@@ -158,6 +198,15 @@ class MedicalEvidenceProvider(Protocol):
         ...
 
     def close(self) -> None:
+        ...
+
+
+@runtime_checkable
+class ExactMedicalEvidenceProvider(Protocol):
+    """Optional capability, independently implemented from Guided search."""
+    descriptor: MedicalEvidenceProviderDescriptor
+
+    def lookup_exact(self, identifier: str) -> NormalizedMedicalEvidence | None:
         ...
 
 
@@ -205,6 +254,15 @@ class MedicalEvidenceTrustPolicy:
 
 
 DEFAULT_AUTO_EVIDENCE_TRUST_POLICY = MedicalEvidenceTrustPolicy(
+    {
+        "PUBMED": frozenset({"PUBMED", "PMC"}),
+        # WHO content is trusted only when the adapter assigns the WHO class
+        # after its exact official-origin and license checks succeed.
+        "WHO": frozenset({"WHO"}),
+    }
+)
+
+DEFAULT_REVIEWED_EVIDENCE_TRUST_POLICY = MedicalEvidenceTrustPolicy(
     {"PUBMED": frozenset({"PUBMED", "PMC"})}
 )
 

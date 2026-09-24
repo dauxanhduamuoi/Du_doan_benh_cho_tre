@@ -7,6 +7,7 @@ from pathlib import Path
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.config import (
     MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
@@ -30,6 +31,7 @@ from app.medical_knowledge_draft_schemas import (
 )
 from app.medical_knowledge_models import (
     MedicalEvidenceContent,
+    MedicalEvidenceProviderSetting,
     MedicalEvidenceSource,
 )
 from app.medical_knowledge_factors import normalize_factor
@@ -48,7 +50,7 @@ from app.services.medical_knowledge_population_policy import (
 )
 from app.services.medical_knowledge_prompt import build_generation_input
 from app.services.medical_evidence_provider import (
-    DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+    DEFAULT_REVIEWED_EVIDENCE_TRUST_POLICY,
     MedicalEvidenceTrustPolicy,
 )
 
@@ -114,7 +116,7 @@ class MedicalKnowledgeDraftService:
         max_input_chars: int = MEDICAL_KNOWLEDGE_LLM_MAX_INPUT_CHARS,
         max_chars_per_source: int = MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE,
         persistence_attempts: int = 3,
-        source_trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_AUTO_EVIDENCE_TRUST_POLICY,
+        source_trust_policy: MedicalEvidenceTrustPolicy = DEFAULT_REVIEWED_EVIDENCE_TRUST_POLICY,
     ):
         self.db = db
         self.generator = generator
@@ -352,19 +354,36 @@ class MedicalKnowledgeDraftService:
                 f"Selected sources are not in the current topic library: {outside_topic}",
                 code="DRAFT_SOURCE_NOT_IN_TOPIC",
             )
-        if any(
-            not self.source_trust_policy.is_provider_trusted(
-                source.provider_id or source.source_type
-            )
-            for source in sources
-        ):
-            raise DraftWorkflowValidationError(
-                "V1 draft generation accepts PubMed sources only",
-                code="DRAFT_PROPOSAL_INVALID",
-            )
         preferred_content = self.repository.get_preferred_evidence_contents(
             [source.id for source in sources]
         )
+        disallowed: list[int] = []
+        for source in sources:
+            provider_id = (source.provider_id or source.source_type).upper()
+            setting = self.db.scalar(select(MedicalEvidenceProviderSetting).where(
+                MedicalEvidenceProviderSetting.provider_id == provider_id,
+                MedicalEvidenceProviderSetting.workflow == "REVIEWED",
+            ))
+            enabled = setting.enabled if setting is not None else provider_id == "PUBMED"
+            content = preferred_content.get(source.id)
+            trusted = self.source_trust_policy.is_provider_trusted(provider_id)
+            if provider_id == "WHO":
+                provenance = content.provenance_json if content and isinstance(content.provenance_json, dict) else {}
+                trusted = bool(
+                    content
+                    and content.content_kind == "OFFICIAL_SUMMARY_EXCERPT"
+                    and content.content_origin == "WHO_PUBLICATIONS_API"
+                    and content.license_url == "https://creativecommons.org/licenses/by-nc-sa/3.0/igo/"
+                    and provenance.get("license_allowlisted") is True
+                    and provenance.get("full_text_stored") is False
+                )
+            if not enabled or not trusted:
+                disallowed.append(source.id)
+        if disallowed:
+            raise DraftWorkflowValidationError(
+                f"Selected sources are disabled or not trusted for Reviewed; PubMed is enabled by default: {disallowed}",
+                code="DRAFT_PROPOSAL_INVALID",
+            )
         unusable = [
             source.id
             for source in sources

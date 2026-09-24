@@ -30,7 +30,10 @@ from app.config import (
     WEATHER_AI_V3_MODEL_MANIFEST,
 )
 from app.database import SessionLocal
-from app.services.auto_evidence_discovery import PubMedAutoEvidenceProvider
+from app.services.auto_evidence_discovery import (
+    MultiProviderAutoEvidenceProvider,
+    create_auto_evidence_discovery_provider,
+)
 from app.services.auto_medical_knowledge_prompt import (
     AUTO_SYSTEM_INSTRUCTIONS,
     BASIC_AUTO_SYSTEM_INSTRUCTIONS,
@@ -45,6 +48,9 @@ from app.auto_medical_knowledge_schemas import (
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
 from app.services.medical_evidence_provider_factory import (
     create_medical_evidence_provider_registry,
+)
+from app.services.medical_evidence_provider_settings_service import (
+    MedicalEvidenceProviderSettingsService,
 )
 from app.services.medical_knowledge_draft_generator import (
     create_medical_knowledge_draft_generator,
@@ -80,6 +86,16 @@ def process_auto_medical_knowledge_once() -> bool:
         logger.exception("Auto Medical Knowledge runtime setting could not be read")
         return False
     provider_registry = create_medical_evidence_provider_registry()
+    try:
+        with SessionLocal() as db:
+            enabled_provider_ids = MedicalEvidenceProviderSettingsService(
+                db, provider_registry
+            ).enabled_provider_ids("AUTO")
+            db.commit()
+    except Exception:
+        provider_registry.close()
+        logger.exception("AUTO medical evidence provider settings could not be read")
+        return False
     generator = create_medical_knowledge_draft_generator(
         provider=MEDICAL_KNOWLEDGE_LLM_PROVIDER,
         openai_api_key=OPENAI_API_KEY,
@@ -112,11 +128,27 @@ def process_auto_medical_knowledge_once() -> bool:
     )
     try:
         with SessionLocal() as db:
-            discovery = PubMedAutoEvidenceProvider(
-                provider_registry.get("PUBMED"),
-                searches_per_topic=AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC,
-                results_per_search=AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH,
+            global_candidate_budget = (
+                AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC
+                * AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH
             )
+            quotient, remainder = divmod(
+                global_candidate_budget, max(1, len(enabled_provider_ids))
+            )
+            providers = []
+            for index, provider_id in enumerate(enabled_provider_ids):
+                budget = quotient + (1 if index < remainder else 0)
+                provider = provider_registry.get(provider_id)
+                try:
+                    providers.append(create_auto_evidence_discovery_provider(
+                        provider,
+                        searches_per_topic=AUTO_MEDICAL_KNOWLEDGE_SEARCHES_PER_TOPIC,
+                        results_per_search=AUTO_MEDICAL_KNOWLEDGE_RESULTS_PER_SEARCH,
+                        candidate_budget=budget,
+                    ))
+                except ValueError:
+                    logger.error("No AUTO adapter exists for enabled provider %s", provider_id)
+            discovery = MultiProviderAutoEvidenceProvider(tuple(providers))
             processor = AutoMedicalKnowledgeProcessor(
                 db,
                 discovery,

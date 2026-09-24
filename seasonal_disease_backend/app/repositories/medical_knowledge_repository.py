@@ -429,6 +429,28 @@ class MedicalKnowledgeRepository:
             )
         )
 
+    def get_source_by_doi(self, doi: str) -> MedicalEvidenceSource | None:
+        normalized = doi.strip().casefold()
+        if not normalized:
+            return None
+        return self.db.scalar(
+            select(MedicalEvidenceSource).where(
+                func.lower(MedicalEvidenceSource.doi) == normalized
+            )
+        )
+
+    def get_source_by_canonical_url(self, url: str) -> MedicalEvidenceSource | None:
+        normalized = url.strip().rstrip("/")
+        if not normalized:
+            return None
+        # Both comparisons are plain SQLAlchemy expressions and remain portable
+        # to SQL Server. URL canonicalization itself stays in provider code.
+        return self.db.scalar(
+            select(MedicalEvidenceSource).where(
+                MedicalEvidenceSource.url.in_((normalized, f"{normalized}/"))
+            )
+        )
+
     def get_sources_by_provider_external_ids(
         self, provider_id: str, external_ids: list[str]
     ) -> list[MedicalEvidenceSource]:

@@ -17,7 +17,8 @@ interface Props {
   freeQuery: string;
   diseaseTerms: string[];
   defaultDiseaseTerm: string | null;
-  maxResults: 10 | 15 | 25;
+  maxResults: 10 | 15 | 20 | 25;
+  selectedProviderCount?: number;
   yearFrom: number | null;
   yearTo: number | null;
   loading: boolean;
@@ -28,7 +29,7 @@ interface Props {
   onSearchModeChange: (value: 'GUIDED' | 'FREE') => void;
   onFreeQueryChange: (value: string) => void;
   onDiseaseTermsChange: (values: string[]) => void;
-  onMaxResultsChange: (value: 10 | 15 | 25) => void;
+  onMaxResultsChange: (value: 10 | 15 | 20 | 25) => void;
   onYearFromChange: (value: number | null) => void;
   onYearToChange: (value: number | null) => void;
   onSubmit: () => void;
@@ -53,6 +54,7 @@ export default function PubMedSearchForm(props: Props) {
     && !props.pmidLoading,
   );
   const canLookup = Boolean(props.diseaseGroupId && factorIsComplete(props.factor) && !props.loading && !props.pmidLoading);
+  const selectedProviderCount = props.selectedProviderCount ?? 1;
 
   function addTerm() {
     const value = termDraft.trim();
@@ -116,13 +118,13 @@ export default function PubMedSearchForm(props: Props) {
         <div className="mt-5">
           <label htmlFor="pubmed-free-query" className="mb-1.5 block text-sm font-semibold text-slate-800">Truy vấn PubMed tự do</label>
           <textarea id="pubmed-free-query" value={props.freeQuery} maxLength={1000} onChange={(event) => props.onFreeQueryChange(event.target.value)} placeholder={'Ví dụ: intestinal infection children AND ("sex differences"[Title/Abstract])'} className="min-h-24 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-          <p className="mt-1 text-xs text-slate-500">Dấu ngoặc, dấu ngoặc kép và field tag PubMed được giữ nguyên. Nguồn vẫn vào đúng kho chủ đề hiện tại.</p>
+          <p className="mt-1 text-xs font-semibold text-amber-700">Chỉ áp dụng cho PubMed / PMC. Dấu ngoặc, dấu ngoặc kép và field tag PubMed được giữ nguyên.</p>
         </div>
       ) : (
         <div className="mt-5">
-          <label htmlFor="pubmed-disease-term" className="mb-1.5 block text-sm font-semibold text-slate-800">3. Từ khóa bệnh dùng để tìm PubMed</label>
+          <label htmlFor="pubmed-disease-term" className="mb-1.5 block text-sm font-semibold text-slate-800">3. Từ khóa tìm kiếm</label>
           <p className="mb-1 text-sm text-blue-700">Tìm kiếm mặc định ưu tiên các nghiên cứu trên trẻ em.</p>
-          <p className="mb-3 text-sm text-blue-700">Tìm có hướng dẫn tự thêm phạm vi trẻ em và từ khóa phù hợp với yếu tố đang chọn.</p>
+          <p className="mb-3 text-sm text-blue-700">Tìm có hướng dẫn sẽ chuyển từ khóa sang cú pháp phù hợp cho từng nguồn đã chọn.</p>
           <div className="mb-3 flex flex-wrap gap-2" aria-label="Các từ khóa đã thêm">
             {props.diseaseTerms.map((term) => (
               <span key={term} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1.5 text-sm text-blue-800">
@@ -143,22 +145,23 @@ export default function PubMedSearchForm(props: Props) {
       <details className="mt-6 rounded-xl border border-slate-200 bg-slate-50">
         <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700">Tùy chọn nâng cao</summary>
         <div className="border-t border-slate-200 p-4">
-          <label htmlFor="pubmed-direct-pmid" className="mb-1 block text-sm font-semibold text-slate-800">Tìm trực tiếp bằng PMID</label>
-          <p className="mb-3 text-sm text-slate-500">PMID là mã số của bài nghiên cứu trên PubMed.</p>
+          <label htmlFor="pubmed-direct-pmid" className="mb-1 block text-sm font-semibold text-slate-800">Tra cứu trực tiếp PubMed bằng PMID</label>
+          <p className="mb-3 text-sm text-slate-500">Chỉ áp dụng cho PubMed / PMC; PMID không áp dụng cho WHO.</p>
           <div className="flex gap-2">
             <input id="pubmed-direct-pmid" inputMode="numeric" value={props.pmid} onChange={(event) => props.onPmidChange(event.target.value)} placeholder="Ví dụ: 34201085" className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
             <button type="button" onClick={lookup} disabled={!canLookup} className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-300">{props.pmidLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}{props.pmidLoading ? 'Đang tìm bài…' : 'Tìm bài'}</button>
           </div>
           {pmidError && <p role="alert" className="mt-2 text-sm text-red-600">{pmidError}</p>}
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <select aria-label="Số kết quả" value={props.maxResults} onChange={(event) => props.onMaxResultsChange(Number(event.target.value) as 10 | 15 | 25)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value={10}>10 kết quả</option><option value={15}>15 kết quả</option><option value={25}>25 kết quả</option></select>
+            <div><label htmlFor="results-per-provider" className="mb-1 block text-xs font-semibold text-slate-700">Số kết quả mỗi nguồn</label><select id="results-per-provider" aria-label="Số kết quả mỗi nguồn" value={props.maxResults} onChange={(event) => props.onMaxResultsChange(Number(event.target.value) as 10 | 15 | 20 | 25)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value={10}>10 kết quả</option><option value={15}>15 kết quả</option><option value={20}>20 kết quả</option><option value={25}>25 kết quả</option></select></div>
             <input aria-label="Từ năm" type="number" min={1800} max={2100} value={props.yearFrom ?? ''} onChange={(event) => props.onYearFromChange(event.target.value ? Number(event.target.value) : null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
             <input aria-label="Đến năm" type="number" min={1800} max={2100} value={props.yearTo ?? ''} onChange={(event) => props.onYearToChange(event.target.value ? Number(event.target.value) : null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
           </div>
+          <p className="mt-2 text-xs text-slate-500">Mỗi nguồn đã chọn trả tối đa {props.maxResults} tài liệu. {selectedProviderCount} nguồn × {props.maxResults} → tối đa {selectedProviderCount * props.maxResults} kết quả.</p>
         </div>
       </details>
 
-      <button type="submit" disabled={!canSearch} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-300">{props.loading ? <Loader2 size={17} className="animate-spin" /> : <Search size={17} />}{props.loading ? 'Đang tìm tài liệu…' : 'Tìm tài liệu PubMed'}</button>
+      <button type="submit" disabled={!canSearch} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white disabled:bg-slate-300">{props.loading ? <Loader2 size={17} className="animate-spin" /> : <Search size={17} />}{props.loading ? 'Đang tìm tài liệu…' : props.searchMode === 'FREE' ? 'Tìm tài liệu PubMed' : 'Tìm tài liệu'}</button>
     </form>
   );
 }

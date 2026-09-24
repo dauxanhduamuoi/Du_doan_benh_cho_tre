@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
+import re
 import httpx
 
 from app.services.medical_evidence_content_service import MedicalEvidenceContentService
@@ -16,6 +17,8 @@ from app.services.medical_evidence_provider import (
     MedicalEvidenceSearchResult,
     MedicalEvidenceSourceKind,
     NormalizedMedicalEvidence,
+    ReviewedMedicalEvidenceQuery,
+    ReviewedMedicalEvidenceQueryAttempt,
     deduplicate_normalized_evidence,
 )
 from app.services.pubmed_client import (
@@ -26,6 +29,7 @@ from app.services.pubmed_client import (
     PubMedRateLimitError,
     PubMedUnavailableError,
 )
+from app.services.pubmed_query_builder import build_pubmed_query, build_pubmed_query_variant
 
 
 PUBMED_DESCRIPTOR = MedicalEvidenceProviderDescriptor(
@@ -38,6 +42,9 @@ PUBMED_DESCRIPTOR = MedicalEvidenceProviderDescriptor(
             MedicalEvidenceCapability.FULL_TEXT_ENRICHMENT,
         }
     ),
+    description="Nghiên cứu PubMed và nội dung toàn văn được cấp phép từ PMC.",
+    max_search_results=25,
+    exact_identifier_types=("PMID",),
 )
 
 
@@ -69,8 +76,17 @@ def normalize_pubmed_record(record: PubMedArticleRecord) -> NormalizedMedicalEvi
         publication_year=record.publication_year,
         abstract_text=record.abstract_text,
         provider_metadata=raw,
+        article_mesh_terms=_article_terms(raw.get("mesh_terms")),
+        article_keywords=_article_terms(raw.get("author_keywords")),
         provenance={"provider": "NCBI PubMed", "pmid": record.pmid, "pmcid": record.pmcid},
     )
+
+
+def _article_terms(value: object) -> tuple[str, ...]:
+    # Only flat provider-owned strings; never recursively flatten metadata.
+    if not isinstance(value, (list, tuple)):
+        return ()
+    return tuple(item[:1000] for item in value[:128] if isinstance(item, str) and item.strip())
 
 
 class PubMedMedicalEvidenceProvider:
@@ -102,7 +118,59 @@ class PubMedMedicalEvidenceProvider:
         normalized = deduplicate_normalized_evidence(
             tuple(normalize_pubmed_record(record) for record in records)
         )
-        return MedicalEvidenceSearchResult(total_count=total, sources=normalized)
+        return MedicalEvidenceSearchResult(
+            total_count=total,
+            sources=normalized,
+            fetched_count=len(records),
+            normalized_count=len(normalized),
+        )
+
+    def build_reviewed_query(self, context: ReviewedMedicalEvidenceQuery) -> str:
+        return build_pubmed_query(
+            list(context.disease_terms),
+            factor_type=context.factor_type,
+            factor_key=context.factor_key,
+            factor_value=context.factor_value,
+            weather_factor=context.weather_factor,
+            year_from=context.year_from,
+            year_to=context.year_to,
+        )
+
+    def build_reviewed_query_plan(
+        self, context: ReviewedMedicalEvidenceQuery
+    ) -> tuple[ReviewedMedicalEvidenceQueryAttempt, ...]:
+        common = {
+            "factor_type": context.factor_type,
+            "factor_key": context.factor_key,
+            "factor_value": context.factor_value,
+            "weather_factor": context.weather_factor,
+            "year_from": context.year_from,
+            "year_to": context.year_to,
+        }
+        disease_terms = list(context.disease_terms)
+        return (
+            ReviewedMedicalEvidenceQueryAttempt(
+                level="DIRECT_DISEASE_FACTOR_PEDIATRIC",
+                query=build_pubmed_query_variant(
+                    disease_terms, include_factor=True, include_pediatric=True, **common
+                ),
+                relevance="DIRECT_TOPIC",
+            ),
+            ReviewedMedicalEvidenceQueryAttempt(
+                level="DIRECT_DISEASE_FACTOR",
+                query=build_pubmed_query_variant(
+                    disease_terms, include_factor=True, include_pediatric=False, **common
+                ),
+                relevance="DIRECT_TOPIC",
+            ),
+            ReviewedMedicalEvidenceQueryAttempt(
+                level="RELATED_DISEASE_PEDIATRIC",
+                query=build_pubmed_query_variant(
+                    disease_terms, include_factor=False, include_pediatric=True, **common
+                ),
+                relevance="RELATED_CONTEXT",
+            ),
+        )
 
     def lookup(self, external_id: str) -> NormalizedMedicalEvidence | None:
         try:
@@ -110,6 +178,17 @@ class PubMedMedicalEvidenceProvider:
         except Exception as exc:
             raise self._translate(exc) from exc
         return normalize_pubmed_record(record) if record is not None else None
+
+    def lookup_exact(self, identifier: str) -> NormalizedMedicalEvidence | None:
+        value = identifier.strip()
+        if not re.fullmatch(r"[0-9]{1,16}", value):
+            raise ValueError("INVALID_IDENTIFIER: expected PMID digits")
+        source = self.lookup(value)
+        if source is not None and (
+            source.provider_id != "PUBMED" or source.pmid != value or source.external_id != value
+        ):
+            raise MedicalEvidenceProviderBadResponseError("PubMed exact lookup identity mismatch")
+        return source
 
     def fetch_many(self, external_ids: list[str]) -> tuple[NormalizedMedicalEvidence, ...]:
         try:

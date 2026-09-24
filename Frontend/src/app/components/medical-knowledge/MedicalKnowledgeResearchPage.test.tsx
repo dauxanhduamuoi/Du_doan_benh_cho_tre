@@ -5,6 +5,7 @@ import type {
   DraftRevision,
   MedicalKnowledgeOptions,
   PubMedSearchResponse,
+  ReviewedProviderSearchResponse,
   TopicSourceLibrary,
 } from '@/lib/medicalKnowledgeApi';
 import MedicalKnowledgeResearchPage, {
@@ -30,6 +31,9 @@ const mocks = vi.hoisted(() => ({
   publishRevision: vi.fn(),
   unpublishRevision: vi.fn(),
   getAutoOverview: vi.fn(),
+  getProviderSettings: vi.fn(),
+  searchProviders: vi.fn(),
+  importProviderSources: vi.fn(),
 }));
 
 vi.mock('@/app/contexts/AuthContext', () => ({
@@ -56,6 +60,9 @@ vi.mock('@/lib/medicalKnowledgeApi', async (importOriginal) => {
     publishMedicalKnowledgeRevision: mocks.publishRevision,
     unpublishMedicalKnowledgeRevision: mocks.unpublishRevision,
     getAutoMedicalKnowledgeOverview: mocks.getAutoOverview,
+    getMedicalEvidenceProviderSettings: mocks.getProviderSettings,
+    searchMedicalEvidenceProviders: mocks.searchProviders,
+    importMedicalEvidenceProviderSources: mocks.importProviderSources,
   };
 });
 
@@ -123,6 +130,89 @@ const searchResponse: PubMedSearchResponse = {
       doi: null,
       abstract_text: null,
       pubmed_url: 'https://pubmed.ncbi.nlm.nih.gov/87654321/',
+    },
+  ],
+};
+
+const multiProviderSearchResponse: ReviewedProviderSearchResponse = {
+  requested_count: 10,
+  provider_count: 2,
+  max_candidates: 20,
+  count: 2,
+  unique_count: 2,
+  queries: { PUBMED: 'pubmed query', WHO: 'who query' },
+  warnings: [],
+  providers: [
+    {
+      provider_id: 'PUBMED', display_name: 'PubMed / PMC', requested_count: 10,
+      requested_relevant_count: 10, effective_limit: 10, returned_count: 1, total_available: 24, provider_total_available: 24,
+      provider_invoked: true, provider_status: 'SUCCESS',
+      raw_result_count: 1, raw_candidates_examined: 1, normalized_count: 1, normalized_candidates: 1, disease_match_count: 1, factor_match_count: 1,
+      relevant_count: 1, rejected_count: 0, pages_fetched: 1, budget_exhausted: false, provider_exhausted: false, stop_reason: 'QUERY_PLAN_EXHAUSTED', direct_count: 1, related_count: 0, contextual_count: 0,
+      status: 'SUCCESS', query: 'pubmed query', warning: null,
+      query_attempts: [{ level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC', relevance: 'DIRECT_TOPIC', query: 'pubmed query', provider_match_count: 24, fetched_count: 1, normalized_count: 1, disease_match_count: 1, factor_match_count: 1, relevant_count: 1, direct_count: 1, related_count: 0, rejected_count: 0, pages_fetched: 1, budget_exhausted: false, provider_exhausted: false, stop_reason: 'QUERY_ATTEMPT_COMPLETE', status: 'SUCCESS', warning: null }],
+      results: [],
+    },
+    {
+      provider_id: 'WHO', display_name: 'World Health Organization (WHO)', requested_count: 10,
+      requested_relevant_count: 10, effective_limit: 10, returned_count: 1, total_available: 5, provider_total_available: 5,
+      provider_invoked: true, provider_status: 'SUCCESS',
+      raw_result_count: 1, raw_candidates_examined: 1, normalized_count: 1, normalized_candidates: 1, disease_match_count: 1, factor_match_count: 1,
+      relevant_count: 1, rejected_count: 0, pages_fetched: 1, budget_exhausted: false, provider_exhausted: true, stop_reason: 'PROVIDER_EXHAUSTED', direct_count: 1, related_count: 0, contextual_count: 0,
+      status: 'SUCCESS', query: 'who query', warning: null,
+      query_attempts: [{ level: 'DIRECT_DISEASE_FACTOR', relevance: 'DIRECT_TOPIC', query: 'who query', provider_match_count: 5, fetched_count: 1, normalized_count: 1, disease_match_count: 1, factor_match_count: 1, relevant_count: 1, direct_count: 1, related_count: 0, rejected_count: 0, pages_fetched: 1, budget_exhausted: false, provider_exhausted: true, stop_reason: 'PROVIDER_EXHAUSTED', status: 'SUCCESS', warning: null }],
+      results: [],
+    },
+  ],
+  results: [
+    {
+      provider_id: 'PUBMED', external_id: '12345678', source_kind: 'RESEARCH_ARTICLE',
+      title: 'PubMed mixed evidence', authors: 'Fixture Author',
+      publisher_or_journal: 'Fixture Journal', publication_date: '2025-01-01',
+      publication_year: 2025, doi: '10.1000/mixed',
+      url: 'https://pubmed.ncbi.nlm.nih.gov/12345678/', abstract_text: 'Evidence',
+      license_name: null, license_url: null, usability: 'USABLE_FOR_DRAFT' as const,
+      usable_for_draft: true, source_id: null, in_topic_library: false,
+      relevance: 'DIRECT_TOPIC', query_level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC',
+    },
+    {
+      provider_id: 'WHO', external_id: '73164', source_kind: 'OTHER',
+      title: 'WHO influenza metadata record', authors: null,
+      publisher_or_journal: 'World Health Organization', publication_date: '2025-02-01',
+      publication_year: 2025, doi: null,
+      url: 'https://www.who.int/publications/b/73164', abstract_text: 'Metadata summary',
+      license_name: null, license_url: null, usability: 'METADATA_ONLY' as const,
+      usable_for_draft: false, source_id: null, in_topic_library: false,
+      relevance: 'DIRECT_TOPIC', query_level: 'DIRECT_DISEASE_FACTOR',
+    },
+  ],
+};
+
+multiProviderSearchResponse.providers[0].results = [multiProviderSearchResponse.results[0]];
+multiProviderSearchResponse.providers[1].results = [multiProviderSearchResponse.results[1]];
+
+const mixedTopicLibrary: TopicSourceLibrary = {
+  topic_id: 7,
+  disease_group_id: '5',
+  factor_type: 'WEATHER',
+  factor_key: 'precipitation',
+  factor_value: null,
+  weather_factor: 'precipitation',
+  sources: [
+    {
+      source_id: 30, provider_id: 'WHO', external_id: '73164', source_kind: 'OTHER',
+      pmid: null, title: 'WHO influenza metadata record', journal: 'World Health Organization',
+      publication_year: 2025, doi: null, pmcid: null, content_kind: null,
+      url: 'https://www.who.int/publications/b/73164', license_name: null,
+      license_url: null, usable_for_draft: false, added_at: '2026-09-12T10:00:00',
+    },
+    {
+      source_id: 31, provider_id: 'PUBMED', external_id: '12345678',
+      source_kind: 'RESEARCH_ARTICLE', pmid: '12345678', title: 'PubMed mixed evidence',
+      journal: 'Fixture Journal', publication_year: 2025, doi: '10.1000/mixed',
+      pmcid: null, content_kind: 'ABSTRACT', url: 'https://pubmed.ncbi.nlm.nih.gov/12345678/',
+      license_name: null, license_url: null, usable_for_draft: true,
+      added_at: '2026-09-12T10:01:00',
     },
   ],
 };
@@ -281,15 +371,23 @@ async function chooseContext() {
 function addTerm(term = 'gastroenteritis') {
   const chips = screen.queryByLabelText('Các từ khóa đã thêm');
   if (chips && within(chips).queryByText(term)) return;
-  const input = screen.getByLabelText('3. Từ khóa bệnh dùng để tìm PubMed');
+  const input = screen.getByLabelText('3. Từ khóa tìm kiếm');
   fireEvent.change(input, { target: { value: term } });
   fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+}
+
+function switchToFreeSearch(query = 'gastroenteritis rainfall children') {
+  fireEvent.click(screen.getByRole('button', { name: 'Tìm kiếm PubMed tự do' }));
+  fireEvent.change(screen.getByLabelText('Truy vấn PubMed tự do'), {
+    target: { value: query },
+  });
 }
 
 async function runSuccessfulSearch() {
   await renderReadyPage();
   await chooseContext();
   addTerm();
+  switchToFreeSearch();
   fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
   await screen.findByRole('heading', { name: /Tìm thấy \d+ tài liệu/ });
 }
@@ -305,6 +403,93 @@ async function importAllSources() {
   expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeEnabled();
 }
 
+function enableWhoReviewed() {
+  mocks.getProviderSettings.mockResolvedValue({ providers: [
+    { provider_id: 'PUBMED', display_name: 'PubMed / PMC', description: 'Research', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+    { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', description: 'Official', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+  ] });
+  mocks.searchProviders.mockResolvedValue(multiProviderSearchResponse);
+}
+
+function singleProviderResponse(
+  group: ReviewedProviderSearchResponse['providers'][number],
+): ReviewedProviderSearchResponse {
+  return {
+    requested_count: 10,
+    provider_count: 1,
+    max_candidates: group.effective_limit,
+    count: group.returned_count,
+    unique_count: group.returned_count,
+    queries: { [group.provider_id]: group.query },
+    warnings: group.warning ? [group.warning] : [],
+    providers: [group],
+    results: group.results,
+  };
+}
+
+async function selectWhoOnlyAndSearch() {
+  await renderReadyPage();
+  await chooseContext();
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'PubMed / PMC' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+  await screen.findByRole('heading', { name: 'Kết quả theo nguồn' });
+}
+
+async function runMultiProviderSearch() {
+  enableWhoReviewed();
+  await renderReadyPage();
+  await chooseContext();
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+  await screen.findByRole('heading', { name: 'Kết quả theo nguồn' });
+}
+
+async function providerResultCheckbox(title: string): Promise<HTMLElement> {
+  const providerName = title.startsWith('WHO') ? /World Health Organization/ : /PubMed \/ PMC/;
+  let panel = screen.queryByRole('tabpanel', { name: providerName });
+  if (!panel) {
+    fireEvent.click(screen.getByRole('tab', { name: providerName }));
+    panel = await screen.findByRole('tabpanel', { name: providerName });
+  }
+  const result = within(panel).queryByRole('checkbox', { name: new RegExp(title) });
+  if (!result) throw new Error(`Provider result checkbox was not found: ${title}`);
+  return result;
+}
+
+function importResponse(
+  sources: Array<Record<string, unknown>>,
+  overrides: Record<string, unknown> = {},
+) {
+  const failed = sources.filter((item) => item.outcome === 'REJECTED_INVALID' || item.outcome === 'PROVIDER_ERROR').length;
+  const added = sources.filter((item) => item.outcome === 'ADDED' || item.outcome === 'ADDED_REFERENCE_ONLY').length;
+  return {
+    topic_id: added ? 7 : null,
+    count: sources.length - failed,
+    requested_count: sources.length,
+    added_count: added,
+    reference_only_count: sources.filter((item) => item.outcome === 'ADDED_REFERENCE_ONLY').length,
+    already_exists_count: sources.filter((item) => item.outcome === 'ALREADY_EXISTS').length,
+    failed_count: failed,
+    sources,
+    ...overrides,
+  };
+}
+
+const whoReferenceOutcome = {
+  outcome: 'ADDED_REFERENCE_ONLY', source_id: 30, provider_id: 'WHO', external_id: '73164',
+  title: 'WHO influenza metadata record', created: true, topic_link_created: true,
+  content_kind: null, license_name: null, license_url: null, usable_for_draft: false,
+  imported_at: '2026-09-12T10:00:00', message: null,
+};
+
+const pubmedAddedOutcome = {
+  outcome: 'ADDED', source_id: 31, provider_id: 'PUBMED', external_id: '12345678',
+  title: 'PubMed mixed evidence', created: true, topic_link_created: true,
+  content_kind: 'ABSTRACT', license_name: null, license_url: null, usable_for_draft: true,
+  imported_at: '2026-09-12T10:00:00', message: null,
+};
+
 describe('MedicalKnowledgeResearchPage', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/?section=medical-knowledge');
@@ -317,6 +502,14 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.testPubMedConnection.mockReset().mockResolvedValue({ ok: true, message: 'Kết nối PubMed thành công.' });
     mocks.testLlmConnection.mockReset().mockResolvedValue({ ok: true, message: 'Kết nối OpenAI thành công.' });
     mocks.search.mockReset().mockResolvedValue(searchResponse);
+    mocks.getProviderSettings.mockReset().mockResolvedValue({ providers: [
+      { provider_id: 'PUBMED', display_name: 'PubMed / PMC', description: 'Research', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+    ] });
+    mocks.searchProviders.mockReset().mockResolvedValue({
+      requested_count: 10, provider_count: 0, max_candidates: 0,
+      count: 0, unique_count: 0, providers: [], results: [], queries: {}, warnings: [],
+    });
+    mocks.importProviderSources.mockReset().mockResolvedValue(importResponse([whoReferenceOutcome]));
     mocks.lookupPmid.mockReset().mockResolvedValue({
       pmid: '34201085',
       result: {
@@ -455,7 +648,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
   });
 
   it('prefers a structured English name over parsing the display label', () => {
@@ -483,7 +676,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('170', weatherSelector('precipitation')));
     expect(screen.queryByText('gastroenteritis')).not.toBeInTheDocument();
     expect(screen.getByText('Acute bronchitis and acute bronchiolitis')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
   });
 
   it('lets the user delete and restore exactly one default keyword', async () => {
@@ -491,7 +684,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await chooseContext();
     fireEvent.click(screen.getByRole('button', { name: 'Xóa từ khóa gastroenteritis' }));
     expect(screen.queryByText('gastroenteritis')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Khôi phục từ khóa mặc định' }));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
@@ -519,11 +712,13 @@ describe('MedicalKnowledgeResearchPage', () => {
   });
 
   it('does not reset custom keywords when another PubMed search runs', async () => {
+    const pubmed = multiProviderSearchResponse.providers[0];
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(pubmed));
     await renderReadyPage();
     await chooseContext();
     addTerm('infectious diarrhea');
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
-    await screen.findByRole('heading', { name: /Tìm thấy 2 tài liệu/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await screen.findByRole('heading', { name: 'Kết quả theo nguồn' });
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
     expect(screen.getByText('infectious diarrhea')).toBeInTheDocument();
   });
@@ -533,7 +728,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await chooseContext();
     addTerm('infectious diarrhea');
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
     await screen.findByRole('heading', { name: 'Kết quả theo PMID' });
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
@@ -541,12 +736,17 @@ describe('MedicalKnowledgeResearchPage', () => {
   });
 
   it('does not reset custom keywords when sources are added to the topic library', async () => {
-    await runSuccessfulSearch();
+    await renderReadyPage();
+    await chooseContext();
     addTerm('infectious diarrhea');
+    switchToFreeSearch();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
+    await screen.findByRole('heading', { name: /Tìm thấy \d+ tài liệu/ });
     mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
     fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả kết quả' }));
     fireEvent.click(screen.getByRole('button', { name: 'Thêm 2 tài liệu vào kho chủ đề' }));
     await screen.findByText('2 tài liệu đã lưu');
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm có hướng dẫn' }));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
     expect(screen.getByText('infectious diarrhea')).toBeInTheDocument();
   });
@@ -582,18 +782,17 @@ describe('MedicalKnowledgeResearchPage', () => {
     await chooseContext();
     addTerm('gastroenteritis');
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Số kết quả'), { target: { value: '15' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
-    await waitFor(() => expect(mocks.search).toHaveBeenCalledTimes(1));
-    expect(mocks.search).toHaveBeenCalledWith({
+    fireEvent.change(screen.getByLabelText('Số kết quả mỗi nguồn'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await waitFor(() => expect(mocks.searchProviders).toHaveBeenCalledTimes(1));
+    expect(mocks.searchProviders).toHaveBeenCalledWith({
       disease_group_id: '5',
       factor_type: 'WEATHER',
       factor_key: 'precipitation',
       factor_value: null,
       weather_factor: 'precipitation',
-      search_mode: 'GUIDED',
-      free_query: null,
       disease_terms: ['gastroenteritis'],
+      provider_ids: ['PUBMED'],
       max_results: 15,
       year_from: null,
       year_to: null,
@@ -603,15 +802,15 @@ describe('MedicalKnowledgeResearchPage', () => {
   it('renders direct PMID lookup and its helper text inside advanced options', async () => {
     await renderReadyPage();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    expect(screen.getByLabelText('Tìm trực tiếp bằng PMID')).toBeInTheDocument();
-    expect(screen.getByText(/PMID là mã số của bài nghiên cứu trên PubMed/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID')).toBeInTheDocument();
+    expect(screen.getByText(/Chỉ áp dụng cho PubMed \/ PMC/)).toBeInTheDocument();
   });
 
   it('accepts a numeric PMID and renders the exact result with the current card', async () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     await waitFor(() => expect(mocks.lookupPmid).toHaveBeenCalledWith('34201085', '5', weatherSelector('precipitation')));
@@ -625,13 +824,48 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), {
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), {
       target: { value: '34201085 OR pneumonia' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent('PMID chỉ gồm các chữ số.');
     expect(mocks.lookupPmid).not.toHaveBeenCalled();
+    expect(mocks.searchProviders).not.toHaveBeenCalled();
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unrelated exact PMID visible and clears old Guided groups', async () => {
+    await runMultiProviderSearch();
+    mocks.lookupPmid.mockResolvedValue({ pmid: '36071812', result: {
+      ...searchResponse.results[0], pmid: '36071812',
+      title: 'The temperature-dependent conformational ensemble of SARS-CoV-2 main protease (Mpro).',
+      abstract_text: 'COVID-19 continues to plague the globe. High humidity structures.',
+      pubmed_url: 'https://pubmed.ncbi.nlm.nih.gov/36071812/',
+    }, existing_source: null });
+    const searches = mocks.searchProviders.mock.calls.length;
+    fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '36071812' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
+    expect(await screen.findByRole('heading', { name: 'Kết quả theo PMID' })).toBeInTheDocument();
+    expect(screen.getByText(/The temperature-dependent conformational ensemble/)).toBeInTheDocument();
+    expect(screen.getByText(/Tài liệu chính xác theo PMID, không lọc/)).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Kết quả theo nguồn' })).not.toBeInTheDocument();
+    expect(mocks.searchProviders).toHaveBeenCalledTimes(searches);
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it('refuses a mismatched PMID response instead of substituting a result', async () => {
+    mocks.lookupPmid.mockResolvedValue({ pmid: '123', result: { ...searchResponse.results[0], pmid: '999' } });
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
+    await screen.findByRole('alert');
+    expect(screen.queryByRole('heading', { name: 'Kết quả theo PMID' })).not.toBeInTheDocument();
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(mocks.searchProviders).not.toHaveBeenCalled();
   });
 
   it('shows a direct PMID loading state and prevents a double request', async () => {
@@ -639,7 +873,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(screen.getByRole('button', { name: 'Đang tìm bài…' })).toBeDisabled();
@@ -651,7 +885,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '99999999' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '99999999' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Không tìm thấy bài PubMed với PMID này.');
@@ -663,7 +897,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Hiện không thể kết nối PubMed');
@@ -702,7 +936,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(await screen.findByText('Đã có trong kho chủ đề')).toBeInTheDocument();
@@ -713,7 +947,7 @@ describe('MedicalKnowledgeResearchPage', () => {
   it('replaces keyword results with the exact PMID result and reuses normal import', async () => {
     await runSuccessfulSearch();
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    fireEvent.change(screen.getByLabelText('Tìm trực tiếp bằng PMID'), { target: { value: '34201085' } });
+    fireEvent.change(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID'), { target: { value: '34201085' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
     await screen.findByRole('heading', { name: 'Kết quả theo PMID' });
 
@@ -724,11 +958,11 @@ describe('MedicalKnowledgeResearchPage', () => {
   });
 
   it('shows a loading state and prevents double submit', async () => {
-    mocks.search.mockReturnValue(new Promise(() => undefined));
+    mocks.searchProviders.mockReturnValue(new Promise(() => undefined));
     await renderReadyPage();
     await chooseContext();
     addTerm();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
     expect(screen.getByRole('button', { name: 'Đang tìm tài liệu…' })).toBeDisabled();
   });
 
@@ -737,16 +971,17 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     addTerm();
+    switchToFreeSearch();
     fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
     expect(await screen.findByText('Không tìm thấy tài liệu phù hợp')).toBeInTheDocument();
   });
 
   it('maps provider failures to a safe Vietnamese error', async () => {
-    mocks.search.mockRejectedValue(new ApiError(502, 'provider details'));
+    mocks.searchProviders.mockRejectedValue(new ApiError(502, 'provider details'));
     await renderReadyPage();
     await chooseContext();
     addTerm();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Hiện không thể kết nối PubMed');
     expect(screen.queryByText('provider details')).not.toBeInTheDocument();
   });
@@ -920,6 +1155,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(sourceCheckbox);
     expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
 
+    switchToFreeSearch();
     fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
     await screen.findByRole('heading', { name: /Tìm thấy 2 tài liệu/ });
     fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall and pediatric/ }));
@@ -940,6 +1176,7 @@ describe('MedicalKnowledgeResearchPage', () => {
       name: 'Chọn nguồn Capacity source 1 cho bản nháp',
     })).toBeDisabled();
 
+    switchToFreeSearch();
     fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
     await screen.findByRole('heading', { name: /Tìm thấy 2 tài liệu/ });
     fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall and pediatric/ }));
@@ -999,14 +1236,14 @@ describe('MedicalKnowledgeResearchPage', () => {
   });
 
   it('ignores a stale keyword response after the topic changes', async () => {
-    let resolveSearch!: (value: PubMedSearchResponse) => void;
-    mocks.search.mockReturnValue(new Promise((resolve) => { resolveSearch = resolve; }));
+    let resolveSearch!: (value: ReviewedProviderSearchResponse) => void;
+    mocks.searchProviders.mockReturnValue(new Promise((resolve) => { resolveSearch = resolve; }));
     await renderReadyPage();
     await chooseContext();
     addTerm();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
     fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '168' } });
-    resolveSearch(searchResponse);
+    resolveSearch(singleProviderResponse(multiProviderSearchResponse.providers[0]));
     await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('168', weatherSelector('precipitation')));
     expect(screen.queryByText('Rainfall and pediatric gastroenteritis')).not.toBeInTheDocument();
   });
@@ -1024,6 +1261,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.change(screen.getByLabelText('2. Yếu tố cần giải thích'), { target: { value: 'WEATHER:humidity' } });
     await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('5', weatherSelector('humidity')));
     expect(screen.queryByText('Tìm thấy 2 tài liệu')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm có hướng dẫn' }));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
   });
 
@@ -1045,7 +1283,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await chooseContext();
     expect(await screen.findByText('Tạo bản nháp bằng AI chưa được cấu hình trên máy chủ.')).toBeInTheDocument();
     addTerm();
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
   });
 
   it('shows generation loading wording and prevents double submit', async () => {
@@ -1656,5 +1894,518 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Xác nhận ngừng xuất bản' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Bạn không có quyền ngừng xuất bản phiên bản này.');
     expect(screen.queryByText('private unpublish detail')).not.toBeInTheDocument();
+  });
+
+  it('Reviewed provider selector exposes only globally enabled providers', async () => {
+    await renderReadyPage('staff');
+    expect(await screen.findByRole('checkbox', { name: 'PubMed / PMC' })).toBeInTheDocument();
+    expect(screen.queryByText('World Health Organization (WHO)')).not.toBeInTheDocument();
+  });
+
+  it('routes a WHO-only Guided search to exactly one WHO provider group', async () => {
+    enableWhoReviewed();
+    const who = multiProviderSearchResponse.providers[1];
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(who));
+    await selectWhoOnlyAndSearch();
+
+    expect(mocks.searchProviders).toHaveBeenCalledWith(expect.objectContaining({ provider_ids: ['WHO'] }));
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(within(screen.getByRole('tablist', { name: 'Kết quả theo nguồn' })).getAllByRole('tab')).toHaveLength(1);
+    expect(screen.getByRole('tab', { name: /World Health Organization.*1 kết quả phù hợp/ })).toBeVisible();
+    expect(screen.queryByRole('tab', { name: /PubMed/ })).not.toBeInTheDocument();
+  });
+
+  it('routes PubMed-only Guided search through provider orchestration when WHO is enabled', async () => {
+    enableWhoReviewed();
+    const pubmed = multiProviderSearchResponse.providers[0];
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(pubmed));
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await screen.findByRole('heading', { name: 'Kết quả theo nguồn' });
+
+    expect(mocks.searchProviders).toHaveBeenCalledWith(expect.objectContaining({ provider_ids: ['PUBMED'] }));
+    expect(mocks.search).not.toHaveBeenCalled();
+    expect(within(screen.getByRole('tablist', { name: 'Kết quả theo nguồn' })).getAllByRole('tab')).toHaveLength(1);
+  });
+
+  it('routes PubMed-only Guided search through shared relevance when PubMed is the only enabled provider', async () => {
+    const pubmed = multiProviderSearchResponse.providers[0];
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(pubmed));
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await screen.findByRole('heading', { name: 'Kết quả theo nguồn' });
+
+    expect(mocks.searchProviders).toHaveBeenCalledWith(expect.objectContaining({ provider_ids: ['PUBMED'] }));
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it('renders only final accepted relevance and never promotes query provenance', async () => {
+    const template = multiProviderSearchResponse.results[0];
+    const direct = {
+      ...template,
+      external_id: 'plague-humidity',
+      title: 'Plague transmission and relative humidity',
+      relevance: 'DIRECT_TOPIC' as const,
+      query_level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC',
+    };
+    const related = {
+      ...template,
+      external_id: 'plague-vaccination',
+      title: 'Plague vaccination',
+      relevance: 'RELATED_CONTEXT' as const,
+      query_level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC',
+    };
+    const rejected = [
+      {
+        ...template,
+        external_id: 'wrong-mpro',
+        title: 'The temperature-dependent conformational ensemble of SARS-CoV-2 main protease (Mpro).',
+        relevance: 'REJECT' as const,
+        query_level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC',
+      },
+      {
+        ...template,
+        external_id: 'wrong-agriculture',
+        title: 'Edge IoT Prototyping Using Model-Driven Representations: A Use Case for Smart Agriculture.',
+        relevance: 'REJECT' as const,
+        query_level: 'DIRECT_DISEASE_FACTOR_PEDIATRIC',
+      },
+    ];
+    const group = {
+      ...multiProviderSearchResponse.providers[0],
+      returned_count: 2,
+      direct_count: 1,
+      related_count: 1,
+      relevant_count: 2,
+      rejected_count: 2,
+      results: [...rejected, direct, related],
+    };
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(group));
+
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await screen.findByText(direct.title);
+
+    expect(screen.queryByText(rejected[0].title)).not.toBeInTheDocument();
+    expect(screen.queryByText(rejected[1].title)).not.toBeInTheDocument();
+    expect(within(screen.getByText(direct.title).closest('label')!).getByText('Bằng chứng trực tiếp')).toBeVisible();
+    expect(within(screen.getByText(related.title).closest('label')!).getByText('Tài liệu liên quan')).toBeVisible();
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it('clears old provider groups immediately and replaces them with the next search response', async () => {
+    const first = multiProviderSearchResponse.results[0];
+    const second = { ...first, external_id: 'new-result', title: 'New plague humidity evidence' };
+    const firstGroup = { ...multiProviderSearchResponse.providers[0], results: [first] };
+    const secondGroup = { ...multiProviderSearchResponse.providers[0], results: [second] };
+    let resolveSecond!: (value: ReviewedProviderSearchResponse) => void;
+    mocks.searchProviders
+      .mockResolvedValueOnce(singleProviderResponse(firstGroup))
+      .mockReturnValueOnce(new Promise((resolve) => { resolveSecond = resolve; }));
+
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    expect(await screen.findByText(first.title)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    expect(screen.queryByText(first.title)).not.toBeInTheDocument();
+    resolveSecond(singleProviderResponse(secondGroup));
+    expect(await screen.findByText(second.title)).toBeVisible();
+    expect(screen.queryByText(first.title)).not.toBeInTheDocument();
+  });
+
+  it('shows WHO successful zero relevance as NO_RESULTS with execution diagnostics', async () => {
+    enableWhoReviewed();
+    const who = {
+      ...multiProviderSearchResponse.providers[1],
+      returned_count: 0,
+      total_available: 10,
+      provider_total_available: 10,
+      raw_result_count: 10,
+      raw_candidates_examined: 10,
+      pages_fetched: 1,
+      provider_exhausted: true,
+      stop_reason: 'PROVIDER_EXHAUSTED' as const,
+      normalized_count: 10,
+      normalized_candidates: 10,
+      disease_match_count: 0,
+      factor_match_count: 2,
+      relevant_count: 0,
+      direct_count: 0,
+      related_count: 0,
+      rejected_count: 10,
+      status: 'NO_RESULTS' as const,
+      results: [],
+      query_attempts: [{
+        ...multiProviderSearchResponse.providers[1].query_attempts[0],
+        provider_match_count: 10,
+        fetched_count: 10,
+        normalized_count: 10,
+        disease_match_count: 0,
+        factor_match_count: 2,
+        relevant_count: 0,
+        direct_count: 0,
+        related_count: 0,
+        rejected_count: 10,
+      }],
+    };
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(who));
+    await selectWhoOnlyAndSearch();
+
+    expect(screen.getByRole('tab', { name: /0 kết quả phù hợp/ })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('Đã kiểm tra 10 kết quả WHO nhưng chưa tìm thấy tài liệu đồng thời phù hợp với bệnh và yếu tố.');
+    fireEvent.click(screen.getByText('Chi tiết kỹ thuật tìm kiếm'));
+    expect(screen.getByText(/Đã gọi: có.*Trạng thái provider: SUCCESS/)).toBeVisible();
+    expect(screen.getByText(/đã kiểm tra 10.*trực tiếp 0.*liên quan 0.*loại 10.*trả về 0/)).toBeVisible();
+  });
+
+  it('shows when WHO stopped at the safe candidate budget', async () => {
+    enableWhoReviewed();
+    const who = {
+      ...multiProviderSearchResponse.providers[1],
+      returned_count: 0,
+      total_available: 294,
+      provider_total_available: 294,
+      raw_result_count: 40,
+      raw_candidates_examined: 40,
+      normalized_count: 40,
+      normalized_candidates: 40,
+      disease_match_count: 2,
+      factor_match_count: 3,
+      relevant_count: 0,
+      pages_fetched: 4,
+      budget_exhausted: true,
+      provider_exhausted: false,
+      stop_reason: 'CANDIDATE_BUDGET_REACHED' as const,
+      direct_count: 0,
+      related_count: 0,
+      rejected_count: 40,
+      status: 'NO_RESULTS' as const,
+      results: [],
+    };
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(who));
+    await selectWhoOnlyAndSearch();
+
+    fireEvent.click(screen.getByText('Chi tiết kỹ thuật tìm kiếm'));
+    expect(screen.getByText(/tổng từ nhà cung cấp 294.*số trang 4.*đã kiểm tra 40/)).toBeVisible();
+    expect(screen.getByText('Đã dừng khi đạt ngân sách ứng viên an toàn.')).toBeVisible();
+  });
+
+  it('shows WHO timeout as PROVIDER_ERROR and exposes only its safe code', async () => {
+    enableWhoReviewed();
+    const warning = { provider_id: 'WHO', code: 'WHO_SEARCH_TIMEOUT', message: 'safe message' };
+    const who = {
+      ...multiProviderSearchResponse.providers[1],
+      returned_count: 0,
+      total_available: null,
+      provider_status: 'PROVIDER_ERROR' as const,
+      raw_result_count: 0,
+      normalized_count: 0,
+      disease_match_count: 0,
+      factor_match_count: 0,
+      relevant_count: 0,
+      direct_count: 0,
+      status: 'PROVIDER_ERROR' as const,
+      warning,
+      results: [],
+      query_attempts: [{
+        ...multiProviderSearchResponse.providers[1].query_attempts[0],
+        provider_match_count: 0,
+        fetched_count: 0,
+        normalized_count: 0,
+        disease_match_count: 0,
+        factor_match_count: 0,
+        relevant_count: 0,
+        status: 'PROVIDER_ERROR' as const,
+        warning,
+      }],
+    };
+    mocks.searchProviders.mockResolvedValue(singleProviderResponse(who));
+    await selectWhoOnlyAndSearch();
+
+    expect(screen.getByRole('tab', { name: /Tạm thời không khả dụng/ })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('Tạm thời không khả dụng');
+    expect(screen.queryByText(/0 kết quả phù hợp/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Chi tiết kỹ thuật tìm kiếm'));
+    expect(screen.getByText(/Trạng thái provider: PROVIDER_ERROR/)).toBeVisible();
+    expect(screen.getAllByText('WHO_SEARCH_TIMEOUT')).toHaveLength(2);
+    expect(screen.queryByText('fixture timeout')).not.toBeInTheDocument();
+  });
+
+  it('renders backend provider groups with independent result counts', async () => {
+    await runMultiProviderSearch();
+    expect(screen.getByRole('tab', { name: /PubMed \/ PMC.*1 kết quả/ })).toBeVisible();
+    expect(screen.getByRole('tab', { name: /World Health Organization \(WHO\).*1 kết quả/ })).toBeVisible();
+    expect(screen.getByText('2 kết quả · 2 bằng chứng duy nhất')).toBeVisible();
+  });
+
+  it('renders and orders direct before related evidence with distinct badges', async () => {
+    const direct = multiProviderSearchResponse.results[0];
+    const contextual = {
+      ...direct,
+      external_id: 'context-1',
+      title: 'Pediatric plague background without factor evidence',
+      relevance: 'RELATED_CONTEXT' as const,
+      query_level: 'RELATED_DISEASE_PEDIATRIC',
+    };
+    enableWhoReviewed();
+    mocks.searchProviders.mockResolvedValue({
+      ...multiProviderSearchResponse,
+      count: 2,
+      unique_count: 2,
+      results: [direct, contextual],
+      providers: [{
+        ...multiProviderSearchResponse.providers[0],
+        returned_count: 2,
+        relevant_count: 2,
+        direct_count: 1,
+        related_count: 1,
+        contextual_count: 1,
+        results: [direct, contextual],
+      }],
+    });
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+
+    expect(await screen.findByText('Yêu cầu 10 · 1 trực tiếp · 1 liên quan')).toBeVisible();
+    const directBadge = screen.getByText('Bằng chứng trực tiếp');
+    const relatedBadge = screen.getByText('Tài liệu liên quan');
+    expect(directBadge.compareDocumentPosition(relatedBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText('Smart agriculture humidity sensors')).not.toBeInTheDocument();
+  });
+
+  it('shows post-filter provider diagnostics only in technical details', async () => {
+    enableWhoReviewed();
+    mocks.searchProviders.mockResolvedValue({
+      ...multiProviderSearchResponse,
+      providers: multiProviderSearchResponse.providers.map((group) => group.provider_id === 'WHO' ? {
+        ...group,
+        raw_result_count: 10,
+        raw_candidates_examined: 10,
+        normalized_count: 10,
+        normalized_candidates: 10,
+        relevant_count: 1,
+        direct_count: 1,
+        related_count: 0,
+        rejected_count: 9,
+      } : group),
+    });
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /World Health Organization/ }));
+    fireEvent.click(screen.getByText('Chi tiết kỹ thuật tìm kiếm'));
+    expect(screen.getByText(/đã kiểm tra 10.*chuẩn hóa 10.*trực tiếp 1.*liên quan 0.*loại 9.*trả về 1/)).toBeVisible();
+  });
+
+  it('switches provider tabs without mixing their result cards', async () => {
+    await runMultiProviderSearch();
+    const pubmedPanel = screen.getByRole('tabpanel', { name: /PubMed \/ PMC/ });
+    expect(within(pubmedPanel).getByText('PubMed mixed evidence')).toBeVisible();
+    expect(within(pubmedPanel).queryByText('WHO influenza metadata record')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: /World Health Organization \(WHO\)/ }));
+    const whoPanel = await screen.findByRole('tabpanel', { name: /World Health Organization/ });
+    expect(within(whoPanel).getByText('WHO influenza metadata record')).toBeVisible();
+    expect(within(whoPanel).queryByText('PubMed mixed evidence')).not.toBeInTheDocument();
+  });
+
+  it('preserves provider selections across tab changes and reports per-group counts', async () => {
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('PubMed mixed evidence'));
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    expect(await screen.findByText('Đã chọn 2 tài liệu')).toBeVisible();
+    expect(screen.getByRole('tab', { name: /WHO.*1 đã chọn/ })).toBeVisible();
+
+    const pubmed = await providerResultCheckbox('PubMed mixed evidence');
+    expect(pubmed).toBeChecked();
+    expect(screen.getByRole('tab', { name: /PubMed \/ PMC.*1 đã chọn/ })).toBeVisible();
+  });
+
+  it('selects all only inside the active provider group', async () => {
+    await runMultiProviderSearch();
+    fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả trong PubMed / PMC' }));
+    expect(await screen.findByText('Đã chọn 1 tài liệu')).toBeVisible();
+    const who = await providerResultCheckbox('WHO influenza metadata record');
+    expect(who).not.toBeChecked();
+    expect(screen.getByRole('tab', { name: /PubMed \/ PMC.*1 đã chọn/ })).toBeVisible();
+  });
+
+  it('runs an enabled PubMed plus WHO Reviewed search and keeps provider warnings', async () => {
+    mocks.getProviderSettings.mockResolvedValue({ providers: [
+      { provider_id: 'PUBMED', display_name: 'PubMed / PMC', description: 'Research', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+      { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', description: 'Official', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+    ] });
+    const warning = { provider_id: 'WHO', code: 'PROVIDER_UNAVAILABLE', message: 'safe' };
+    mocks.searchProviders.mockResolvedValue({
+      requested_count: 10, provider_count: 2, max_candidates: 20,
+      count: 0, unique_count: 0, results: [], queries: { PUBMED: 'q', WHO: 'q' },
+      warnings: [warning],
+      providers: [
+        { provider_id: 'PUBMED', display_name: 'PubMed / PMC', requested_count: 10, effective_limit: 10, returned_count: 0, total_available: 0, provider_invoked: true, provider_status: 'SUCCESS', raw_result_count: 0, normalized_count: 0, disease_match_count: 0, factor_match_count: 0, relevant_count: 0, direct_count: 0, contextual_count: 0, status: 'NO_RESULTS', query: 'q', warning: null, query_attempts: [], results: [] },
+        { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', requested_count: 10, effective_limit: 10, returned_count: 0, total_available: null, provider_invoked: true, provider_status: 'PROVIDER_ERROR', raw_result_count: 0, normalized_count: 0, disease_match_count: 0, factor_match_count: 0, relevant_count: 0, direct_count: 0, contextual_count: 0, status: 'PROVIDER_ERROR', query: 'q', warning, query_attempts: [], results: [] },
+      ],
+    });
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+    await waitFor(() => expect(mocks.searchProviders).toHaveBeenCalledWith(expect.objectContaining({ provider_ids: ['PUBMED', 'WHO'] })));
+    fireEvent.click(await screen.findByRole('tab', { name: /World Health Organization \(WHO\)/ }));
+    expect((await screen.findAllByText(/Tạm thời không khả dụng/)).length).toBeGreaterThan(0);
+    expect(mocks.search).not.toHaveBeenCalled();
+  });
+
+  it('distinguishes a successful zero-result provider from a failed provider', async () => {
+    mocks.getProviderSettings.mockResolvedValue({ providers: [
+      { provider_id: 'PUBMED', display_name: 'PubMed / PMC', description: 'Research', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+      { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', description: 'Official', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+    ] });
+    const warning = { provider_id: 'WHO', code: 'PROVIDER_UNAVAILABLE', message: 'safe' };
+    mocks.searchProviders.mockResolvedValue({
+      requested_count: 10, provider_count: 2, max_candidates: 20,
+      count: 0, unique_count: 0, results: [], queries: { PUBMED: 'q', WHO: 'q' }, warnings: [warning],
+      providers: [
+        { provider_id: 'PUBMED', display_name: 'PubMed / PMC', requested_count: 10, effective_limit: 10, returned_count: 0, total_available: 0, provider_invoked: true, provider_status: 'SUCCESS', raw_result_count: 0, normalized_count: 0, disease_match_count: 0, factor_match_count: 0, relevant_count: 0, direct_count: 0, contextual_count: 0, status: 'NO_RESULTS', query: 'q', warning: null, query_attempts: [], results: [] },
+        { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', requested_count: 10, effective_limit: 10, returned_count: 0, total_available: null, provider_invoked: true, provider_status: 'PROVIDER_ERROR', raw_result_count: 0, normalized_count: 0, disease_match_count: 0, factor_match_count: 0, relevant_count: 0, direct_count: 0, contextual_count: 0, status: 'PROVIDER_ERROR', query: 'q', warning, query_attempts: [], results: [] },
+      ],
+    });
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'World Health Organization (WHO)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
+
+    expect(await screen.findByText('Không tìm thấy tài liệu phù hợp từ nguồn này.')).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: /World Health Organization/ }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Tạm thời không khả dụng');
+  });
+
+  it('selects a WHO result for library import', async () => {
+    await runMultiProviderSearch();
+    const who = await providerResultCheckbox('WHO influenza metadata record');
+    fireEvent.click(who);
+    expect(who).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' })).toBeEnabled();
+  });
+
+  it('adds one WHO metadata result and refreshes the topic library', async () => {
+    mocks.getTopicSources.mockResolvedValueOnce({
+      topic_id: null, disease_group_id: '5', factor_type: 'WEATHER', factor_key: 'precipitation',
+      factor_value: null, weather_factor: 'precipitation', sources: [],
+    }).mockResolvedValue(mixedTopicLibrary);
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/1 nguồn được lưu để tham khảo/)).toBeInTheDocument();
+  });
+
+  it('shows the refreshed WHO source in the library', async () => {
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    expect(await screen.findByText('WHO influenza metadata record')).toBeInTheDocument();
+    expect(screen.getByText('WHO')).toBeInTheDocument();
+  });
+
+  it('labels WHO metadata-only library content as reference-only', async () => {
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    expect(await screen.findByText('Đã lưu để tham khảo · không thể chọn cho AI Draft.')).toBeInTheDocument();
+  });
+
+  it('does not allow WHO metadata-only content to be selected for Draft', async () => {
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    expect(await screen.findByRole('checkbox', { name: /WHO influenza metadata record.*cho bản nháp/ })).toBeDisabled();
+  });
+
+  it('adds a mixed PubMed and WHO selection in one strict request', async () => {
+    mocks.importProviderSources.mockResolvedValue(importResponse([pubmedAddedOutcome, whoReferenceOutcome]));
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('PubMed mixed evidence'));
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào kho' }));
+    await waitFor(() => expect(mocks.importProviderSources).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText(/Đã thêm 2 tài liệu/)).toBeInTheDocument();
+  });
+
+  it('shows partial batch feedback and retains only the failed selection', async () => {
+    const failedWho = { ...whoReferenceOutcome, outcome: 'PROVIDER_ERROR', source_id: null, created: false, topic_link_created: false, message: 'WHO tạm thời không khả dụng.' };
+    mocks.importProviderSources.mockResolvedValue(importResponse([pubmedAddedOutcome, failedWho]));
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('PubMed mixed evidence'));
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào kho' }));
+    expect(await screen.findByText('Đã thêm 1/2 tài liệu. 1 tài liệu không thể thêm.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' })).toBeEnabled();
+  });
+
+  it('renders an already-added provider result clearly', async () => {
+    const existing = { ...whoReferenceOutcome, outcome: 'ALREADY_EXISTS', created: false, topic_link_created: false };
+    mocks.importProviderSources.mockResolvedValue(importResponse([existing]));
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    expect(await screen.findByText('Đã lưu để tham khảo')).toBeInTheDocument();
+    expect(await providerResultCheckbox('WHO influenza metadata record')).toBeDisabled();
+  });
+
+  it('sends only the explicit provider-neutral import DTO fields', async () => {
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    await waitFor(() => expect(mocks.importProviderSources).toHaveBeenCalledTimes(1));
+    const sent = mocks.importProviderSources.mock.calls[0][2][0];
+    expect(Object.keys(sent).sort()).toEqual([
+      'authors', 'canonical_url', 'doi', 'external_id', 'provider_id', 'publication_date',
+      'publication_year', 'publisher_or_journal', 'source_kind', 'title',
+    ]);
+    expect(sent).not.toHaveProperty('abstract_text');
+    expect(sent).not.toHaveProperty('license_name');
+    expect(sent).not.toHaveProperty('usable_for_draft');
+  });
+
+  it('shows a safe visible error when provider import request fails', async () => {
+    mocks.importProviderSources.mockRejectedValue(new ApiError(502, 'private provider stack'));
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể xác minh nguồn với nhà cung cấp');
+    expect(screen.queryByText('private provider stack')).not.toBeInTheDocument();
+  });
+
+  it('clears successful provider selections after import', async () => {
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await runMultiProviderSearch();
+    fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    await waitFor(async () => expect(await providerResultCheckbox('WHO influenza metadata record')).toBeDisabled());
+    expect(screen.getByRole('button', { name: 'Thêm 0 nguồn vào kho' })).toBeDisabled();
+  });
+
+  it('keeps Draft selection count limited to actually usable library sources', async () => {
+    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
+    await renderReadyPage();
+    await chooseContext();
+    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Chọn tất cả nguồn AI đọc được' }));
+    expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /WHO influenza metadata record.*cho bản nháp/ })).not.toBeChecked();
   });
 });

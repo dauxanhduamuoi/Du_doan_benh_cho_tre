@@ -123,6 +123,16 @@ MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE = int(
     os.getenv("MEDICAL_KNOWLEDGE_EVIDENCE_MAX_CHARS_PER_SOURCE", "6000")
 )
 
+# WHO Publications is a public, unauthenticated official source. These bounds
+# are transport safety controls, not feature enablement settings.
+WHO_EVIDENCE_TIMEOUT_SECONDS = min(
+    30.0, max(1.0, float(os.getenv("WHO_EVIDENCE_TIMEOUT_SECONDS", "15")))
+)
+WHO_EVIDENCE_MAX_RESPONSE_BYTES = min(
+    5_000_000,
+    max(1024, int(os.getenv("WHO_EVIDENCE_MAX_RESPONSE_BYTES", "2000000"))),
+)
+
 # Auto runtime ON/OFF is persisted in the database and controlled by Admin UI.
 # These settings remain separate controls for display and worker bounds.
 AUTO_MEDICAL_KNOWLEDGE_DISPLAY_MODE = os.getenv(

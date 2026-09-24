@@ -41,6 +41,159 @@ export interface MedicalKnowledgeServiceStatus {
   };
 }
 
+export type MedicalEvidenceWorkflow = 'AUTO' | 'REVIEWED';
+
+export interface MedicalEvidenceProviderSetting {
+  provider_id: string;
+  display_name: string;
+  description: string;
+  workflow: MedicalEvidenceWorkflow;
+  enabled: boolean;
+  capabilities: string[];
+  operational_status: 'REGISTERED';
+  updated_at: string;
+  updated_by: number | null;
+}
+
+export interface MedicalEvidenceProviderSettingsResponse {
+  providers: MedicalEvidenceProviderSetting[];
+}
+
+export interface ReviewedProviderSource {
+  provider_id: string;
+  external_id: string;
+  source_kind: string;
+  title: string;
+  authors: string | null;
+  publisher_or_journal: string | null;
+  publication_date: string | null;
+  publication_year: number | null;
+  doi: string | null;
+  url: string | null;
+  abstract_text: string | null;
+  license_name: string | null;
+  license_url: string | null;
+  usability: 'USABLE_FOR_DRAFT' | 'METADATA_ONLY';
+  usable_for_draft: boolean;
+  source_id: number | null;
+  in_topic_library: boolean;
+  relevance: 'DIRECT_TOPIC' | 'RELATED_CONTEXT' | 'BROAD_CONTEXT' | 'REJECT' | 'EXACT_LOOKUP';
+  query_level: string;
+}
+
+export interface ReviewedProviderQueryAttempt {
+  level: string;
+  relevance: 'DIRECT_TOPIC' | 'RELATED_CONTEXT' | 'BROAD_CONTEXT';
+  query: string;
+  provider_match_count: number;
+  fetched_count: number;
+  normalized_count: number;
+  disease_match_count: number;
+  factor_match_count: number;
+  relevant_count: number;
+  direct_count: number;
+  related_count: number;
+  rejected_count: number;
+  pages_fetched: number;
+  budget_exhausted: boolean;
+  provider_exhausted: boolean;
+  stop_reason: 'TARGET_REACHED' | 'PROVIDER_EXHAUSTED' | 'CANDIDATE_BUDGET_REACHED' | 'QUERY_ATTEMPT_COMPLETE' | 'PROVIDER_ERROR';
+  status: 'SUCCESS' | 'PROVIDER_ERROR';
+  warning: { provider_id: string; code: string; message: string } | null;
+}
+
+export interface ReviewedProviderSearchResponse {
+  requested_count: number;
+  provider_count: number;
+  max_candidates: number;
+  count: number;
+  unique_count: number;
+  providers: ReviewedProviderSearchGroup[];
+  results: ReviewedProviderSource[];
+  queries: Record<string, string>;
+  warnings: Array<{ provider_id: string; code: string; message: string }>;
+}
+
+export interface ReviewedProviderSearchGroup {
+  provider_id: string;
+  display_name: string;
+  requested_count: number;
+  requested_relevant_count: number;
+  effective_limit: number;
+  returned_count: number;
+  total_available: number | null;
+  provider_total_available: number | null;
+  provider_invoked: boolean;
+  provider_status: 'SUCCESS' | 'PROVIDER_ERROR';
+  raw_result_count: number;
+  raw_candidates_examined: number;
+  normalized_count: number;
+  normalized_candidates: number;
+  disease_match_count: number;
+  factor_match_count: number;
+  relevant_count: number;
+  rejected_count: number;
+  pages_fetched: number;
+  budget_exhausted: boolean;
+  provider_exhausted: boolean;
+  stop_reason: 'TARGET_REACHED' | 'PROVIDER_EXHAUSTED' | 'CANDIDATE_BUDGET_REACHED' | 'QUERY_PLAN_EXHAUSTED' | 'PROVIDER_ERROR';
+  direct_count: number;
+  related_count: number;
+  contextual_count: number;
+  status: 'SUCCESS' | 'NO_RESULTS' | 'PROVIDER_ERROR';
+  query: string;
+  warning: { provider_id: string; code: string; message: string } | null;
+  query_attempts: ReviewedProviderQueryAttempt[];
+  results: ReviewedProviderSource[];
+}
+
+export type ReviewedProviderImportOutcome =
+  | 'ADDED'
+  | 'ADDED_REFERENCE_ONLY'
+  | 'ALREADY_EXISTS'
+  | 'REJECTED_INVALID'
+  | 'PROVIDER_ERROR';
+
+export interface ReviewedProviderImportSource {
+  outcome: ReviewedProviderImportOutcome;
+  source_id: number | null;
+  provider_id: string;
+  external_id: string;
+  title: string | null;
+  created: boolean;
+  topic_link_created: boolean;
+  content_kind: EvidenceContentKind | null;
+  license_name: string | null;
+  license_url: string | null;
+  usable_for_draft: boolean;
+  imported_at: string | null;
+  message: string | null;
+}
+
+export interface ReviewedProviderImportResponse {
+  topic_id: number | null;
+  count: number;
+  requested_count: number;
+  added_count: number;
+  reference_only_count: number;
+  already_exists_count: number;
+  failed_count: number;
+  sources: ReviewedProviderImportSource[];
+}
+
+export interface ReviewedProviderImportReference {
+  provider_id: string;
+  external_id: string;
+  canonical_url: string | null;
+  source_kind: string;
+  title: string;
+  authors: string | null;
+  publisher_or_journal: string | null;
+  publication_date: string | null;
+  publication_year: number | null;
+  doi: string | null;
+}
+
 export type AutoMedicalKnowledgeDisplayMode = 'REVIEWED_ONLY' | 'REVIEWED_WITH_AUTO_FALLBACK';
 export type AutoMedicalKnowledgeJobStatus =
   | 'QUEUED' | 'SEARCHING' | 'GENERATING' | 'READY' | 'INSUFFICIENT' | 'FAILED' | 'CANCELLED';
@@ -145,6 +298,8 @@ export interface AutoMedicalKnowledgeJob {
 
 export interface AutoMedicalKnowledgeSource {
   source_id: number;
+  provider_id?: string;
+  source_kind?: string;
   title: string;
   journal: string | null;
   publication_year: number | null;
@@ -210,7 +365,7 @@ export interface ServiceConnectionTestResult {
 export type EvidenceLevel = 'SUPPORTED' | 'LIMITED_OR_INDIRECT' | 'CONFLICTING' | 'INSUFFICIENT';
 export type EvidenceScope = 'WHOLE_GROUP' | 'PARTIAL_GROUP';
 export type RevisionStatus = 'DRAFT' | 'APPROVED' | 'REJECTED';
-export type EvidenceContentKind = 'ABSTRACT' | 'PMC_FULL_TEXT' | 'PMC_FULL_TEXT_EXCERPT';
+export type EvidenceContentKind = 'ABSTRACT' | 'PMC_FULL_TEXT' | 'PMC_FULL_TEXT_EXCERPT' | 'OFFICIAL_SUMMARY_EXCERPT';
 export type PopulationRelevance =
   | 'PEDIATRIC_DIRECT'
   | 'MIXED_AGE'
@@ -337,7 +492,7 @@ export interface PubMedSearchPayload extends MedicalFactorSelector {
   search_mode?: 'GUIDED' | 'FREE';
   disease_terms?: string[];
   free_query?: string | null;
-  max_results: 10 | 15 | 25;
+  max_results: 10 | 15 | 20 | 25;
   year_from?: number | null;
   year_to?: number | null;
 }
@@ -387,6 +542,9 @@ export interface PubMedImportedSource {
 
 export interface TopicSourceLibraryItem {
   source_id: number;
+  provider_id?: string;
+  external_id?: string | null;
+  source_kind?: string;
   pmid: string | null;
   title: string;
   journal: string | null;
@@ -394,6 +552,10 @@ export interface TopicSourceLibraryItem {
   doi: string | null;
   pmcid: string | null;
   content_kind: EvidenceContentKind | null;
+  url?: string | null;
+  license_name?: string | null;
+  license_url?: string | null;
+  usable_for_draft?: boolean;
   added_at: string;
 }
 
@@ -406,13 +568,14 @@ export interface TopicSourceLibrary extends MedicalFactorSelector {
 export const MEDICAL_KNOWLEDGE_MAX_DRAFT_SOURCES = 10;
 
 export function isTopicSourceAiReadable(source: TopicSourceLibraryItem): boolean {
-  return source.content_kind !== null;
+  return source.usable_for_draft ?? source.content_kind !== null;
 }
 
 export function evidenceContentLabel(kind: EvidenceContentKind | null): string {
   if (kind === 'PMC_FULL_TEXT') return 'AI sử dụng: Toàn văn PMC';
   if (kind === 'PMC_FULL_TEXT_EXCERPT') return 'AI sử dụng: Trích đoạn toàn văn PMC';
   if (kind === 'ABSTRACT') return 'AI sử dụng: Tóm tắt PubMed';
+  if (kind === 'OFFICIAL_SUMMARY_EXCERPT') return 'AI sử dụng: Trích đoạn chính thức WHO';
   return 'AI chưa có nội dung để đọc';
 }
 
@@ -430,6 +593,60 @@ export function getMedicalKnowledgeOptions(): Promise<MedicalKnowledgeOptions> {
 
 export function getMedicalKnowledgeServiceStatus(): Promise<MedicalKnowledgeServiceStatus> {
   return request<MedicalKnowledgeServiceStatus>('/api/medical-knowledge/service-status');
+}
+
+export function getMedicalEvidenceProviderSettings(): Promise<MedicalEvidenceProviderSettingsResponse> {
+  return request<MedicalEvidenceProviderSettingsResponse>('/api/medical-knowledge/providers/settings');
+}
+
+export function updateMedicalEvidenceProviderSetting(payload: {
+  provider_id: string;
+  workflow: MedicalEvidenceWorkflow;
+  enabled: boolean;
+}): Promise<MedicalEvidenceProviderSettingsResponse> {
+  return request<MedicalEvidenceProviderSettingsResponse>('/api/medical-knowledge/providers/settings', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function searchMedicalEvidenceProviders(payload: {
+  disease_group_id: string;
+  factor_type: MedicalFactorType;
+  factor_key: string;
+  factor_value: string | null;
+  weather_factor?: string | null;
+  disease_terms: string[];
+  provider_ids: string[];
+  max_results: number;
+  year_from: number | null;
+  year_to: number | null;
+}): Promise<ReviewedProviderSearchResponse> {
+  return request<ReviewedProviderSearchResponse>('/api/medical-knowledge/providers/search', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+}
+
+export function importMedicalEvidenceProviderSources(
+  diseaseGroupId: string,
+  factor: MedicalFactorSelector,
+  sources: ReviewedProviderImportReference[],
+): Promise<ReviewedProviderImportResponse> {
+  return request<ReviewedProviderImportResponse>('/api/medical-knowledge/providers/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ disease_group_id: diseaseGroupId, ...factor, sources }),
+  });
+}
+
+export function lookupMedicalEvidenceExact(
+  providerId: string, identifier: string, diseaseGroupId: string, factor: MedicalFactorSelector,
+): Promise<{ lookup_mode: 'EXACT'; requested_identifier: string; result: ReviewedProviderSource }> {
+  return request('/api/medical-knowledge/providers/lookup', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider_id: providerId, identifier, disease_group_id: diseaseGroupId, ...factor }),
+  });
 }
 
 export function getAutoMedicalKnowledgeOverview(): Promise<AutoMedicalKnowledgeOverview> {
@@ -711,6 +928,17 @@ export function medicalKnowledgeErrorMessage(error: unknown): string {
   }
   if (error instanceof TypeError) return 'Không thể kết nối máy chủ. Vui lòng thử lại sau.';
   return error instanceof Error ? error.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+}
+
+export function medicalEvidenceImportErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ.';
+    if (error.status === 403) return 'Bạn không có quyền thêm nguồn vào kho chủ đề.';
+    if (error.status === 422) return 'Thông tin nguồn không hợp lệ hoặc nguồn chưa được bật cho tìm kiếm kiểm duyệt.';
+    if (error.status === 502) return 'Không thể xác minh nguồn với nhà cung cấp lúc này. Vui lòng thử lại sau.';
+  }
+  if (error instanceof TypeError) return 'Không thể kết nối máy chủ. Vui lòng thử lại sau.';
+  return 'Không thể thêm nguồn vào kho chủ đề. Vui lòng thử lại.';
 }
 
 export function directPmidErrorMessage(error: unknown): string {

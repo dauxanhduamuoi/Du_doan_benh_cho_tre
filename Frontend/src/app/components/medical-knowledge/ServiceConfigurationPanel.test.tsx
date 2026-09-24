@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   getStatus: vi.fn(),
   testPubmed: vi.fn(),
   testLlm: vi.fn(),
+  getProviderSettings: vi.fn(),
+  updateProviderSetting: vi.fn(),
 }));
 
 vi.mock('@/lib/medicalKnowledgeApi', async (importOriginal) => {
@@ -16,6 +18,8 @@ vi.mock('@/lib/medicalKnowledgeApi', async (importOriginal) => {
     getMedicalKnowledgeServiceStatus: mocks.getStatus,
     testPubMedConnection: mocks.testPubmed,
     testLlmConnection: mocks.testLlm,
+    getMedicalEvidenceProviderSettings: mocks.getProviderSettings,
+    updateMedicalEvidenceProviderSetting: mocks.updateProviderSetting,
   };
 });
 
@@ -36,6 +40,14 @@ describe('ServiceConfigurationPanel', () => {
     mocks.getStatus.mockReset().mockResolvedValue(configured);
     mocks.testPubmed.mockReset().mockResolvedValue({ ok: true, message: 'Kết nối PubMed thành công.' });
     mocks.testLlm.mockReset().mockResolvedValue({ ok: true, message: 'Kết nối OpenAI thành công.' });
+    const providers = [
+      { provider_id: 'PUBMED', display_name: 'PubMed', description: 'Research', workflow: 'AUTO', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+      { provider_id: 'PUBMED', display_name: 'PubMed', description: 'Research', workflow: 'REVIEWED', enabled: true, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+      { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', description: 'Official', workflow: 'AUTO', enabled: false, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+      { provider_id: 'WHO', display_name: 'World Health Organization (WHO)', description: 'Official', workflow: 'REVIEWED', enabled: false, capabilities: ['SEARCH'], operational_status: 'REGISTERED', updated_at: '2026-09-12T00:00:00', updated_by: null },
+    ];
+    mocks.getProviderSettings.mockReset().mockResolvedValue({ providers });
+    mocks.updateProviderSetting.mockReset().mockImplementation(async (payload: { provider_id: string; workflow: string; enabled: boolean }) => ({ providers: providers.map((item) => item.provider_id === payload.provider_id && item.workflow === payload.workflow ? { ...item, enabled: payload.enabled } : item) }));
   });
 
   it('renders the compact service configuration panel', async () => {
@@ -369,5 +381,28 @@ describe('ServiceConfigurationPanel', () => {
     expect(screen.getByText('seasonal_disease_backend/.env')).toBeInTheDocument();
     expect(screen.getByText(/hãy khởi động lại backend để cấu hình mới có hiệu lực/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/[A-Z]:\\/i);
+  });
+
+  it('renders both provider workflows from the API without a provider-count branch', async () => {
+    render(<ServiceConfigurationPanel showProviderSettings canManageProviders />);
+    expect(await screen.findByRole('article', { name: 'World Health Organization (WHO)' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'World Health Organization (WHO) AUTO' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'World Health Organization (WHO) REVIEWED' })).not.toBeChecked();
+  });
+
+  it('admin toggle updates one exact provider workflow', async () => {
+    render(<ServiceConfigurationPanel showProviderSettings canManageProviders />);
+    fireEvent.click(await screen.findByRole('switch', { name: 'World Health Organization (WHO) AUTO' }));
+    await waitFor(() => expect(mocks.updateProviderSetting).toHaveBeenCalledWith({ provider_id: 'WHO', workflow: 'AUTO', enabled: true }));
+    expect(screen.getByRole('switch', { name: 'World Health Organization (WHO) AUTO' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'World Health Organization (WHO) REVIEWED' })).not.toBeChecked();
+    expect(screen.getByRole('status')).toHaveTextContent('đã được bật cho Tự động');
+  });
+
+  it('staff sees availability but cannot mutate provider settings', async () => {
+    render(<ServiceConfigurationPanel showProviderSettings />);
+    expect(await screen.findByRole('article', { name: 'World Health Organization (WHO)' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'PubMed AUTO' })).toBeDisabled();
+    expect(screen.getByText('Chỉ admin có thể thay đổi')).toBeInTheDocument();
   });
 });

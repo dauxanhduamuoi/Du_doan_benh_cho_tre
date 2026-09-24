@@ -2133,12 +2133,14 @@ class AutoMedicalKnowledgeAdminService:
             sources=[
                 AutoMedicalKnowledgeSourceResponse(
                     source_id=source.id,
+                    provider_id=source.provider_id or source.source_type,
+                    source_kind=source.source_kind or "OTHER",
                     title=source.title,
                     journal=source.journal,
                     publication_year=source.publication_year,
                     pmid=source.pmid,
                     doi=source.doi,
-                    url=(
+                    url=source.url or (
                         f"https://pubmed.ncbi.nlm.nih.gov/{source.pmid}/"
                         if (source.pmid or "").isdigit()
                         else None

@@ -1,0 +1,100 @@
+{
+  "retrieved_at": "2026-09-16T12:34:30.730316+00:00",
+  "xml_sha256": "207b10307bdf4279fd1a22565d9b4b7cf46220d270d6360311bc44dc60930bf5",
+  "normalized_source": {
+    "provider_id": "PUBMED",
+    "source_kind": "RESEARCH_ARTICLE",
+    "external_id": "38257588",
+    "title": "Edge IoT Prototyping Using Model-Driven Representations: A Use Case for Smart Agriculture.",
+    "canonical_url": "https://pubmed.ncbi.nlm.nih.gov/38257588/",
+    "authors": "Ivan Guevara, Stephen Ryan, Amandeep Singh, Colm Brandon, Tiziana Margaria",
+    "publication_date": null,
+    "publisher_or_journal": "Sensors (Basel, Switzerland)",
+    "language": "eng",
+    "doi": "10.3390/s24020495",
+    "pmid": "38257588",
+    "pmcid": "PMC10818290",
+    "publication_year": 2024,
+    "abstract_text": "Industry 4.0 is positioned at the junction of different disciplines, aiming to re-engineer processes and improve effectiveness and efficiency. It is taking over many industries whose traditional practices are being disrupted by advances in technology and inter-connectivity. In this context, enhanced agriculture systems incorporate new components that are capable of generating better decision making (humidity/temperature/soil sensors, drones for plague detection, smart irrigation, etc.) and also include novel processes for crop control (reproducible environmental conditions, proven strategies for water stress, etc.). At the same time, advances in model-driven development (MDD) simplify software development by introducing domain-specific abstractions of the code that makes application development feasible for domain experts who cannot code. XMDD (eXtreme MDD) makes this way to assemble software even more user-friendly and enables application domain experts who are not programmers to create complex solutions in a more straightforward way. Key to this approach is the introduction of high-level representations of domain-specific functionalities (called SIBs, service-independent building blocks) that encapsulate the programming code and their organisation in reusable libraries, and they are made available in the application development environment. This way, new domain-specific abstractions of the code become easily comprehensible and composable by domain experts. In this paper, we apply these concepts to a smart agriculture solution, producing a proof of concept for the new methodology in this application domain to be used as a portable demonstrator for MDD in IoT and agriculture in the Confirm Research Centre for Smart Manufacturing. Together with model-driven development tools, we leverage here the capabilities of the Nordic Thingy:53 as a multi-protocol IoT prototyping platform. It is an advanced sensing device that handles the data collection and distribution for decision making in the context of the agricultural system and supports edge computing. We demonstrate the importance of high-level abstraction when adopting a complex software development cycle within a multilayered heterogeneous IT ecosystem.",
+    "content_kind": null,
+    "content_origin": null,
+    "evidence_text": null,
+    "retrieved_at": null,
+    "is_truncated": false,
+    "license_name": null,
+    "license_url": null,
+    "provenance": {
+      "provider": "NCBI PubMed",
+      "pmid": "38257588",
+      "pmcid": "PMC10818290"
+    },
+    "provider_metadata": {
+      "provider": "NCBI PubMed",
+      "pmid": "38257588",
+      "doi": "10.3390/s24020495",
+      "pmcid": "PMC10818290",
+      "publication_types": [
+        "Journal Article"
+      ],
+      "languages": [
+        "eng"
+      ],
+      "journal_identifiers": {},
+      "mesh_terms": [],
+      "author_keywords": [
+        "Industry 4.0",
+        "analytics",
+        "model-driven development",
+        "smart agriculture"
+      ]
+    },
+    "article_mesh_terms": [],
+    "article_subject_terms": [],
+    "article_keywords": [
+      "Industry 4.0",
+      "analytics",
+      "model-driven development",
+      "smart agriculture"
+    ]
+  },
+  "assessment": {
+    "classification": "REJECT",
+    "disease_match": false,
+    "factor_match": true,
+    "pediatric_match": "UNKNOWN",
+    "matched_disease_alias": "Plague",
+    "matched_factor_term": "humidity",
+    "disease_strength": "WEAK"
+  },
+  "transport": {
+    "method": "POST",
+    "endpoint": "efetch.fcgi",
+    "db": "pubmed",
+    "id": "38257588",
+    "retmode": "xml",
+    "max_retries": 0,
+    "http_requests": 1,
+    "search_calls": 0,
+    "authorization": "User explicitly authorized one additional EFetch after partial audit."
+  },
+  "match_sources": {
+    "plague": [
+      "abstract_text"
+    ],
+    "humidity": [
+      "abstract_text"
+    ],
+    "title_matches": [],
+    "article_mesh_terms": [],
+    "article_keywords": [
+      "Industry 4.0",
+      "analytics",
+      "model-driven development",
+      "smart agriculture"
+    ],
+    "retrieval_provenance_contamination_observed": false
+  },
+  "offline_xml_fixture": "seasonal_disease_backend/tests/fixtures/pubmed_38257588_efetch.xml",
+  "offline_xml_fixture_sha256": "82b054cdce13096aa4a8a4580d7d133e4b63583300a673b152ae80ef7d93c643",
+  "offline_xml_fixture_format_note": "Complete XML response with final newline normalized by apply_patch; original transport hash is xml_sha256."
+}

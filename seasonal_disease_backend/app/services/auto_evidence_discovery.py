@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from typing import Protocol
+import re
 
 from app.medical_knowledge_models import MedicalKnowledgeTopic
 from app.services.auto_evidence_relevance import (
@@ -17,6 +18,7 @@ from app.services.medical_evidence_provider import (
     MedicalEvidenceProvider,
     MedicalEvidenceProviderError,
     NormalizedMedicalEvidence,
+    normalized_evidence_identity_keys,
 )
 from app.services.pubmed_client import PubMedClient
 from app.services.pubmed_evidence_provider import (
@@ -178,6 +180,7 @@ class PubMedAutoEvidenceProvider:
         results_per_search: int = 15,
         min_pediatric_sources_before_stop: int = 3,
         max_evidence_resolutions: int = 20,
+        candidate_budget: int | None = None,
     ):
         self.provider = (
             client
@@ -190,6 +193,7 @@ class PubMedAutoEvidenceProvider:
         self.results_per_search = min(25, max(1, results_per_search))
         self.min_pediatric_sources_before_stop = min(10, max(1, min_pediatric_sources_before_stop))
         self.max_evidence_resolutions = min(30, max(1, max_evidence_resolutions))
+        self.candidate_budget = max(1, candidate_budget) if candidate_budget is not None else None
 
     def _query_stages(self, topic: MedicalKnowledgeTopic, aliases: DiseaseAliasSet) -> tuple[tuple[str, str], ...]:
         strict_aliases = aliases.strict or aliases.broad
@@ -229,8 +233,15 @@ class PubMedAutoEvidenceProvider:
         usable: list[AutoEvidenceCandidate] = []
 
         for stage, query in self._query_stages(topic, aliases):
+            remaining = (
+                self.results_per_search
+                if self.candidate_budget is None
+                else min(self.results_per_search, self.candidate_budget - raw_results)
+            )
+            if remaining <= 0:
+                break
             try:
-                found = self.provider.search(query, self.results_per_search).sources
+                found = self.provider.search(query, remaining).sources
             except MedicalEvidenceProviderError as exc:
                 raise AutoEvidenceSearchError("PubMed search failed") from exc
             raw_results += len(found)
@@ -353,3 +364,226 @@ class PubMedAutoEvidenceProvider:
             selected=tuple(selected), audit=tuple(audits),
             queries=tuple(item.query for item in queries), diagnostics=diagnostics,
         )
+
+
+def build_who_topic_query(
+    topic: MedicalKnowledgeTopic, aliases: DiseaseAliasSet
+) -> str:
+    """Build plain WHO topic terms; never emits PubMed operators or patient data."""
+
+    disease_terms = tuple(aliases.strict or aliases.broad)[:3]
+    factor_terms = tuple(factor_vocabulary(topic, expanded=True))[:3]
+    terms = [*disease_terms, *factor_terms, "children", "pediatric"]
+    cleaned = [re.sub(r"[^\w\s\-/]", " ", term).strip() for term in terms]
+    return " ".join(term for term in cleaned if term)[:500]
+
+
+class WhoAutoEvidenceProvider:
+    provider_name = "WHO"
+
+    def __init__(self, provider: MedicalEvidenceProvider, *, candidate_budget: int = 15):
+        self.provider = provider
+        self.candidate_budget = min(25, max(1, candidate_budget))
+
+    def discover(
+        self,
+        *,
+        topic: MedicalKnowledgeTopic,
+        disease_name: str,
+        max_sources: int,
+        disease_aliases: DiseaseAliasSet | None = None,
+    ) -> AutoDiscoveryResult:
+        from app.services.who_evidence_provider import who_trust_class
+
+        aliases = disease_aliases or build_disease_aliases(disease_name)
+        query = build_who_topic_query(topic, aliases)
+        if not query:
+            return AutoDiscoveryResult((), (), (), AutoDiscoveryDiagnostics(
+                insufficient_reason="NO_DISEASE_RELEVANT_SOURCE"
+            ))
+        try:
+            records = self.provider.search(query, self.candidate_budget).sources
+        except MedicalEvidenceProviderError as exc:
+            raise AutoEvidenceSearchError("WHO search failed") from exc
+        audits: list[AutoDiscoveryAudit] = []
+        usable: list[AutoEvidenceCandidate] = []
+        disease_count = factor_count = pediatric_count = 0
+        for record in records:
+            signals = record_relevance_signals(
+                title=record.title,
+                abstract=record.abstract_text or "",
+                mesh_terms=[],
+                topic=topic,
+                aliases=aliases,
+            )
+            disease_count += signals.disease > 0
+            factor_count += signals.disease > 0 and signals.factor > 0
+            pediatric_count += (
+                signals.disease > 0 and signals.factor > 0 and signals.pediatric > 0
+            )
+            if signals.disease == 0 or signals.factor == 0:
+                audits.append(AutoDiscoveryAudit(
+                    "WHO", "WHO", "SKIPPED",
+                    "DISEASE_METADATA_MISMATCH" if signals.disease == 0 else "FACTOR_METADATA_MISMATCH",
+                    record.external_id, record.title, "WHO_TOPIC",
+                ))
+                continue
+            try:
+                evidence = self.provider.enrich(record)
+            except MedicalEvidenceProviderError as exc:
+                raise AutoEvidenceEnrichmentError("WHO evidence enrichment failed") from exc
+            if who_trust_class(evidence) != "WHO":
+                audits.append(AutoDiscoveryAudit(
+                    "WHO", "WHO", "SKIPPED", "WHO_METADATA_ONLY_NOT_TRUSTED",
+                    record.external_id, record.title, "WHO_TOPIC",
+                ))
+                continue
+            score = signals.disease * 100 + signals.factor * 40 + signals.pediatric * 20
+            usable.append(AutoEvidenceCandidate(evidence, evidence, "WHO", score, signals))
+        ranked = sorted(
+            usable,
+            key=lambda item: (
+                -item.signals.disease, -item.signals.factor, -item.signals.pediatric,
+                -item.score, item.record.external_id,
+            ),
+        )
+        selected = tuple(ranked[: min(10, max(1, max_sources))]) if any(
+            item.signals.pediatric > 0 for item in ranked
+        ) else ()
+        selected_ids = {item.record.external_id for item in selected}
+        for candidate in ranked:
+            chosen = candidate.record.external_id in selected_ids
+            audits.append(AutoDiscoveryAudit(
+                "WHO", "WHO", "SELECTED" if chosen else "SKIPPED",
+                "SELECTED_FOR_GENERATION" if chosen else "SOURCE_CAPACITY_LIMIT",
+                candidate.record.external_id, candidate.record.title, "WHO_TOPIC",
+            ))
+        reason = _insufficient_reason(
+            raw=len(records), disease=disease_count, factor=factor_count,
+            pediatric=pediatric_count, usable=len(usable),
+        )
+        diagnostics = AutoDiscoveryDiagnostics(
+            queries_run=1, raw_results=len(records), deduplicated=len(records),
+            disease_relevant=disease_count, factor_relevant=factor_count,
+            pediatric_relevant=pediatric_count, usable_evidence=len(usable),
+            selected_for_generation=len(selected), insufficient_reason=reason if not selected else None,
+            query_details=(AutoDiscoveryQuery("WHO_TOPIC", query, len(records)),),
+        )
+        return AutoDiscoveryResult(
+            selected, tuple(audits), (query,), diagnostics
+        )
+
+
+class MultiProviderAutoEvidenceProvider:
+    """Failure-isolated, deterministic merge across one immutable provider snapshot."""
+
+    provider_name = "MULTI_PROVIDER"
+
+    def __init__(self, providers: tuple[AutoEvidenceDiscoveryProvider, ...]):
+        self.providers = providers
+
+    def discover(
+        self,
+        *,
+        topic: MedicalKnowledgeTopic,
+        disease_name: str,
+        max_sources: int,
+        disease_aliases: DiseaseAliasSet | None = None,
+    ) -> AutoDiscoveryResult:
+        if not self.providers:
+            raise AutoEvidenceSearchError("No AUTO medical evidence provider is enabled")
+        aliases = disease_aliases or build_disease_aliases(disease_name)
+        results: list[AutoDiscoveryResult] = []
+        failures: list[AutoDiscoveryAudit] = []
+        for provider in self.providers:
+            try:
+                results.append(provider.discover(
+                    topic=topic,
+                    disease_name=disease_name,
+                    max_sources=max_sources,
+                    disease_aliases=aliases,
+                ))
+            except (AutoEvidenceSearchError, AutoEvidenceEnrichmentError):
+                failures.append(AutoDiscoveryAudit(
+                    provider.provider_name,
+                    "WHO" if provider.provider_name == "WHO" else "PUBMED",
+                    "SKIPPED", "PROVIDER_UNAVAILABLE", provider.provider_name,
+                    "Provider unavailable", "PROVIDER",
+                ))
+        if not results:
+            raise AutoEvidenceSearchError("All enabled medical evidence providers failed")
+
+        candidates = sorted(
+            (item for result in results for item in result.selected),
+            key=lambda item: (
+                -item.signals.disease, -item.signals.factor, -item.signals.pediatric,
+                -item.score, item.record.provider_id, item.record.external_id,
+            ),
+        )
+        selected: list[AutoEvidenceCandidate] = []
+        identities: set[str] = set()
+        merge_audits: list[AutoDiscoveryAudit] = []
+        for candidate in candidates:
+            keys = normalized_evidence_identity_keys(candidate.record)
+            duplicate = bool(identities.intersection(keys)) or any(
+                _near_duplicate(candidate.record.title, existing.record.title)
+                for existing in selected
+            )
+            if duplicate:
+                merge_audits.append(AutoDiscoveryAudit(
+                    candidate.record.provider_id, candidate.trust_class, "SKIPPED",
+                    "CROSS_PROVIDER_DUPLICATE", candidate.record.external_id,
+                    candidate.record.title, "MERGE",
+                ))
+                identities.update(keys)
+                continue
+            if len(selected) >= min(10, max(1, max_sources)):
+                break
+            selected.append(candidate)
+            identities.update(keys)
+
+        diagnostics = AutoDiscoveryDiagnostics(
+            queries_run=sum(result.diagnostics.queries_run for result in results),
+            raw_results=sum(result.diagnostics.raw_results for result in results),
+            deduplicated=sum(result.diagnostics.deduplicated for result in results),
+            disease_relevant=sum(result.diagnostics.disease_relevant for result in results),
+            factor_relevant=sum(result.diagnostics.factor_relevant for result in results),
+            pediatric_relevant=sum(result.diagnostics.pediatric_relevant for result in results),
+            usable_evidence=sum(result.diagnostics.usable_evidence for result in results),
+            selected_for_generation=len(selected),
+            insufficient_reason=None if selected else next(
+                (result.diagnostics.insufficient_reason for result in results if result.diagnostics.insufficient_reason),
+                "NO_USABLE_EVIDENCE",
+            ),
+            query_details=tuple(
+                detail for result in results for detail in result.diagnostics.query_details
+            ),
+        )
+        return AutoDiscoveryResult(
+            tuple(selected),
+            tuple(audit for result in results for audit in result.audit) + tuple(failures) + tuple(merge_audits),
+            tuple(query for result in results for query in result.queries),
+            diagnostics,
+        )
+
+
+def create_auto_evidence_discovery_provider(
+    provider: MedicalEvidenceProvider,
+    *,
+    searches_per_topic: int,
+    results_per_search: int,
+    candidate_budget: int,
+) -> AutoEvidenceDiscoveryProvider:
+    """Single adapter boundary; the worker remains provider-neutral."""
+
+    provider_id = provider.descriptor.provider_id
+    if provider_id == "PUBMED":
+        return PubMedAutoEvidenceProvider(
+            provider,
+            searches_per_topic=searches_per_topic,
+            results_per_search=results_per_search,
+            candidate_budget=candidate_budget,
+        )
+    if provider_id == "WHO":
+        return WhoAutoEvidenceProvider(provider, candidate_budget=candidate_budget)
+    raise ValueError(f"No AUTO discovery adapter is registered for {provider_id}")

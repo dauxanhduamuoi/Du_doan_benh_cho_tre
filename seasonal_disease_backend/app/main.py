@@ -16,6 +16,8 @@ from app.routers import (
     forecast,
     import_data,
     medical_knowledge_drafts,
+    medical_evidence_provider_settings,
+    medical_evidence_reviewed,
     medical_knowledge_pubmed,
     medical_knowledge_service_status,
     public,
@@ -61,6 +63,12 @@ from migrations.v014_auto_topic_visibility import upgrade as upgrade_auto_topic_
 from migrations.v015_medical_evidence_providers import (
     upgrade as upgrade_medical_evidence_providers,
 )
+from migrations.v016_who_evidence_content import (
+    upgrade as upgrade_who_evidence_content,
+)
+from migrations.v017_medical_evidence_provider_settings import (
+    upgrade as upgrade_medical_evidence_provider_settings,
+)
 
 
 @asynccontextmanager
@@ -81,6 +89,8 @@ async def lifespan(_: FastAPI):
     upgrade_auto_multi_tier_generation(engine)
     upgrade_auto_topic_visibility(engine)
     upgrade_medical_evidence_providers(engine)
+    upgrade_who_evidence_content(engine)
+    upgrade_medical_evidence_provider_settings(engine)
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)
@@ -146,3 +156,5 @@ app.include_router(medical_knowledge_pubmed.options_router)
 app.include_router(medical_knowledge_drafts.router)
 app.include_router(medical_knowledge_service_status.router)
 app.include_router(auto_medical_knowledge.router)
+app.include_router(medical_evidence_provider_settings.router)
+app.include_router(medical_evidence_reviewed.router)

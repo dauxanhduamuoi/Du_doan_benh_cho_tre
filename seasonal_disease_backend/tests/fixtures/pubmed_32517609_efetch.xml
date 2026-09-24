@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Bounded archive of the article-owned fields returned by PubMed EFetch on 2026-09-23. -->
+<PubmedArticleSet>
+  <PubmedArticle>
+    <MedlineCitation Status="MEDLINE" Owner="NLM">
+      <PMID Version="1">32517609</PMID>
+      <Article PubModel="Electronic">
+        <Journal>
+          <JournalIssue><PubDate><Year>2020</Year></PubDate></JournalIssue>
+          <Title>Proceedings of the Royal Society B: Biological Sciences</Title>
+        </Journal>
+        <ArticleTitle>Climate drivers of plague epidemiology in British India, 1898-1949.</ArticleTitle>
+        <Abstract>
+          <AbstractText>Plague, caused by Yersinia pestis infection, continues to threaten low- and middle-income countries throughout the world. The complex interactions between rodents and fleas with their respective environments challenge our understanding of human plague epidemiology. Historical long-term datasets of reported plague cases offer a unique opportunity to elucidate the effects of climate on plague outbreaks in detail. Here, we analyse monthly plague deaths and climate data from 25 provinces in British India from 1898 to 1949 to generate insights into the influence of temperature, rainfall and humidity on the occurrence, severity and timing of plague outbreaks. We find that moderate relative humidity levels of between 60% and 80% were strongly associated with outbreaks. Using wavelet analysis, we determine that the nationwide spread of plague was driven by changes in humidity, where, on average, a one-month delay in the onset of rising humidity translated into a one-month delay in the timing of plague outbreaks. This work can inform modern spatio-temporal predictive models for the disease and aid in the development of early-warning strategies for the deployment of prophylactic treatments and other control measures.</AbstractText>
+        </Abstract>
+        <Language>eng</Language>
+        <PublicationTypeList><PublicationType>Journal Article</PublicationType></PublicationTypeList>
+      </Article>
+      <MeshHeadingList>
+        <MeshHeading><DescriptorName>Animals</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Climate</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Disease Outbreaks</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>History, 19th Century</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>History, 20th Century</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Humans</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>India</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Plague</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Rodentia</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Seasons</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Siphonaptera</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Temperature</DescriptorName></MeshHeading>
+        <MeshHeading><DescriptorName>Yersinia pestis</DescriptorName></MeshHeading>
+      </MeshHeadingList>
+      <KeywordList Owner="NOTNLM">
+        <Keyword>British India</Keyword>
+        <Keyword>Yersinia pestis</Keyword>
+        <Keyword>climate</Keyword>
+        <Keyword>plague</Keyword>
+        <Keyword>third plague pandemic</Keyword>
+      </KeywordList>
+    </MedlineCitation>
+    <PubmedData>
+      <ArticleIdList><ArticleId IdType="pubmed">32517609</ArticleId></ArticleIdList>
+    </PubmedData>
+  </PubmedArticle>
+</PubmedArticleSet>

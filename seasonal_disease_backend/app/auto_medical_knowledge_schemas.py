@@ -296,6 +296,8 @@ class AutoMedicalKnowledgeSourceResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source_id: int
+    provider_id: str
+    source_kind: str
     title: str
     journal: str | None
     publication_year: int | None

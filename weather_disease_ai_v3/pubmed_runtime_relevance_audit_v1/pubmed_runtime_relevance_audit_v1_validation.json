@@ -1,0 +1,114 @@
+{
+  "task": "PUBMED REVIEWED RUNTIME RELEVANCE INTEGRATION AUDIT V1",
+  "status": "PASS",
+  "branch": "feature/medical-knowledge-v1-20260820",
+  "head_before": "dca4c7d1d79ab3863601fb24691acafaec965085",
+  "head_after": "dca4c7d1d79ab3863601fb24691acafaec965085",
+  "root_cause": "PubMed-only Guided searches used the legacy /api/medical-knowledge/pubmed/search endpoint when no non-PubMed Reviewed provider was enabled, bypassing MedicalEvidenceReviewedService and ReviewedEvidenceRelevance.",
+  "fixed_guided_endpoint": "/api/medical-knowledge/providers/search",
+  "legacy_endpoint_scope_after_fix": "Explicit PubMed FREE search only",
+  "exact_fixture_outcomes": {
+    "The temperature-dependent conformational ensemble of SARS-CoV-2 main protease (Mpro).": {
+      "classification": "REJECT",
+      "visible": false
+    },
+    "Edge IoT Prototyping Using Model-Driven Representations: A Use Case for Smart Agriculture.": {
+      "classification": "REJECT",
+      "visible": false
+    },
+    "Plague transmission and relative humidity": {
+      "classification": "DIRECT_TOPIC",
+      "visible": true
+    },
+    "Plague vaccination": {
+      "classification": "RELATED_CONTEXT",
+      "visible": true,
+      "retrieval_query_level": "DIRECT_DISEASE_FACTOR_PEDIATRIC"
+    }
+  },
+  "single_multi_provider_equivalence": true,
+  "frontend_badge_source": "ReviewedProviderSource.relevance",
+  "frontend_reject_defense": true,
+  "old_provider_results_cleared_at_search_start": true,
+  "runtime_audit": {
+    "ports_checked": [5173, 5174, 8000, 8001],
+    "matching_listeners": 0,
+    "backend_restart": "Required for a non-reload Uvicorn process; automatic with --reload.",
+    "frontend_reload": "Vite dev uses HMR; production requires rebuild/redeploy; hard reload is safest for an already-open old bundle.",
+    "in_app_browser_available": false,
+    "stale_runtime_proven": false
+  },
+  "tests": [
+    {
+      "name": "pre-fix PubMed-only Guided route regression",
+      "result": "EXPECTED_FAIL",
+      "details": "Could not find provider-group results because the legacy PubMed API was called."
+    },
+    {
+      "name": "exact real UI endpoint regression",
+      "command": ".venv/Scripts/python.exe -m pytest -q tests/test_pubmed_runtime_relevance_audit_v1.py",
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "name": "PubMed endpoint/provider focused",
+      "passed": 83,
+      "failed": 0
+    },
+    {
+      "name": "PubMed plus WHO Reviewed integration",
+      "passed": 53,
+      "failed": 0
+    },
+    {
+      "name": "Shared Reviewed relevance unit",
+      "passed": 14,
+      "failed": 0
+    },
+    {
+      "name": "Medical Knowledge frontend focused",
+      "passed": 123,
+      "failed": 0
+    },
+    {
+      "name": "full backend",
+      "passed": 892,
+      "failed": 0
+    },
+    {
+      "name": "full frontend",
+      "passed": 295,
+      "failed": 0
+    },
+    {
+      "name": "TypeScript typecheck",
+      "result": "PASS"
+    },
+    {
+      "name": "Vite production build",
+      "result": "PASS"
+    },
+    {
+      "name": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "external_calls": {
+    "pubmed": 0,
+    "who": 0,
+    "groq": 0
+  },
+  "scope": {
+    "who_changed": false,
+    "auto_changed": false,
+    "database_changed": false,
+    "schema_changed": false,
+    "migration_added": false
+  },
+  "git_operations": {
+    "commit": false,
+    "push": false,
+    "reset": false,
+    "discard": false
+  }
+}

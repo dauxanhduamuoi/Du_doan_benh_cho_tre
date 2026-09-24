@@ -55,6 +55,25 @@ class MedicalKnowledgeTopicSourceService:
         )
         return True
 
+    @staticmethod
+    def _usable_for_draft(source, content) -> bool:
+        if content is None or not (content.evidence_text or "").strip():
+            return False
+        provider_id = (source.provider_id or source.source_type).upper()
+        if provider_id == "PUBMED":
+            return True
+        if provider_id != "WHO":
+            return False
+        provenance = content.provenance_json if isinstance(content.provenance_json, dict) else {}
+        return bool(
+            content.content_kind == "OFFICIAL_SUMMARY_EXCERPT"
+            and content.content_origin == "WHO_PUBLICATIONS_API"
+            and content.license_url
+            == "https://creativecommons.org/licenses/by-nc-sa/3.0/igo/"
+            and provenance.get("license_allowlisted") is True
+            and provenance.get("full_text_stored") is False
+        )
+
     def read(
         self,
         *,
@@ -91,6 +110,9 @@ class MedicalKnowledgeTopicSourceService:
             sources=[
                 MedicalKnowledgeTopicSourceItem(
                     source_id=link.source_id,
+                    provider_id=link.source.provider_id or link.source.source_type,
+                    external_id=link.source.external_id or link.source.pmid,
+                    source_kind=link.source.source_kind or "OTHER",
                     pmid=link.source.pmid,
                     title=link.source.title,
                     journal=link.source.journal,
@@ -103,6 +125,10 @@ class MedicalKnowledgeTopicSourceService:
                         else None
                     ),
                     content_kind=content.content_kind if content is not None else None,
+                    url=link.source.url,
+                    license_name=content.license_name if content is not None else None,
+                    license_url=content.license_url if content is not None else None,
+                    usable_for_draft=self._usable_for_draft(link.source, content),
                     added_at=link.added_at,
                 )
                 for link in links

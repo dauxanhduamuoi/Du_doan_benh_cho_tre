@@ -1,0 +1,142 @@
+{
+  "retrieved_at": "2026-09-23T14:10:22.950147+00:00",
+  "xml_sha256": "d87bc9b2dac00080c4a81b570f5fb40c3f3005aad3c1766ade0f01a8507f5004",
+  "normalized_source": {
+    "provider_id": "PUBMED",
+    "source_kind": "RESEARCH_ARTICLE",
+    "external_id": "30017148",
+    "title": "Dual route vaccination for plague with emergency use applications.",
+    "canonical_url": "https://pubmed.ncbi.nlm.nih.gov/30017148/",
+    "authors": "B D Moore, R R C New, W Butcher, R Mahood, J Steward, M Bayliss, C MacLeod, M Bogus, E D Williamson",
+    "publication_date": null,
+    "publisher_or_journal": "Vaccine",
+    "language": "eng",
+    "doi": "10.1016/j.vaccine.2018.06.039",
+    "pmid": "30017148",
+    "pmcid": null,
+    "publication_year": 2018,
+    "abstract_text": "Here, we report a dual-route vaccination approach for plague, able to induce a rapid response involving systemic and mucosal immunity, whilst also providing ease of use in those resource-poor settings most vulnerable to disease outbreaks. This novel vaccine (VypVaxDuo) comprises the recombinant F1 and V proteins in free association. VypVaxDuo has been designed for administration via a sub-cutaneous priming dose followed by a single oral booster dose and has been demonstrated to induce early onset immunity 14 days after the primary immunisation; full protective efficacy against live organism challenge was achieved in Balb/c mice exposed to 2 × 104 median lethal doses of Yersinia pestis Co92, by the sub-cutaneous route at 25 days after the oral booster immunisation. This dual-route vaccination effectively induced serum IgG and serum and faecal IgA, specific for F1 and V, which constitute two key virulence factors in Y. pestis, and is therefore suitable for further development to prevent bubonic plague and for evaluation in models of pneumonic plague. This is an essential requirement for control of disease outbreaks in areas of the world endemic for plague and is supported further by the observed exceptional stability of the primary vaccine formulation in vialled form under thermostressed conditions (40 °C for 29 weeks, and 40 °C with 75% relative humidity for 6 weeks), meaning no cold chain for storage or distribution is needed. In clinical use, the injected priming dose would be administered on simple rehydration of the dry powder by means of a dual barrel syringe, with the subsequent single booster dose being provided in an enteric-coated capsule suitable for oral self-administration.",
+    "content_kind": null,
+    "content_origin": null,
+    "evidence_text": null,
+    "retrieved_at": null,
+    "is_truncated": false,
+    "license_name": null,
+    "license_url": null,
+    "provenance": {
+      "provider": "NCBI PubMed",
+      "pmid": "30017148",
+      "pmcid": null
+    },
+    "provider_metadata": {
+      "provider": "NCBI PubMed",
+      "pmid": "30017148",
+      "doi": "10.1016/j.vaccine.2018.06.039",
+      "pmcid": null,
+      "publication_types": [
+        "Journal Article",
+        "Research Support, Non-U.S. Gov't"
+      ],
+      "languages": [
+        "eng"
+      ],
+      "journal_identifiers": {},
+      "mesh_terms": [
+        "Administration, Oral",
+        "Animals",
+        "Antibodies, Bacterial",
+        "Antigens, Bacterial",
+        "Bacterial Proteins",
+        "Female",
+        "Immunity, Mucosal",
+        "Immunization, Secondary",
+        "Immunoglobulin A",
+        "Immunoglobulin G",
+        "Mice, Inbred BALB C",
+        "Plague",
+        "Plague Vaccine",
+        "Subcutaneous Absorption",
+        "Vaccination",
+        "Vaccines, Synthetic",
+        "Virulence Factors",
+        "Yersinia pestis"
+      ],
+      "author_keywords": [
+        "Dual route",
+        "Emergency use",
+        "Mucosal",
+        "Plague",
+        "Protection",
+        "Systemic",
+        "Vaccine"
+      ]
+    },
+    "article_mesh_terms": [
+      "Administration, Oral",
+      "Animals",
+      "Antibodies, Bacterial",
+      "Antigens, Bacterial",
+      "Bacterial Proteins",
+      "Female",
+      "Immunity, Mucosal",
+      "Immunization, Secondary",
+      "Immunoglobulin A",
+      "Immunoglobulin G",
+      "Mice, Inbred BALB C",
+      "Plague",
+      "Plague Vaccine",
+      "Subcutaneous Absorption",
+      "Vaccination",
+      "Vaccines, Synthetic",
+      "Virulence Factors",
+      "Yersinia pestis"
+    ],
+    "article_subject_terms": [],
+    "article_keywords": [
+      "Dual route",
+      "Emergency use",
+      "Mucosal",
+      "Plague",
+      "Protection",
+      "Systemic",
+      "Vaccine"
+    ]
+  },
+  "assessment": {
+    "classification": "RELATED_CONTEXT",
+    "disease_match": true,
+    "factor_match": true,
+    "pediatric_match": "UNKNOWN",
+    "matched_disease_alias": "Plague",
+    "matched_factor_term": "humidity",
+    "disease_strength": "STRONG",
+    "factor_match_field": "abstract",
+    "relation_status": "INCIDENTAL",
+    "relation_reason": "STORAGE_FORMULATION_CONTEXT"
+  },
+  "transport": {
+    "method": "POST",
+    "endpoint": "efetch.fcgi",
+    "db": "pubmed",
+    "id": "30017148",
+    "retmode": "xml",
+    "max_retries": 0,
+    "http_requests": 1,
+    "search_calls": 0
+  },
+  "match_sources": {
+    "disease": [
+      "article_mesh: Plague",
+      "article_mesh: Plague Vaccine",
+      "title/abstract disease phrases"
+    ],
+    "factor": [
+      "abstract_text: 75% relative humidity"
+    ],
+    "relation_context": "abstract_text: exceptional stability of the primary vaccine formulation in vialled form under thermostressed conditions; no cold chain for storage or distribution",
+    "retrieval_provenance_contamination_observed": false
+  },
+  "offline_xml_fixture": "seasonal_disease_backend/tests/fixtures/pubmed_30017148_efetch.xml",
+  "offline_xml_fixture_sha256": "c51476f261b3d7816ec15aa1517c87621c927a299c88899cb0aa6a4692a3a733",
+  "offline_xml_fixture_format_note": "Complete XML response with final newline normalized by apply_patch; original transport hash is xml_sha256."
+}

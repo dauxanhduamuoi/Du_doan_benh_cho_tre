@@ -80,6 +80,31 @@ def build_pubmed_query(
     year_from: int | None = None,
     year_to: int | None = None,
 ) -> str:
+    return build_pubmed_query_variant(
+        disease_terms,
+        weather_factor,
+        factor_type=factor_type,
+        factor_key=factor_key,
+        factor_value=factor_value,
+        year_from=year_from,
+        year_to=year_to,
+        include_factor=True,
+        include_pediatric=True,
+    )
+
+
+def build_pubmed_query_variant(
+    disease_terms: list[str],
+    weather_factor: str | None = None,
+    *,
+    factor_type: str | None = None,
+    factor_key: str | None = None,
+    factor_value: str | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    include_factor: bool,
+    include_pediatric: bool,
+) -> str:
     factor = normalize_factor(
         factor_type=factor_type,
         factor_key=factor_key,
@@ -89,17 +114,18 @@ def build_pubmed_query(
     if not disease_terms:
         raise ValueError("At least one disease term is required")
 
-    if factor.factor_type == "WEATHER":
-        factor_terms = WEATHER_SEARCH_TERMS[factor.factor_key]
-    else:
-        factor_terms = FACTOR_SEARCH_TERMS[factor.factor_type]
-        if factor.factor_value is not None:
-            factor_terms = (*factor_terms, factor.factor_value)
-    query = (
-        f"{_or_component(disease_terms)} AND "
-        f"{_or_component(factor_terms)} AND "
-        f"{PEDIATRIC_SEARCH_COMPONENT}"
-    )
+    components = [_or_component(disease_terms)]
+    if include_factor:
+        if factor.factor_type == "WEATHER":
+            factor_terms = WEATHER_SEARCH_TERMS[factor.factor_key]
+        else:
+            factor_terms = FACTOR_SEARCH_TERMS[factor.factor_type]
+            if factor.factor_value is not None:
+                factor_terms = (*factor_terms, factor.factor_value)
+        components.append(_or_component(factor_terms))
+    if include_pediatric:
+        components.append(PEDIATRIC_SEARCH_COMPONENT)
+    query = " AND ".join(components)
     if year_from is not None or year_to is not None:
         lower = year_from if year_from is not None else 1800
         upper = year_to if year_to is not None else 2100

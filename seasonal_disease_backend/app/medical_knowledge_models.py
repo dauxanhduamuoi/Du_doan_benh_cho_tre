@@ -36,8 +36,13 @@ EVIDENCE_SOURCE_KINDS = (
     "OTHER",
 )
 SOURCE_ROLES = ("PRIMARY", "SUPPORTING")
-EVIDENCE_CONTENT_KINDS = ("ABSTRACT", "PMC_FULL_TEXT", "PMC_FULL_TEXT_EXCERPT")
-EVIDENCE_CONTENT_ORIGINS = ("NCBI_PUBMED", "NCBI_PMC")
+EVIDENCE_CONTENT_KINDS = (
+    "ABSTRACT",
+    "PMC_FULL_TEXT",
+    "PMC_FULL_TEXT_EXCERPT",
+    "OFFICIAL_SUMMARY_EXCERPT",
+)
+EVIDENCE_CONTENT_ORIGINS = ("NCBI_PUBMED", "NCBI_PMC", "WHO_PUBLICATIONS_API")
 POPULATION_RELEVANCES = (
     "PEDIATRIC_DIRECT",
     "MIXED_AGE",
@@ -68,6 +73,7 @@ AUTO_TRUST_CLASSES = (
 AUTO_DISCOVERY_DECISIONS = ("SELECTED", "SKIPPED")
 AUTO_DISPLAY_MODES = ("REVIEWED_ONLY", "REVIEWED_WITH_AUTO_FALLBACK")
 AUTO_TOPIC_VISIBILITY_ACTIONS = ("HIDE_AUTO_TOPIC", "UNHIDE_AUTO_TOPIC")
+MEDICAL_EVIDENCE_WORKFLOWS = ("AUTO", "REVIEWED")
 AUTO_NUMERIC_CLAIM_KINDS = (
     "COUNT",
     "PERCENTAGE",
@@ -637,6 +643,57 @@ class AutoMedicalKnowledgeSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
+
+
+class MedicalEvidenceProviderSetting(Base):
+    """Persisted workflow enablement; provider registration remains code-owned."""
+
+    __tablename__ = "medical_evidence_provider_settings"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "workflow", name="uq_medical_provider_setting"),
+        CheckConstraint(
+            _allowed("workflow", MEDICAL_EVIDENCE_WORKFLOWS),
+            name="ck_medical_provider_setting_workflow",
+        ),
+        CheckConstraint("enabled IN (0,1)", name="ck_medical_provider_setting_enabled"),
+        Index("ix_medical_provider_settings_workflow", "workflow", "enabled"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    workflow: Mapped[str] = mapped_column(String(16), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class MedicalEvidenceProviderSettingAudit(Base):
+    """Append-only audit trail for global provider enablement changes."""
+
+    __tablename__ = "medical_evidence_provider_setting_audits"
+    __table_args__ = (
+        CheckConstraint(
+            _allowed("workflow", MEDICAL_EVIDENCE_WORKFLOWS),
+            name="ck_medical_provider_audit_workflow",
+        ),
+        CheckConstraint("old_enabled IN (0,1)", name="ck_medical_provider_audit_old"),
+        CheckConstraint("new_enabled IN (0,1)", name="ck_medical_provider_audit_new"),
+        CheckConstraint("action IN ('ENABLE','DISABLE')", name="ck_medical_provider_audit_action"),
+        Index("ix_medical_provider_audits_provider_workflow", "provider_id", "workflow"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    workflow: Mapped[str] = mapped_column(String(16), nullable=False)
+    old_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    new_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    actor_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class AutoMedicalKnowledgeProviderCooldown(Base):

@@ -159,6 +159,23 @@ def factor_vocabulary(
     return tuple(dict.fromkeys(terms))
 
 
+_REVIEWED_FACTOR_ALIASES: dict[str, tuple[str, ...]] = {
+    # Reviewed discovery may use provider metadata terminology that is too
+    # broad for Auto evidence qualification. Disease matching remains a
+    # separate mandatory gate, so "moisture" cannot admit generic documents.
+    "humidity": ("moisture",),
+}
+
+
+def reviewed_factor_vocabulary(topic: MedicalKnowledgeTopic) -> tuple[str, ...]:
+    """Return deterministic Reviewed-only factor terms without changing Auto."""
+
+    terms = list(factor_vocabulary(topic, expanded=True))
+    if topic.factor_type == "WEATHER":
+        terms.extend(_REVIEWED_FACTOR_ALIASES.get(topic.factor_key, ()))
+    return tuple(dict.fromkeys(terms))
+
+
 def _environmental_temperature_match(text: str) -> int:
     strong = (
         "ambient temperature",

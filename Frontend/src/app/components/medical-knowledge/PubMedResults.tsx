@@ -40,6 +40,7 @@ export default function PubMedResults(props: Props) {
             <h2 id="pubmed-results-title" className="text-lg font-bold text-slate-900">
               {props.mode === 'pmid' ? 'Kết quả theo PMID' : `Tìm thấy ${props.response.count} tài liệu`}
             </h2>
+            {props.mode === 'pmid' && <p className="mt-2 text-sm text-slate-600">Tài liệu chính xác theo PMID, không lọc theo mức phù hợp chủ đề. Thêm vào kho tham khảo không đồng nghĩa đủ điều kiện tạo bản nháp AI.</p>}
             <p className="mt-1 text-sm text-slate-500">Đã chọn {selectedCount} tài liệu</p>
             <p className="mt-1 text-xs text-slate-500">Checkbox ở kết quả chỉ dùng để thêm tài liệu vào kho chủ đề, không chọn cho AI.</p>
           </div>

@@ -157,20 +157,34 @@ describe('general factor PubMed search form', () => {
 
   it('keeps guided pediatric/factor summary visible', () => {
     render(<PubMedSearchForm {...props()} />);
-    expect(screen.getByText(/tự thêm phạm vi trẻ em và từ khóa phù hợp với yếu tố/)).toBeVisible();
+    expect(screen.getByText(/cú pháp phù hợp cho từng nguồn đã chọn/)).toBeVisible();
+  });
+
+  it('explains the result limit per provider and computes two-provider capacity', () => {
+    render(<PubMedSearchForm {...props({ maxResults: 20, selectedProviderCount: 2 })} />);
+    fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
+    expect(screen.getByLabelText('Số kết quả mỗi nguồn')).toHaveValue('20');
+    expect(screen.getByText(/2 nguồn × 20.*tối đa 40 kết quả/)).toBeVisible();
+  });
+
+  it('labels Free mode as PubMed and PMC only', () => {
+    render(<PubMedSearchForm {...props({ searchMode: 'FREE' })} />);
+    expect(screen.getAllByText(/Chỉ áp dụng cho PubMed \/ PMC/)[0]).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeVisible();
   });
 
   it('keeps Direct PMID lookup available for every complete topic', () => {
     render(<PubMedSearchForm {...props()} />);
     fireEvent.click(screen.getByText('Tùy chọn nâng cao'));
-    expect(screen.getByLabelText('Tìm trực tiếp bằng PMID')).toBeVisible();
+    expect(screen.getByLabelText('Tra cứu trực tiếp PubMed bằng PMID')).toBeVisible();
+    expect(screen.getByText(/PMID không áp dụng cho WHO/)).toBeVisible();
   });
 
   it('disables search until an AGE value is selected', () => {
     const { rerender } = render(<PubMedSearchForm {...props({ factor: makeFactorSelector(factors[0]) })} />);
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeDisabled();
     rerender(<PubMedSearchForm {...props({ factor: { ...makeFactorSelector(factors[0]), factor_value: '1-5 tuổi' } })} />);
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
   });
 
   it('shows the generic topic label in the source library', () => {

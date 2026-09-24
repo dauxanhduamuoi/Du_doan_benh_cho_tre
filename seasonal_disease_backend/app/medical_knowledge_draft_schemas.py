@@ -20,7 +20,12 @@ SourceRelevance = Literal["DIRECT", "INDIRECT", "NOT_SUPPORTIVE"]
 PopulationRelevance = Literal[
     "PEDIATRIC_DIRECT", "MIXED_AGE", "ADULT_ONLY", "ELDERLY_ONLY", "UNKNOWN"
 ]
-EvidenceContentKind = Literal["ABSTRACT", "PMC_FULL_TEXT", "PMC_FULL_TEXT_EXCERPT"]
+EvidenceContentKind = Literal[
+    "ABSTRACT",
+    "PMC_FULL_TEXT",
+    "PMC_FULL_TEXT_EXCERPT",
+    "OFFICIAL_SUMMARY_EXCERPT",
+]
 
 
 class DraftGenerationRequest(GenericFactorSelector):

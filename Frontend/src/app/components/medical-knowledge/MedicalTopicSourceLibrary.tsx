@@ -81,6 +81,7 @@ export default function MedicalTopicSourceLibrary(props: Props) {
               <span className="min-w-0">
                 <span className="block font-semibold text-slate-900">{source.title}</span>
                 <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                  <span className="font-bold">{source.provider_id ?? 'PUBMED'}</span>
                   {source.pmid && <span>PMID: {source.pmid}</span>}
                   {source.pmcid && <span>PMCID: {source.pmcid}</span>}
                   {source.publication_year && <span>Năm {source.publication_year}</span>}
@@ -90,7 +91,10 @@ export default function MedicalTopicSourceLibrary(props: Props) {
                   {evidenceContentLabel(source.content_kind)}
                 </span>
                 {!isTopicSourceAiReadable(source) && (
-                  <span className="mt-2 block text-xs text-slate-600">Nguồn vẫn được lưu trong kho để tham khảo.</span>
+                  <span className="mt-2 block text-xs text-slate-600">
+                    <span className="block">Nguồn vẫn được lưu trong kho để tham khảo.</span>
+                    <span className="mt-1 block font-medium">Đã lưu để tham khảo · không thể chọn cho AI Draft.</span>
+                  </span>
                 )}
               </span>
             </label>
@@ -98,7 +102,7 @@ export default function MedicalTopicSourceLibrary(props: Props) {
         </div>
       ) : (
         <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
-          Chưa có tài liệu trong kho chủ đề. Hãy tìm PubMed và thêm tài liệu phù hợp.
+          Chưa có tài liệu trong kho chủ đề. Hãy tìm trong các nguồn được bật và thêm tài liệu phù hợp.
         </p>
       )}
     </section>

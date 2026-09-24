@@ -39,6 +39,7 @@ from app.repositories.medical_knowledge_repository import MedicalKnowledgeReposi
 from app.services.pubmed_client import PubMedClient
 from app.services.medical_evidence_provider import (
     MedicalEvidenceProvider,
+    MedicalEvidenceProviderBadResponseError,
 )
 from app.services.pubmed_evidence_provider import PubMedMedicalEvidenceProvider
 from app.services.pubmed_query_builder import build_pubmed_query
@@ -258,9 +259,15 @@ class MedicalKnowledgePubMedService:
 
     def lookup_pmid(self, request: PubMedLookupRequest) -> PubMedLookupResponse:
         self._validate_disease_group(request.disease_group_id)
-        record = self.provider.lookup(request.pmid)
+        # Dedicated identity path, with no discovery/relevance fallback. Legacy
+        # test/provider adapters may expose lookup; verify them equally strictly.
+        lookup = getattr(self.provider, "lookup_exact", self.provider.lookup)
+        record = lookup(request.pmid)
         if record is None:
             raise PubMedArticleNotFoundError("PubMed article was not found")
+        if (record.provider_id != "PUBMED" or record.external_id != request.pmid
+                or record.pmid != request.pmid):
+            raise MedicalEvidenceProviderBadResponseError("PubMed exact lookup identity mismatch")
 
         source = self.repository.get_source_by_provider_external_id("PUBMED", request.pmid)
         if source is None:
@@ -312,6 +319,9 @@ class MedicalKnowledgePubMedService:
         self._validate_disease_group(request.disease_group_id)
         # PubMed and optional PMC retrieval happen outside a write transaction.
         records = self.provider.fetch_many(request.pmids)
+        if any(record.provider_id != "PUBMED" or record.pmid not in request.pmids
+               or record.external_id != record.pmid for record in records):
+            raise MedicalEvidenceProviderBadResponseError("PubMed import identity mismatch")
         now = datetime.utcnow()
         existing_sources = self.repository.get_sources_by_provider_external_ids(
             "PUBMED", [record.external_id for record in records]

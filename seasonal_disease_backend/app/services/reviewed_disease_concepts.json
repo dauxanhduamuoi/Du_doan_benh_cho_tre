@@ -1,0 +1,9 @@
+{
+  "catalog_source": "weather_disease_ai_v3/data/processed/disease_catalog.csv",
+  "description": "Reviewed-only ambiguity annotations for existing canonical labels; not a synonym/pathogen catalog.",
+  "concepts": [
+    {"canonical_label": "Plague", "ambiguous_aliases": ["Plague"]}
+  ],
+  "clinical_prefixes": ["human", "pediatric", "paediatric"],
+  "clinical_suffixes": ["disease", "infection", "infections", "vaccine", "vaccines", "vaccination", "patients", "diagnosis", "treatment", "management", "surveillance", "epidemiology", "outbreak", "outbreaks", "incidence", "risk", "transmission"]
+}

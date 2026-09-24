@@ -184,6 +184,10 @@ def parse_pubmed_records(xml_content: bytes | str) -> list[PubMedArticleRecord]:
                     "languages": languages,
                     "journal_identifiers": journal_identifiers,
                     "mesh_terms": mesh_terms,
+                    "author_keywords": [
+                        value for node in article.findall(".//MedlineCitation/KeywordList/Keyword")
+                        if (value := _text(node))
+                    ],
                 },
             )
         )
