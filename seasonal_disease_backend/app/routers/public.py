@@ -20,6 +20,8 @@ from app.services.published_medical_knowledge_read_service import (
     PublishedMedicalKnowledgeReadService,
 )
 from app.services.auto_medical_knowledge_service import AutoMedicalKnowledgeQueueService
+from app.services.trusted_reference_read_service import TrustedReferenceReadService
+from app.trusted_reference_schemas import TrustedReferenceBatchRequest, TrustedReferenceBatchResponse
 from app.services.weather_ai_service import (
     DEFAULT_TIMEZONE,
     get_weather_ai_options,
@@ -84,6 +86,21 @@ def published_medical_knowledge(
 ):
     """Return only consistent, current publication-safe Medical Knowledge views."""
 
+    return service.read_batch(payload)
+
+
+def get_trusted_reference_read_service(
+    db: Session = Depends(get_db),
+) -> TrustedReferenceReadService:
+    return TrustedReferenceReadService(db)
+
+
+@router.post("/trusted-references", response_model=TrustedReferenceBatchResponse)
+def trusted_references(
+    payload: TrustedReferenceBatchRequest,
+    service: TrustedReferenceReadService = Depends(get_trusted_reference_read_service),
+):
+    """Return persisted metadata for current published Reviewed references only."""
     return service.read_batch(payload)
 
 

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import case, func, select, tuple_, update
+from sqlalchemy import and_, case, func, or_, select, tuple_, update
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, selectinload
 
 from app.medical_knowledge_models import (
@@ -151,6 +152,69 @@ class MedicalKnowledgeRepository:
             )
         )
         return list(self.db.scalars(statement).unique())
+
+    def get_published_reference_metadata(
+        self, selectors: list[tuple[str, str, str, str | None]]
+    ) -> list[RowMapping]:
+        """Project only metadata from the current APPROVED, Parent-published revision.
+
+        The topic pointer and visibility flag are the existing publication state;
+        publication events are audit history, not an alternative source library.
+        Do not load revision prose, evidence bodies, Auto state or ORM relations.
+        """
+        if not selectors:
+            return []
+        selector_matches = [
+            and_(
+                MedicalKnowledgeTopic.disease_group_id == disease,
+                MedicalKnowledgeTopic.factor_type == factor_type,
+                MedicalKnowledgeTopic.factor_key == factor_key,
+                MedicalKnowledgeTopic.factor_value.is_(None)
+                if factor_value is None
+                else MedicalKnowledgeTopic.factor_value == factor_value,
+            )
+            for disease, factor_type, factor_key, factor_value in selectors
+        ]
+        statement = (
+            select(
+                MedicalKnowledgeTopic.disease_group_id,
+                MedicalKnowledgeTopic.factor_type,
+                MedicalKnowledgeTopic.factor_key,
+                MedicalKnowledgeTopic.factor_value,
+                MedicalEvidenceSource.id.label("source_id"),
+                MedicalEvidenceSource.provider_id,
+                MedicalEvidenceSource.external_id,
+                MedicalEvidenceSource.source_type,
+                MedicalEvidenceSource.source_kind,
+                MedicalEvidenceSource.title,
+                MedicalEvidenceSource.journal,
+                MedicalEvidenceSource.publication_year,
+                MedicalEvidenceSource.url.label("original_url"),
+            )
+            .select_from(MedicalKnowledgeTopic)
+            .join(
+                MedicalKnowledgeRevision,
+                and_(
+                    MedicalKnowledgeTopic.published_revision_id == MedicalKnowledgeRevision.id,
+                    MedicalKnowledgeRevision.topic_id == MedicalKnowledgeTopic.id,
+                ),
+            )
+            .join(MedicalRevisionSource, MedicalRevisionSource.revision_id == MedicalKnowledgeRevision.id)
+            .join(MedicalEvidenceSource, MedicalEvidenceSource.id == MedicalRevisionSource.source_id)
+            .where(
+                or_(*selector_matches),
+                MedicalKnowledgeRevision.status == "APPROVED",
+                MedicalKnowledgeRevision.parent_display_allowed.is_(True),
+            )
+            .order_by(
+                MedicalKnowledgeTopic.id,
+                MedicalRevisionSource.sort_order,
+                MedicalEvidenceSource.id,
+            )
+        )
+        # A reader must not flush unrelated pending changes in a caller's session.
+        with self.db.no_autoflush:
+            return list(self.db.execute(statement).mappings())
 
     def create_revision(self, data: MedicalRevisionCreate) -> MedicalKnowledgeRevision:
         revision = MedicalKnowledgeRevision(**data.model_dump())
