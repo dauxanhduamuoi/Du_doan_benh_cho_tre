@@ -616,11 +616,11 @@ export default function ParentPortal() {
                 <EmptyState loading={loading || initialLoading} />
               ) : (
                 <div className="space-y-4">
-                  <ParentDiseaseCard row={mainRisk} index={0} featured tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(mainRisk.disease_group_id)} />
+                  <ParentDiseaseCard row={mainRisk} index={0} featured anchorDate={aiResult?.context.anchor_date} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(mainRisk.disease_group_id)} />
                   {otherRisks.length > 0 && (
                     <div className="space-y-4">
                       {otherRisks.map((row, index) => (
-                        <ParentDiseaseCard key={row.disease_id} row={row} index={index + 1} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(row.disease_group_id)} />
+                        <ParentDiseaseCard key={row.disease_id} row={row} index={index + 1} anchorDate={aiResult?.context.anchor_date} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(row.disease_group_id)} />
                       ))}
                     </div>
                   )}

@@ -15,6 +15,7 @@ import {
   PublishedMedicalKnowledgeSections,
   WeatherAIExplanationSections,
 } from '../weather-ai/WeatherAIResults';
+import { buildTier1Summary } from '../weather-ai/tier1Presentation';
 
 const RISK_STYLE: Record<string, string> = {
   Cao: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -175,16 +176,18 @@ export function ParentDiseaseCard({
   index,
   featured = false,
   tier2Loading = false,
+  anchorDate,
 }: {
   row: ParentDiseaseCardRow;
   index: number;
   featured?: boolean;
   tier2Loading?: boolean;
+  anchorDate?: string | null;
 }) {
   const t = useVietnameseT();
   const label = splitDiseaseLabel(row.disease_name).vi;
   const areaPeriod = formatPeriodRange(row.localPeriodFrom, row.localPeriodTo, t);
-  const quickSummary = row.tier1.summary_vi || (
+  const quickSummary = row.tier1.available ? buildTier1Summary(label) : (
     row.rank === 1
       ? 'Đây là nhóm bệnh được AI xếp cần lưu ý nhất trong bối cảnh hiện tại.'
       : `Đây là nhóm bệnh được AI xếp ở vị trí thứ ${row.rank} trong bối cảnh hiện tại.`
@@ -245,7 +248,7 @@ export function ParentDiseaseCard({
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)] xl:items-start">
           <div className="min-w-0 space-y-3">
-            <WeatherAIExplanationSections prediction={row} variant="parent" showLegacyTier2={false} />
+            <WeatherAIExplanationSections prediction={row} variant="parent" showLegacyTier2={false} anchorDate={anchorDate} />
             {row.publishedMedicalKnowledge.length > 0 ? (
               <ExpandableExplanation>
                 <PublishedMedicalKnowledgeSections items={row.publishedMedicalKnowledge} />

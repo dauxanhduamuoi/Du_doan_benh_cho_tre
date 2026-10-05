@@ -603,6 +603,7 @@ export default function WeatherRisk() {
                 <WeatherAIPredictionList
                   predictions={visiblePredictions}
                   disclaimer={result.disclaimer}
+                  anchorDate={result.context.anchor_date}
                 />
 
                 {predictions.length > riskPageSize && (

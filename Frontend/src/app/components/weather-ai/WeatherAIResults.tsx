@@ -21,7 +21,7 @@ import type {
 import { factorLabel } from '@/lib/medicalKnowledgeFactors';
 import {
   buildTier1DisplayGroups,
-  type Tier1DisplayDirection,
+  MODEL_EXPLANATION_DISCLAIMER,
   type Tier1DisplayGroup,
   type Tier1DisplayKind,
 } from './tier1Presentation';
@@ -79,12 +79,6 @@ const tier1Icons: Record<Tier1DisplayKind, typeof Info> = {
   OTHER: Info,
 };
 
-function directionEffect(direction: Exclude<Tier1DisplayDirection, 'MIXED'>): string {
-  return direction === 'UP'
-    ? 'Thông tin này đang làm điểm xếp hạng của nhóm bệnh tăng.'
-    : 'Thông tin này đang làm điểm xếp hạng của nhóm bệnh giảm.';
-}
-
 function FactorList({
   title,
   groups,
@@ -125,10 +119,6 @@ function FactorList({
               ) : (
                 <p className="mt-0.5 leading-5 text-slate-600">Điều kiện này đang được AI sử dụng để xếp hạng.</p>
               )}
-              <p className={`mt-1 text-[11px] font-medium leading-4 ${isUp ? 'text-emerald-700' : 'text-indigo-700'}`}>
-                <DirectionIcon size={13} aria-hidden="true" className="mr-1 inline" />
-                {directionEffect(direction)}
-              </p>
             </div>
           </li>
           );
@@ -158,7 +148,7 @@ function MixedFactorList({ groups }: { groups: Tier1DisplayGroup[] }) {
                   <p className="font-semibold text-slate-800">{group.title}</p>
                   {group.details.map((detail) => <p key={detail} className="mt-0.5 leading-5 text-slate-600">{detail}</p>)}
                   <p className="mt-1 leading-5 text-amber-900">
-                    Nhiều đặc điểm trong nhóm này đang tác động đến thứ hạng theo các hướng khác nhau.
+                    Các đặc trưng trong nhóm này đóng góp vào điểm của mô hình theo các hướng khác nhau; dấu của từng đặc trưng được giữ riêng.
                   </p>
                   <ul className="mt-1 space-y-0.5 text-xs leading-5 text-slate-600">
                     {group.mixedDetails.map((detail, index) => (
@@ -184,10 +174,12 @@ export function WeatherAIExplanationSections({
   prediction,
   variant = 'clinical',
   showLegacyTier2 = true,
+  anchorDate,
 }: {
   prediction: WeatherAIDiseaseRanking;
   variant?: ResultsVariant;
   showLegacyTier2?: boolean;
+  anchorDate?: string | null;
 }) {
   const styles = variantStyles[variant];
   const tier1 = prediction.tier1;
@@ -197,6 +189,7 @@ export function WeatherAIExplanationSections({
   const tier1Groups = buildTier1DisplayGroups(
     tier1.positive_factors ?? [],
     tier1.negative_factors ?? [],
+    { diseaseName: prediction.disease_name, anchorDate },
   );
   const positiveGroups = tier1Groups.filter((group) => group.direction === 'UP');
   const negativeGroups = tier1Groups.filter((group) => group.direction === 'DOWN');
@@ -205,24 +198,22 @@ export function WeatherAIExplanationSections({
   return (
     <div className={variant === 'parent' ? 'space-y-3' : 'mt-4 space-y-3'}>
       {tier1.available && (
-        <section className={`rounded-2xl border p-4 ${styles.tier1}`} aria-label="Giải thích xếp hạng của mô hình">
+        <section className={`rounded-2xl border p-4 ${styles.tier1}`} aria-label="Giải thích đóng góp của mô hình">
           <h4 className="text-sm font-bold text-slate-900">
-            {variant === 'parent'
-              ? 'Các yếu tố ảnh hưởng đến thứ hạng'
-              : `Vì sao AI xếp nhóm bệnh này ở vị trí #${prediction.rank}?`}
+            Các đặc trưng đóng góp nổi bật
           </h4>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            AI dựa trên thông tin của trẻ và điều kiện thời tiết gần đây. Hai nhóm dưới đây cho biết yếu tố nào đang đẩy thứ hạng lên hoặc xuống.
+            Hiển thị các đặc trưng được chọn: tối đa 5 theo chiều tăng và 5 theo chiều giảm điểm của mô hình, không phải toàn bộ 45 đặc trưng.
           </p>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            <FactorList title="Đang làm nhóm bệnh này được xếp cao hơn" groups={positiveGroups} direction="UP" />
-            <FactorList title="Đang làm nhóm bệnh này được xếp thấp hơn" groups={negativeGroups} direction="DOWN" />
+            <FactorList title="Đóng góp theo chiều tăng điểm" groups={positiveGroups} direction="UP" />
+            <FactorList title="Đóng góp theo chiều giảm điểm" groups={negativeGroups} direction="DOWN" />
           </div>
           {mixedGroups.length > 0 && <div className="mt-4"><MixedFactorList groups={mixedGroups} /></div>}
           <div className="mt-4 flex items-start gap-2 border-t border-sky-100 pt-3 text-xs leading-5 text-slate-600">
             <Info size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-sky-700" />
             <p>
-              Đây là cách các thông tin đầu vào ảnh hưởng đến điểm xếp hạng của AI, không có nghĩa các yếu tố này trực tiếp gây ra bệnh.
+              {MODEL_EXPLANATION_DISCLAIMER}
             </p>
           </div>
         </section>
@@ -416,10 +407,12 @@ export function WeatherAIPredictionList({
   predictions,
   disclaimer,
   variant = 'clinical',
+  anchorDate,
 }: {
   predictions: WeatherAIDiseaseRanking[];
   disclaimer?: string | null;
   variant?: ResultsVariant;
+  anchorDate?: string | null;
 }) {
   const styles = variantStyles[variant];
   return (
@@ -444,7 +437,7 @@ export function WeatherAIPredictionList({
                 </p>
               </div>
             </div>
-            <WeatherAIExplanationSections prediction={prediction} variant={variant} />
+            <WeatherAIExplanationSections prediction={prediction} variant={variant} anchorDate={anchorDate} />
           </article>
         ))}
       </div>

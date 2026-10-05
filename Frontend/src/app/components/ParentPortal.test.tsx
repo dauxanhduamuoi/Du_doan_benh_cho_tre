@@ -178,7 +178,7 @@ describe('Parent Published Medical Knowledge integration', () => {
     await renderAndPredict();
 
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeVisible();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
     expect(screen.getByLabelText('Tóm tắt nhanh')).toBeVisible();
     expect(screen.getByLabelText('Hướng dẫn dành cho phụ huynh')).toBeVisible();
     expect(screen.getByLabelText('Khi nào cần đưa trẻ đi khám')).toBeVisible();
@@ -202,7 +202,11 @@ describe('Parent Published Medical Knowledge integration', () => {
     await renderAndPredict();
 
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeVisible();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('so với mức nền của model');
+    expect(screen.getByLabelText('Tóm tắt nhanh')).toHaveTextContent('Các đặc trưng được chọn dưới đây mô tả đóng góp vào điểm');
+    expect(screen.queryByText('Mưa đang góp phần làm nhóm bệnh này được xếp cao hơn.')).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Giải thích y khoa' })).not.toBeInTheDocument();
     expect(screen.getByText('Ăn chín uống sôi')).toBeVisible();
   });
@@ -214,7 +218,7 @@ describe('Parent Published Medical Knowledge integration', () => {
     await renderAndPredict();
 
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeVisible();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('Đang tải giải thích y khoa bổ sung');
     pending.resolve({ items: [] });
     await waitFor(() => expect(screen.queryByText(/Đang tải giải thích y khoa bổ sung/)).not.toBeInTheDocument());
@@ -229,7 +233,7 @@ describe('Parent Published Medical Knowledge integration', () => {
     await renderAndPredict();
 
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeVisible();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
     await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
     expect(screen.queryByText(/500 internal traceback|network timeout/i)).not.toBeInTheDocument();
   });
@@ -256,6 +260,6 @@ describe('Parent Published Medical Knowledge integration', () => {
     await waitFor(() => expect(apiMocks.getPublicPublishedMedicalKnowledge).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.queryByText('PUBLISHED V1 TIER 2 CONTENT')).not.toBeInTheDocument());
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeVisible();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
   });
 });

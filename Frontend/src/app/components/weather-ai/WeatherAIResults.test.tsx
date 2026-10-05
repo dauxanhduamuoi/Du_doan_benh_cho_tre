@@ -43,7 +43,7 @@ function makePrediction(
       ],
       negative_factors: [
         {
-          feature: 'temperature_mean',
+          feature: 'temperature_mean_current',
           label_vi: 'Nhiệt độ trung bình hiện tại',
           category: 'WEATHER',
           window: 'CURRENT',
@@ -113,31 +113,32 @@ function withTier1Factors(
 
 describe('Weather AI V3 result rendering', () => {
   it('renders a Top-5 ranking in backend rank order', () => {
-    render(<WeatherAIPredictionList predictions={[1, 2, 3, 4, 5].map((rank) => makePrediction(rank))} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[1, 2, 3, 4, 5].map((rank) => makePrediction(rank))} />);
     expect(screen.getAllByTestId('weather-ai-prediction-card')).toHaveLength(5);
     expect(screen.getByLabelText('Xếp hạng 1')).toHaveTextContent('#1');
     expect(screen.getByLabelText('Xếp hạng 5')).toHaveTextContent('#5');
   });
 
   it('does not render ranking score as a percentage or probability', () => {
-    const { container } = render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
+    const { container } = render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
     expect(container.textContent).not.toContain('%');
-    expect(container.textContent).not.toMatch(/xác suất|phần trăm/i);
+    expect(container.textContent).not.toMatch(/\d+\s*%|\d+\s*phần trăm/i);
+    expect(container).toHaveTextContent('không phải xác suất mắc bệnh của trẻ');
     expect(container.textContent).not.toContain('0.9');
   });
 
   it('renders Tier 1 positive factors with UP text and arrow', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
-    expect(screen.getByText(/Đang làm nhóm bệnh này được xếp cao hơn/)).toBeInTheDocument();
-    expect(screen.getByText('Mưa trong 7 ngày gần đây')).toBeInTheDocument();
-    expect(screen.getByText('Tổng lượng mưa trong 7 ngày gần đây: 42 mm')).toBeInTheDocument();
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
+    expect(screen.getByText(/Đóng góp theo chiều tăng điểm/)).toBeInTheDocument();
+    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 05/10/2026')).toBeInTheDocument();
+    expect(screen.getByText(/Tổng lượng mưa trong 7 ngày kết thúc ngày 05\/10\/2026 là 42 mm\./)).toBeInTheDocument();
   });
 
   it('renders Tier 1 negative factors with DOWN text and arrow', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
-    expect(screen.getByText(/Đang làm nhóm bệnh này được xếp thấp hơn/)).toBeInTheDocument();
-    expect(screen.getByText('Nhiệt độ hiện tại')).toBeInTheDocument();
-    expect(screen.getByText('Nhiệt độ trung bình hiện tại: 30°C')).toBeInTheDocument();
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
+    expect(screen.getByText(/Đóng góp theo chiều giảm điểm/)).toBeInTheDocument();
+    expect(screen.getByText('Nhiệt độ trong ngày dữ liệu 05/10/2026')).toBeInTheDocument();
+    expect(screen.getByText(/Nhiệt độ trung bình trong ngày dữ liệu 05\/10\/2026 là 30°C\./)).toBeInTheDocument();
   });
 
   it('renders the actual age-group input in parent-friendly wording', () => {
@@ -149,9 +150,9 @@ describe('Weather AI V3 result rendering', () => {
         input_value: '1-5 tuổi',
       }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
-    expect(screen.getByText('Trẻ thuộc nhóm 1–5 tuổi')).toBeInTheDocument();
-    expect(screen.queryByText(/^Nhóm tuổi$/)).not.toBeInTheDocument();
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    expect(screen.getByText(/Nhóm tuổi được đưa vào mô hình là 1-5 tuổi\./)).toBeInTheDocument();
+    expect(screen.getByText(/^Nhóm tuổi$/)).toBeInTheDocument();
   });
 
   it('deduplicates day-of-year sin and cos into one time-of-year card', () => {
@@ -169,7 +170,7 @@ describe('Weather AI V3 result rendering', () => {
         input_value: -0.9,
       }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     expect(screen.getAllByText('Thời điểm trong năm')).toHaveLength(1);
     expect(screen.getAllByTestId('tier1-group-seasonal:time-of-year')).toHaveLength(1);
   });
@@ -180,7 +181,7 @@ describe('Weather AI V3 result rendering', () => {
         label_vi: 'Yếu tố mùa vụ theo tháng',
         category: 'SEASONAL_CALENDAR',
         window: 'NONE',
-        input_value: 8,
+        input_value: 10,
       }),
       makeFactor('season', 'UP', {
         label_vi: 'Mùa mưa / mùa khô',
@@ -189,9 +190,10 @@ describe('Weather AI V3 result rendering', () => {
         input_value: 'Mùa mưa',
       }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     expect(screen.getAllByText('Thời điểm trong năm')).toHaveLength(1);
-    expect(screen.getByText('Hiện tại là tháng 8, thuộc mùa mưa.')).toBeInTheDocument();
+    expect(screen.getByText(/Ngày dữ liệu 05\/10\/2026 thuộc tháng 10\./)).toBeInTheDocument();
+    expect(screen.getByText(/Theo quy ước mùa được sử dụng trong mô hình, ngày dữ liệu 05\/10\/2026 thuộc Mùa mưa\./)).toBeInTheDocument();
   });
 
   it('groups temperature min, mean and max in the same window into one card', () => {
@@ -200,18 +202,19 @@ describe('Weather AI V3 result rendering', () => {
       makeFactor('temperature_mean_7d', 'UP', { input_value: 29 }),
       makeFactor('temperature_max_7d', 'UP', { input_value: 33 }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     expect(screen.getAllByTestId('tier1-group-weather:TEMPERATURE:7D')).toHaveLength(1);
-    expect(screen.getAllByText('Nhiệt độ trong 7 ngày gần đây')).toHaveLength(1);
+    expect(screen.getAllByText('Nhiệt độ trong 7 ngày kết thúc ngày 05/10/2026')).toHaveLength(1);
   });
 
-  it('formats an actual temperature min/max range without inventing values', () => {
+  it('keeps separate actual min/max contributions without inventing a combined SHAP effect', () => {
     const prediction = withTier1Factors([
       makeFactor('temperature_min_7d', 'UP', { input_value: 26 }),
       makeFactor('temperature_max_7d', 'UP', { input_value: 33 }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
-    expect(screen.getByText('Nhiệt độ trong 7 ngày gần đây: 26–33°C')).toBeInTheDocument();
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    expect(screen.getByText(/Nhiệt độ thấp nhất .* là 26°C\./)).toBeInTheDocument();
+    expect(screen.getByText(/Nhiệt độ cao nhất .* là 33°C\./)).toBeInTheDocument();
   });
 
   it('uses a human-readable fallback when input_value is missing', () => {
@@ -221,10 +224,10 @@ describe('Weather AI V3 result rendering', () => {
         input_value: undefined,
       }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     const group = screen.getByTestId('tier1-group-weather:HUMIDITY:7D');
-    expect(group).toHaveTextContent('Độ ẩm trong 7 ngày gần đây');
-    expect(group).toHaveTextContent('Điều kiện này đang được AI sử dụng để xếp hạng.');
+    expect(group).toHaveTextContent('Độ ẩm trong 7 ngày kết thúc ngày 05/10/2026');
+    expect(group).toHaveTextContent('chưa có giá trị đầu vào để hiển thị');
     expect(group.textContent).not.toMatch(/\d+\s*%/);
   });
 
@@ -232,22 +235,22 @@ describe('Weather AI V3 result rendering', () => {
     const prediction = withTier1Factors([
       makeFactor('rain_sum_7d', 'UP', { input_value: 12 }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
-    const higher = screen.getByText(/Đang làm nhóm bệnh này được xếp cao hơn/).parentElement;
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    const higher = screen.getByText(/Đóng góp theo chiều tăng điểm/).parentElement;
     expect(higher).not.toBeNull();
-    expect(within(higher as HTMLElement).getByText('Mưa trong 7 ngày gần đây')).toBeInTheDocument();
-    expect(screen.queryByText(/Đang làm nhóm bệnh này được xếp thấp hơn/)).not.toBeInTheDocument();
+    expect(within(higher as HTMLElement).getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 05/10/2026')).toBeInTheDocument();
+    expect(screen.queryByText(/Đóng góp theo chiều giảm điểm/)).not.toBeInTheDocument();
   });
 
   it('places negative SHAP factors only in the lower-ranking section', () => {
     const prediction = withTier1Factors([], [
       makeFactor('wind_speed_mean_7d', 'DOWN', { input_value: 15 }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
-    const lower = screen.getByText(/Đang làm nhóm bệnh này được xếp thấp hơn/).parentElement;
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    const lower = screen.getByText(/Đóng góp theo chiều giảm điểm/).parentElement;
     expect(lower).not.toBeNull();
-    expect(within(lower as HTMLElement).getByText('Gió trong 7 ngày gần đây')).toBeInTheDocument();
-    expect(screen.queryByText(/Đang làm nhóm bệnh này được xếp cao hơn/)).not.toBeInTheDocument();
+    expect(within(lower as HTMLElement).getByText('Gió trong 7 ngày kết thúc ngày 05/10/2026')).toBeInTheDocument();
+    expect(screen.queryByText(/Đóng góp theo chiều tăng điểm/)).not.toBeInTheDocument();
   });
 
   it('keeps a mixed-direction family neutral instead of making a false UP or DOWN claim', () => {
@@ -255,20 +258,22 @@ describe('Weather AI V3 result rendering', () => {
       [makeFactor('temperature_min_7d', 'UP', { input_value: 26 })],
       [makeFactor('temperature_max_7d', 'DOWN', { input_value: 33 })],
     );
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     const mixed = screen.getByText(/Các yếu tố có tác động theo nhiều chiều/).parentElement;
     expect(mixed).not.toBeNull();
-    expect(within(mixed as HTMLElement).getByText('Nhiệt độ trong 7 ngày gần đây')).toBeInTheDocument();
+    expect(within(mixed as HTMLElement).getByText('Nhiệt độ trong 7 ngày kết thúc ngày 05/10/2026')).toBeInTheDocument();
     expect(mixed).toHaveTextContent('theo các hướng khác nhau');
-    expect(screen.queryByText(/Đang làm nhóm bệnh này được xếp cao hơn/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Đang làm nhóm bệnh này được xếp thấp hơn/)).not.toBeInTheDocument();
+    expect(mixed).toHaveTextContent('Nhiệt độ thấp nhất trong 7 ngày kết thúc ngày 05/10/2026 là 26°C. Đặc trưng này đóng góp theo chiều làm tăng điểm');
+    expect(mixed).toHaveTextContent('Nhiệt độ cao nhất trong 7 ngày kết thúc ngày 05/10/2026 là 33°C. Đặc trưng này đóng góp theo chiều làm giảm điểm');
+    expect(screen.queryByText(/Đóng góp theo chiều tăng điểm/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Đóng góp theo chiều giảm điểm/)).not.toBeInTheDocument();
   });
 
   it('does not render raw SHAP values', () => {
     const prediction = withTier1Factors([
       makeFactor('rain_sum_7d', 'UP', { input_value: 12, shap_value: 123.456789 }),
     ]);
-    const { container } = render(<WeatherAIPredictionList predictions={[prediction]} />);
+    const { container } = render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     expect(container).not.toHaveTextContent('123.456789');
   });
 
@@ -276,8 +281,8 @@ describe('Weather AI V3 result rendering', () => {
     const prediction = withTier1Factors([
       makeFactor('humidity_mean_7d', 'UP', { input_value: 84 }),
     ]);
-    const { container } = render(<WeatherAIPredictionList predictions={[prediction]} />);
-    expect(container).toHaveTextContent('Độ ẩm trong 7 ngày gần đây');
+    const { container } = render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    expect(container).toHaveTextContent('Độ ẩm trong 7 ngày kết thúc ngày 05/10/2026');
     expect(container).not.toHaveTextContent('humidity_mean_7d');
   });
 
@@ -294,14 +299,24 @@ describe('Weather AI V3 result rendering', () => {
     const prediction = withTier1Factors([
       makeFactor('humidity_mean_7d', 'UP', { input_value: 84 }),
     ]);
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
-    const tier1Section = screen.getByLabelText('Giải thích xếp hạng của mô hình');
-    expect(tier1Section).not.toHaveTextContent(/nguyên nhân gây|làm trẻ mắc|độ ẩm cao làm nguy cơ tăng/i);
-    expect(tier1Section).toHaveTextContent(/không có nghĩa các yếu tố này trực tiếp gây ra bệnh/i);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
+    const tier1Section = screen.getByLabelText('Giải thích đóng góp của mô hình');
+    expect(tier1Section).not.toHaveTextContent(/làm trẻ mắc|độ ẩm cao làm nguy cơ tăng|độ ẩm gây bệnh/i);
+    expect(tier1Section).toHaveTextContent(/không chứng minh nguyên nhân gây bệnh và không phải xác suất mắc bệnh của trẻ/i);
+  });
+
+  it('labels factors as a selected subset and displays one shared model disclaimer', () => {
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} variant="parent" />);
+    const section = screen.getByLabelText('Giải thích đóng góp của mô hình');
+    expect(within(section).getByText('Các đặc trưng đóng góp nổi bật')).toBeVisible();
+    expect(section).toHaveTextContent('tối đa 5 theo chiều tăng và 5 theo chiều giảm');
+    expect(section).toHaveTextContent('không phải toàn bộ 45 đặc trưng');
+    expect(within(section).getAllByText('Phần này giải thích cách các đặc trưng đóng góp vào kết quả của mô hình. Nó không chứng minh nguyên nhân gây bệnh và không phải xác suất mắc bệnh của trẻ.')).toHaveLength(1);
+    expect(section).not.toHaveTextContent(/đẩy thứ hạng|xếp cao hơn|xếp thấp hơn/);
   });
 
   it('renders available Tier 2 explanation and limitations', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
     expect(screen.getByText(/Mưa có thể liên quan/)).toBeInTheDocument();
     expect(screen.getByText(/không đồng nghĩa thời tiết chắc chắn gây bệnh/)).toBeInTheDocument();
   });
@@ -319,7 +334,7 @@ describe('Weather AI V3 result rendering', () => {
         sources: [],
       },
     });
-    render(<WeatherAIPredictionList predictions={[prediction]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[prediction]} />);
     expect(screen.getByText('Nhóm bệnh 1')).toBeInTheDocument();
     expect(screen.queryByText(/NO_MEDICAL_KNOWLEDGE/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Vì sao yếu tố thời tiết này/)).not.toBeInTheDocument();
@@ -327,7 +342,7 @@ describe('Weather AI V3 result rendering', () => {
 
   it('uses cautious Vietnamese wording for SUPPORTED evidence', () => {
     expect(evidenceStatusLabel('SUPPORTED')).toBe('Có cơ sở y khoa tương đối rõ');
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
     expect(screen.getByText('Có cơ sở y khoa tương đối rõ')).toBeInTheDocument();
   });
 
@@ -336,7 +351,7 @@ describe('Weather AI V3 result rendering', () => {
   });
 
   it('renders a safe source link with secure new-tab attributes', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} />);
     const link = screen.getByRole('link', { name: /Mở nguồn tham khảo/ });
     expect(link).toHaveAttribute('href', 'https://example.org/evidence');
     expect(link).toHaveAttribute('target', '_blank');
@@ -349,12 +364,12 @@ describe('Weather AI V3 result rendering', () => {
   });
 
   it('always renders the backend disclaimer', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} disclaimer="Disclaimer từ backend." />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} disclaimer="Disclaimer từ backend." />);
     expect(screen.getByText('Disclaimer từ backend.')).toBeVisible();
   });
 
   it('renders a safe fallback disclaimer when the backend text is empty', () => {
-    render(<WeatherAIPredictionList predictions={[makePrediction(1)]} disclaimer="" />);
+    render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} disclaimer="" />);
     expect(screen.getByText(/không thay thế chẩn đoán của bác sĩ/i)).toBeVisible();
   });
 
