@@ -29,7 +29,6 @@ import {
   WeatherAIDisclaimer,
   WeatherAILoadingNotice,
 } from './weather-ai/WeatherAIResults';
-import { buildPublishedMedicalKnowledgeSelectors } from './weather-ai/publishedMedicalKnowledge';
 import { ParentDiseaseCard } from './parent/ParentDiseaseCard';
 import { buildTrustedReferenceSelectors, matchTrustedReferenceItems } from './weather-ai/trustedReferences';
 
@@ -140,25 +139,17 @@ export default function ParentPortal() {
   const [aiResult, setAiResult] = useState<api.WeatherAIPredictResponse | null>(null);
   const [localRisks, setLocalRisks] = useState<api.AreaLocalRisk[]>([]);
   const [recommendations, setRecommendations] = useState<string[]>([]);
-  const [publishedMedicalKnowledge, setPublishedMedicalKnowledge] = useState<api.PublishedMedicalKnowledgeItem[]>([]);
-  const [tier2Loading, setTier2Loading] = useState(false);
-  const [tier2LoadingDiseaseIds, setTier2LoadingDiseaseIds] = useState<string[]>([]);
-  const tier2RequestId = useRef(0);
   const [trustedReferences, setTrustedReferences] = useState<api.TrustedReferenceItem[]>([]);
   const referenceRequestId = useRef(0);
 
   useEffect(() => () => { referenceRequestId.current += 1; }, []);
 
   const clearResults = useCallback(() => {
-    tier2RequestId.current += 1;
     referenceRequestId.current += 1;
     setTrustedReferences([]);
     setAiResult(null);
     setLocalRisks([]);
     setRecommendations([]);
-    setPublishedMedicalKnowledge([]);
-    setTier2Loading(false);
-    setTier2LoadingDiseaseIds([]);
   }, []);
 
   useLayoutEffect(() => {
@@ -286,10 +277,6 @@ export default function ParentPortal() {
     setError(null);
     const referenceId = ++referenceRequestId.current;
     setTrustedReferences([]);
-    tier2RequestId.current += 1;
-    setPublishedMedicalKnowledge([]);
-    setTier2Loading(false);
-    setTier2LoadingDiseaseIds([]);
     const weatherLatitude =
       locationMode === 'gps'
         ? coords?.latitude
@@ -344,34 +331,6 @@ export default function ParentPortal() {
           });
       }
 
-      const selectors = buildPublishedMedicalKnowledgeSelectors(weatherRows);
-      if (selectors.length > 0) {
-        const requestId = ++tier2RequestId.current;
-        const requestedPairs = new Set(
-          selectors.map((item) => `${item.disease_group_id}\u0000${item.weather_factor}`),
-        );
-        setTier2Loading(true);
-        setTier2LoadingDiseaseIds([...new Set(selectors.map((item) => item.disease_group_id))]);
-        void api.getPublicPublishedMedicalKnowledge(selectors)
-          .then((response) => {
-            if (tier2RequestId.current === requestId) {
-              setPublishedMedicalKnowledge(response.items.filter((item) =>
-                requestedPairs.has(`${item.disease_group_id}\u0000${item.weather_factor}`),
-              ));
-            }
-          })
-          .catch(() => {
-            if (tier2RequestId.current === requestId) {
-              setPublishedMedicalKnowledge([]);
-            }
-          })
-          .finally(() => {
-            if (tier2RequestId.current === requestId) {
-              setTier2Loading(false);
-              setTier2LoadingDiseaseIds([]);
-            }
-          });
-      }
     } catch (e) {
       setError(api.weatherAIErrorMessage(e));
     } finally {
@@ -390,15 +349,12 @@ export default function ParentPortal() {
         localPeriodFrom: area?.period_from ?? null,
         localPeriodTo: area?.period_to ?? null,
         knowledge: findKnowledge(row.disease_name, knowledge, t),
-        publishedMedicalKnowledge: publishedMedicalKnowledge.filter(
-          (item) => item.disease_group_id === row.disease_group_id,
-        ),
         trustedReferences: matchTrustedReferenceItems(trustedReferences, buildTrustedReferenceSelectors({
           ...aiResult!, predictions: [row], top_risks: [row],
         })),
       };
     });
-  }, [aiResult, localRisks, knowledge, publishedMedicalKnowledge, trustedReferences, t]);
+  }, [aiResult, localRisks, knowledge, trustedReferences, t]);
 
   const mainRisk = combinedRisks[0] ?? null;
   const otherRisks = combinedRisks.slice(1);
@@ -641,11 +597,11 @@ export default function ParentPortal() {
                 <EmptyState loading={loading || initialLoading} />
               ) : (
                 <div className="space-y-4">
-                  <ParentDiseaseCard row={mainRisk} index={0} featured anchorDate={aiResult?.context.anchor_date} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(mainRisk.disease_group_id)} />
+                  <ParentDiseaseCard row={mainRisk} index={0} featured anchorDate={aiResult?.context.anchor_date} />
                   {otherRisks.length > 0 && (
                     <div className="space-y-4">
                       {otherRisks.map((row, index) => (
-                        <ParentDiseaseCard key={row.disease_id} row={row} index={index + 1} anchorDate={aiResult?.context.anchor_date} tier2Loading={tier2Loading && tier2LoadingDiseaseIds.includes(row.disease_group_id)} />
+                        <ParentDiseaseCard key={row.disease_id} row={row} index={index + 1} anchorDate={aiResult?.context.anchor_date} />
                       ))}
                     </div>
                   )}

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   PublishedMedicalKnowledgeItem,
   TrustedReferenceItem,
@@ -134,7 +134,8 @@ async function renderAndPredict() {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Unexpected network in Parent tests')));
   apiMocks.listAreaProvinces.mockResolvedValue([{
     code: 'HCM',
     name: 'TP.HCM',
@@ -168,42 +169,39 @@ beforeEach(() => {
   apiMocks.getPublicTrustedReferences.mockResolvedValue({ items: [] });
 });
 
-describe('Parent Published Medical Knowledge integration', () => {
-  it('renders ranking and Tier 1 first, then attaches only matching published V1 content', async () => {
+afterEach(() => {
+  expect(apiMocks.getPublicPublishedMedicalKnowledge).not.toHaveBeenCalled();
+  for (const [path] of vi.mocked(globalThis.fetch).mock.calls) {
+    expect(path).toBe('/api/public/trusted-references');
+  }
+  vi.unstubAllGlobals();
+});
+
+describe('Parent legacy generated Medical Knowledge disconnect', () => {
+  it.each(['REVIEWED', 'AUTO'] as const)('does not fetch or render %s generated prose or warnings', async (knowledge_type) => {
     apiMocks.getPublicPublishedMedicalKnowledge.mockResolvedValue({
-      items: [
-        publishedItem,
-        { ...publishedItem, disease_group_id: '99', revision_id: 88, short_explanation_vi: 'WRONG DISEASE CONTENT' },
-        { ...publishedItem, weather_factor: 'humidity', revision_id: 89, short_explanation_vi: 'WRONG FACTOR CONTENT' },
-      ],
+      items: [{ ...publishedItem, knowledge_type, warning: 'OLD GENERATED WARNING' }],
     });
-
     await renderAndPredict();
-
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
-    expect(screen.getByLabelText('Tóm tắt nhanh')).toBeVisible();
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('42 mm');
     expect(screen.getByLabelText('Hướng dẫn dành cho phụ huynh')).toBeVisible();
     expect(screen.getByLabelText('Khi nào cần đưa trẻ đi khám')).toBeVisible();
-    const expandable = await screen.findByText('Giải thích y khoa chi tiết');
-    expect(expandable.closest('details')).not.toHaveAttribute('open');
-    fireEvent.click(expandable);
-    expect(await screen.findByText('PUBLISHED V1 TIER 2 CONTENT')).toBeVisible();
-    expect(screen.queryByText('WRONG DISEASE CONTENT')).not.toBeInTheDocument();
-    expect(screen.queryByText('WRONG FACTOR CONTENT')).not.toBeInTheDocument();
+    expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalled();
+    for (const text of [publishedItem.short_explanation_vi, publishedItem.detailed_explanation_vi,
+      publishedItem.limitations_vi, 'OLD GENERATED WARNING', 'Giải thích y khoa chi tiết']) {
+      expect(screen.queryByText(text)).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole('region', { name: 'Giải thích y khoa' })).not.toBeInTheDocument();
     expect(screen.queryByText('LEGACY TIER 2 MUST NOT RENDER')).not.toBeInTheDocument();
-    expect(apiMocks.getPublicPublishedMedicalKnowledge).toHaveBeenCalledWith([
-      { disease_group_id: '17', factor_type: 'WEATHER', factor_key: 'precipitation', factor_value: null, weather_factor: 'precipitation' },
-    ]);
     expect(screen.getByText('Đau bụng')).toBeVisible();
     expect(screen.getByText('Rửa tay')).toBeVisible();
     expect(screen.getByText(/Đưa trẻ đi khám nếu có dấu hiệu mất nước/)).toBeVisible();
     expect(screen.queryByRole('button', { name: /duyệt|publish|xuất bản|chỉnh sửa/i })).not.toBeInTheDocument();
   });
 
-  it('keeps ranking, Tier 1, and care guidance normal when no publication exists', async () => {
+  it('keeps deterministic explanation and care guidance without any publication request', async () => {
     await renderAndPredict();
-
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
     expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
     expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');
@@ -214,31 +212,30 @@ describe('Parent Published Medical Knowledge integration', () => {
     expect(screen.getByText('Ăn chín uống sôi')).toBeVisible();
   });
 
-  it('does not block ranking or Tier 1 while the optional Tier-2 request is pending', async () => {
+  it('never starts legacy loading even if the legacy service would stay pending', async () => {
     const pending = deferred<{ items: PublishedMedicalKnowledgeItem[] }>();
     apiMocks.getPublicPublishedMedicalKnowledge.mockReturnValue(pending.promise);
-
     await renderAndPredict();
-
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
-    expect(screen.getByRole('status')).toHaveTextContent('Đang tải giải thích y khoa bổ sung');
-    pending.resolve({ items: [] });
-    await waitFor(() => expect(screen.queryByText(/Đang tải giải thích y khoa bổ sung/)).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('42 mm');
+    expect(screen.queryByText(/Đang tải giải thích y khoa bổ sung/)).not.toBeInTheDocument();
+    await act(async () => pending.resolve({ items: [publishedItem] }));
+    expect(screen.queryByText(publishedItem.short_explanation_vi)).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['HTTP 500', new Error('500 internal traceback')],
-    ['network timeout', new TypeError('network timeout')],
-  ])('isolates a Tier-2 %s failure from Parent prediction and Tier 1', async (_case, failure) => {
-    apiMocks.getPublicPublishedMedicalKnowledge.mockRejectedValue(failure);
-
+  it('preserves generic care guidance and area data', async () => {
+    apiMocks.getAreaLocalRisks.mockResolvedValue([{
+      disease_group: 'Viêm dạ dày ruột', recent_cases: 12, risk_level: 'Cao',
+      period_from: '2026-09-01', period_to: '2026-09-30',
+    }]);
     await renderAndPredict();
-
-    expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
-    expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
-    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
-    expect(screen.queryByText(/500 internal traceback|network timeout/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Dữ liệu khu vực: Cao/)).toBeVisible();
+    expect(screen.getByText(/12 ca/)).toBeVisible();
+    expect(screen.getByText(/2026-09-01/)).toBeVisible();
+    expect(screen.getByText('Ăn chín uống sôi')).toBeVisible();
+    expect(screen.getByText('Tiêu chảy')).toBeVisible();
+    expect(apiMocks.getPublicDiseaseKnowledge).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getAreaLocalRisks).toHaveBeenCalledWith({ provinceCode: 'HCM', limit: 5 });
   });
 
   it('preserves the existing Parent prediction error behavior', async () => {
@@ -251,17 +248,16 @@ describe('Parent Published Medical Knowledge integration', () => {
     expect(apiMocks.getPublicPublishedMedicalKnowledge).not.toHaveBeenCalled();
   });
 
-  it('removes Parent Tier 2 after mocked Unpublish state while preserving ranking and Tier 1', async () => {
-    apiMocks.getPublicPublishedMedicalKnowledge
-      .mockResolvedValueOnce({ items: [publishedItem] })
-      .mockResolvedValueOnce({ items: [] });
+  it('retains no legacy content across clearing and a new prediction', async () => {
+    apiMocks.getPublicPublishedMedicalKnowledge.mockResolvedValue({ items: [publishedItem] });
     await renderAndPredict();
-    fireEvent.click(await screen.findByText('Giải thích y khoa chi tiết'));
-    expect(await screen.findByText('PUBLISHED V1 TIER 2 CONTENT')).toBeVisible();
-
+    fireEvent.click(screen.getByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('parent-predict-submit')).toBeEnabled());
     fireEvent.click(screen.getByTestId('parent-predict-submit'));
-    await waitFor(() => expect(apiMocks.getPublicPublishedMedicalKnowledge).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.queryByText('PUBLISHED V1 TIER 2 CONTENT')).not.toBeInTheDocument());
+    await waitFor(() => expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('PUBLISHED V1 TIER 2 CONTENT')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
     expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
   });
@@ -278,12 +274,25 @@ const referenceItem: TrustedReferenceItem = {
 };
 
 describe('Parent Trusted References optional integration', () => {
+  it('uses the actual read-only client and never requests the legacy published endpoint', async () => {
+    const actualApi = await vi.importActual<typeof import('@/lib/api')>('@/lib/api');
+    apiMocks.getPublicTrustedReferences.mockImplementation(actualApi.getPublicTrustedReferences);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ items: [referenceItem] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderAndPredict();
+    expect(await screen.findByText('TRUSTED REFERENCE TITLE')).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/public/trusted-references', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ items: [referenceSelector] });
+    expect(apiMocks.getPublicPublishedMedicalKnowledge).not.toHaveBeenCalled();
+  });
+
   it('renders the prediction before references and keeps deterministic SHAP text unchanged', async () => {
     const pending = deferred<{ items: TrustedReferenceItem[] }>();
     apiMocks.getPublicTrustedReferences.mockReturnValue(pending.promise);
     await renderAndPredict();
     expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledWith([referenceSelector]);
-    expect(apiMocks.getPublicPublishedMedicalKnowledge).toHaveBeenCalled(); // Legacy remains independent.
+    expect(apiMocks.getPublicPublishedMedicalKnowledge).not.toHaveBeenCalled();
     expect(screen.queryByRole('region', { name: 'Tài liệu tham khảo' })).not.toBeInTheDocument();
     const explanationBefore = screen.getByLabelText('Giải thích đóng góp của mô hình').textContent;
     expect(explanationBefore).toContain('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');

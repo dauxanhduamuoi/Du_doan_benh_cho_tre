@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   Activity,
-  BookOpen,
   CheckCircle2,
-  ChevronDown,
   ClipboardCheck,
   Siren,
 } from 'lucide-react';
@@ -11,10 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type * as api from '@/lib/api';
 import { splitDiseaseLabel } from '@/lib/disease';
-import {
-  PublishedMedicalKnowledgeSections,
-  WeatherAIExplanationSections,
-} from '../weather-ai/WeatherAIResults';
+import { WeatherAIExplanationSections } from '../weather-ai/WeatherAIResults';
 import { buildTier1Summary } from '../weather-ai/tier1Presentation';
 import { TrustedReferenceSection } from './TrustedReferenceSection';
 
@@ -43,7 +38,6 @@ export type ParentDiseaseCardRow = api.WeatherAIDiseaseRanking & {
     prevention: string[];
     source: string;
   };
-  publishedMedicalKnowledge: api.PublishedMedicalKnowledgeItem[];
   trustedReferences: api.TrustedReferenceItem[];
 };
 
@@ -154,36 +148,15 @@ function DangerSignsAlert({ warning }: { warning: string }) {
   );
 }
 
-function ExpandableExplanation({ children }: { children: ReactNode }) {
-  return (
-    <details className="group rounded-2xl border border-teal-100 bg-white/80 shadow-sm">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-extrabold text-teal-950 marker:content-none">
-        <span className="flex items-center gap-2">
-          <BookOpen size={17} aria-hidden="true" className="text-teal-600" />
-          Giải thích y khoa chi tiết
-        </span>
-        <span className="inline-flex items-center gap-1 text-xs font-bold text-teal-700">
-          <span className="group-open:hidden">Mở rộng</span>
-          <span className="hidden group-open:inline">Thu gọn</span>
-          <ChevronDown size={16} aria-hidden="true" className="transition-transform group-open:rotate-180" />
-        </span>
-      </summary>
-      <div className="border-t border-teal-100 px-3 pb-3">{children}</div>
-    </details>
-  );
-}
-
 export function ParentDiseaseCard({
   row,
   index,
   featured = false,
-  tier2Loading = false,
   anchorDate,
 }: {
   row: ParentDiseaseCardRow;
   index: number;
   featured?: boolean;
-  tier2Loading?: boolean;
   anchorDate?: string | null;
 }) {
   const t = useVietnameseT();
@@ -252,13 +225,6 @@ export function ParentDiseaseCard({
           <div className="min-w-0 space-y-3">
             <WeatherAIExplanationSections prediction={row} variant="parent" showLegacyTier2={false} anchorDate={anchorDate} />
             <TrustedReferenceSection items={row.trustedReferences} />
-            {row.publishedMedicalKnowledge.length > 0 ? (
-              <ExpandableExplanation>
-                <PublishedMedicalKnowledgeSections items={row.publishedMedicalKnowledge} />
-              </ExpandableExplanation>
-            ) : (
-              <PublishedMedicalKnowledgeSections items={[]} loading={tier2Loading} />
-            )}
           </div>
 
           <aside className="min-w-0 space-y-3" aria-label="Thông tin chăm sóc và đi khám">
