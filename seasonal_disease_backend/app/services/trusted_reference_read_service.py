@@ -4,6 +4,11 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.repositories.medical_knowledge_repository import MedicalKnowledgeRepository
+from app.services.trusted_reference_source_policy import (
+    TrustedReferenceDecision,
+    TrustedReferenceSourceMetadata,
+    evaluate_trusted_reference_source,
+)
 from app.trusted_reference_schemas import (
     TrustedReference,
     TrustedReferenceBatchRequest,
@@ -31,6 +36,11 @@ class TrustedReferenceReadService:
                 row["disease_group_id"], row["factor_type"], row["factor_key"], row["factor_value"]
             )
             if selector not in references:
+                continue
+            policy_source = TrustedReferenceSourceMetadata(**{
+                key: row[key] for key in TrustedReferenceSourceMetadata.__dataclass_fields__
+            })
+            if evaluate_trusted_reference_source(policy_source).decision != TrustedReferenceDecision.ALLOW_PARENT_REFERENCE:
                 continue
             metadata = {key: row[key] for key in TrustedReference.model_fields}
             metadata["title"] = (metadata["title"] or "").strip()

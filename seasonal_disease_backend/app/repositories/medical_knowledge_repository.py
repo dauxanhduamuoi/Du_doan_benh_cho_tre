@@ -190,6 +190,9 @@ class MedicalKnowledgeRepository:
                 MedicalEvidenceSource.journal,
                 MedicalEvidenceSource.publication_year,
                 MedicalEvidenceSource.url.label("original_url"),
+                MedicalEvidenceContent.content_origin,
+                MedicalEvidenceContent.external_identifier.label("content_external_id"),
+                MedicalEvidenceContent.provenance_json.label("provenance"),
             )
             .select_from(MedicalKnowledgeTopic)
             .join(
@@ -201,6 +204,13 @@ class MedicalKnowledgeRepository:
             )
             .join(MedicalRevisionSource, MedicalRevisionSource.revision_id == MedicalKnowledgeRevision.id)
             .join(MedicalEvidenceSource, MedicalEvidenceSource.id == MedicalRevisionSource.source_id)
+            .outerjoin(
+                MedicalEvidenceContent,
+                and_(
+                    MedicalEvidenceContent.id == MedicalRevisionSource.evidence_content_id,
+                    MedicalEvidenceContent.source_id == MedicalEvidenceSource.id,
+                ),
+            )
             .where(
                 or_(*selector_matches),
                 MedicalKnowledgeRevision.status == "APPROVED",

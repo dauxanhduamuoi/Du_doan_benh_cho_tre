@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 import urllib.request
 from contextlib import contextmanager
+from datetime import datetime
 
 import httpx
 import pytest
@@ -14,6 +15,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.medical_knowledge_models import (
+    MedicalEvidenceContent,
     MedicalEvidenceSource,
     MedicalKnowledgeRevision,
     MedicalKnowledgeTopic,
@@ -115,14 +117,27 @@ def selector(disease="5", factor_type="WEATHER", key="humidity", value=None):
 
 def source(db, source_id=10, **overrides):
     values = dict(
-        id=source_id, source_type="PUBMED", provider_id="PUBMED", external_id=f"{source_id}",
-        source_kind="RESEARCH_ARTICLE", title=f"Stored source {source_id}", journal="Stored journal",
-        publication_year=2025, url=f"https://pubmed.ncbi.nlm.nih.gov/{source_id}/",
+        id=source_id, source_type="WHO", provider_id="WHO", external_id=f"{source_id}",
+        source_kind="GUIDELINE", title=f"Stored source {source_id}", journal="Stored publisher",
+        publication_year=2025, url=f"https://www.who.int/publications/b/{source_id}",
         abstract_text=None, raw_metadata_json={"private": "MUST NOT RETURN"},
     )
     values.update(overrides)
     result = MedicalEvidenceSource(**values)
     db.add(result)
+    db.flush()
+    if result.provider_id == "WHO":
+        db.add(MedicalEvidenceContent(
+            source_id=result.id, content_kind="OFFICIAL_SUMMARY_EXCERPT",
+            content_origin="WHO_PUBLICATIONS_API", external_identifier=result.external_id,
+            evidence_text="PRIVATE EVIDENCE BODY MUST NOT RETURN", retrieved_at=datetime(2025, 1, 1),
+            content_sha256=f"{source_id:064x}",
+            provenance_json={
+                "provider_id": "WHO", "external_id": result.external_id,
+                "canonical_url": result.url, "retrieval_surface": "WHO_BIBLIO_SEARCH",
+                "metadata_storage_allowed": True, "full_text_stored": False,
+            },
+        ))
     db.commit()
     return result
 
@@ -147,8 +162,10 @@ def revision(db, selected_topic, sources=(), *, number=1, status="APPROVED", pub
     db.add(result)
     db.flush()
     for stored_source, order in sources:
+        content = db.query(MedicalEvidenceContent).filter_by(source_id=stored_source.id).first()
         db.add(MedicalRevisionSource(
-            revision_id=result.id, source_id=stored_source.id, sort_order=order, source_role="PRIMARY"
+            revision_id=result.id, source_id=stored_source.id, sort_order=order, source_role="PRIMARY",
+            evidence_content_id=content.id if content else None,
         ))
     if published:
         selected_topic.published_revision_id = result.id
@@ -182,14 +199,16 @@ def test_published_reviewed_metadata_without_generated_prose_or_evidence(db):
     with read_guard(db) as statements:
         result = TrustedReferenceReadService(db).read_batch(TrustedReferenceBatchRequest(items=[selector()]))
     assert result.items[0].references[0].model_dump(mode="json") == {
-        "source_id": 10, "provider_id": "PUBMED", "external_id": "10", "source_type": "PUBMED",
-        "source_kind": "RESEARCH_ARTICLE", "title": "Stored source 10", "journal": "Stored journal",
-        "publication_year": 2025, "original_url": "https://pubmed.ncbi.nlm.nih.gov/10/",
+        "source_id": 10, "provider_id": "WHO", "external_id": "10", "source_type": "WHO",
+        "source_kind": "GUIDELINE", "title": "Stored source 10", "journal": "Stored publisher",
+        "publication_year": 2025, "original_url": "https://www.who.int/publications/b/10",
     }
     assert len(statements) == 1
     for private in ("explanation", "limitations", "abstract_text", "evidence_text", "raw_metadata", "llm_model", "prompt_version", "auto_medical", "provider_settings", "medical_knowledge_topic_sources"):
         assert private not in statements[0]
         assert private not in result.model_dump_json()
+    assert "provenance" in statements[0]
+    assert "provenance" not in result.model_dump_json()
 
 
 def test_multiple_sources_order_by_sort_order_then_source_id_and_selector_order(db):
@@ -290,18 +309,13 @@ def test_invalid_metadata_skips_source_without_failure_or_generated_fallback(db,
     assert read(db).items[0].references == []
 
 
-def test_skip_bad_metadata_keep_valid_and_preserve_legacy_provider(db):
+def test_legacy_who_label_without_identity_is_hidden_without_inventing_provenance(db):
     bad = source(db, 10, url=None, pmid="12345")
     good = source(db, 20, provider_id=None, external_id=None, source_kind=None,
                   source_type="WHO", title="  Historical publication  ", journal=None,
                   url="https://example.org/original-reference")
     revision(db, topic(db), [(bad, 0), (good, 1)])
-    reference = read(db).items[0].references[0]
-    assert reference.source_id == 20
-    assert reference.provider_id is None  # Do not invent provenance or a PubMed URL.
-    assert reference.source_type == "WHO"
-    assert reference.title == "Historical publication"
-    assert str(reference.original_url) == "https://example.org/original-reference"
+    assert read(db).items[0].references == []
 
 
 def test_reader_does_not_autoflush_pending_unrelated_changes(db, monkeypatch):
@@ -361,3 +375,89 @@ def test_invalid_public_selectors_are_422_without_reads_or_writes(db, client, bo
         response = client.post("/api/public/trusted-references", json=body)
     assert response.status_code == 422
     assert statements == []
+
+
+@pytest.mark.parametrize("provider,kind", [
+    ("PUBMED", "RESEARCH_ARTICLE"), ("PUBMED", "SYSTEMATIC_REVIEW"), ("PMC", "RESEARCH_ARTICLE"),
+])
+def test_published_research_with_valid_https_is_not_parent_visible(db, client, provider, kind):
+    stored = source(db, provider_id=provider, source_type="PUBMED", source_kind=kind,
+                    url="https://pubmed.ncbi.nlm.nih.gov/10/", pmid="10")
+    revision(db, topic(db), [(stored, 0)])
+    with read_guard(db):
+        response = client.post("/api/public/trusted-references", json={"items": [selector()]})
+    assert response.status_code == 200
+    assert response.json()["items"][0]["references"] == []
+
+
+@pytest.mark.parametrize("changes", [
+    {"url": "https://who.int.evil.example/publications/b/10"},
+    {"url": "http://www.who.int/publications/b/10"},
+    {"url": "https://www.who.int/publications/b/20"},
+    {"provider_id": "UNKNOWN", "source_type": "OTHER"},
+    {"provider_id": None}, {"external_id": None},
+    {"source_kind": "OTHER"}, {"source_kind": "SYSTEMATIC_REVIEW"},
+])
+def test_untrusted_published_metadata_is_filtered_without_side_effects(db, client, changes):
+    revision(db, topic(db), [(source(db, **changes), 0)])
+    with read_guard(db):
+        response = client.post("/api/public/trusted-references", json={"items": [selector()]})
+    assert response.status_code == 200
+    assert response.json()["items"][0]["references"] == []
+
+
+@pytest.mark.parametrize("proof_changes", [
+    {"external_id": "different-id"}, {"provider_id": "PUBMED"},
+    {"canonical_url": "https://www.who.int/publications/b/20"},
+    {"retrieval_surface": "WHO_BIBLIO_SEARCH_REFERENCE"},
+])
+def test_persisted_provenance_mismatch_or_unverified_import_is_hidden(db, proof_changes):
+    stored = source(db)
+    content = db.query(MedicalEvidenceContent).filter_by(source_id=stored.id).one()
+    content.provenance_json = {**content.provenance_json, **proof_changes}
+    db.commit()
+    revision(db, topic(db), [(stored, 0)])
+    assert read(db).items[0].references == []
+
+
+def test_mixed_sources_keep_only_allowed_in_existing_deterministic_order(db, client):
+    allowed_a = source(db, 30, source_kind="TECHNICAL_REPORT")
+    staff = source(db, 10, provider_id="PUBMED", source_type="PUBMED", source_kind="RESEARCH_ARTICLE",
+                   url="https://pubmed.ncbi.nlm.nih.gov/10/")
+    allowed_b = source(db, 20, source_kind="HEALTH_GUIDANCE")
+    rejected = source(db, 40, url="https://example.org/WHO")
+    revision(db, topic(db), [(allowed_a, 1), (staff, 0), (allowed_b, 1), (rejected, 0)])
+    with read_guard(db) as statements:
+        response = client.post("/api/public/trusted-references", json={"items": [selector()]})
+    assert response.status_code == 200
+    assert [item["source_id"] for item in response.json()["items"][0]["references"]] == [20, 30]
+    assert len(statements) == 1
+    assert "reason_code" not in response.text and "provenance" not in response.text
+
+
+@pytest.mark.parametrize("mode", ["unlinked", "other_source", "missing_provenance"])
+def test_only_revision_linked_snapshot_of_same_source_can_supply_proof(db, mode):
+    stored = source(db, 10)
+    other = source(db, 20)
+    current = revision(db, topic(db), [(stored, 0)])
+    link = db.get(MedicalRevisionSource, (current.id, stored.id))
+    if mode == "unlinked":
+        link.evidence_content_id = None
+    elif mode == "other_source":
+        link.evidence_content_id = db.query(MedicalEvidenceContent).filter_by(source_id=other.id).one().id
+    else:
+        db.get(MedicalEvidenceContent, link.evidence_content_id).provenance_json = None
+    db.commit()
+    assert read(db).items[0].references == []
+
+
+def test_policy_uses_provenance_without_loading_or_requiring_evidence_body(db):
+    stored = source(db)
+    content = db.query(MedicalEvidenceContent).filter_by(source_id=stored.id).one()
+    content.evidence_text = ""
+    db.commit()
+    revision(db, topic(db), [(stored, 0)])
+    with read_guard(db) as statements:
+        result = TrustedReferenceReadService(db).read_batch(TrustedReferenceBatchRequest(items=[selector()]))
+    assert [item.source_id for item in result.items[0].references] == [10]
+    assert "evidence_text" not in statements[0]
