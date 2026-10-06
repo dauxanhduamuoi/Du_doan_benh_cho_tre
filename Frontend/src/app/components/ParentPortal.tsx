@@ -31,6 +31,7 @@ import {
 } from './weather-ai/WeatherAIResults';
 import { buildPublishedMedicalKnowledgeSelectors } from './weather-ai/publishedMedicalKnowledge';
 import { ParentDiseaseCard } from './parent/ParentDiseaseCard';
+import { buildTrustedReferenceSelectors, matchTrustedReferenceItems } from './weather-ai/trustedReferences';
 
 function normalize(text: string) {
   return text
@@ -143,9 +144,15 @@ export default function ParentPortal() {
   const [tier2Loading, setTier2Loading] = useState(false);
   const [tier2LoadingDiseaseIds, setTier2LoadingDiseaseIds] = useState<string[]>([]);
   const tier2RequestId = useRef(0);
+  const [trustedReferences, setTrustedReferences] = useState<api.TrustedReferenceItem[]>([]);
+  const referenceRequestId = useRef(0);
+
+  useEffect(() => () => { referenceRequestId.current += 1; }, []);
 
   const clearResults = useCallback(() => {
     tier2RequestId.current += 1;
+    referenceRequestId.current += 1;
+    setTrustedReferences([]);
     setAiResult(null);
     setLocalRisks([]);
     setRecommendations([]);
@@ -277,6 +284,8 @@ export default function ParentPortal() {
 
     setLoading(true);
     setError(null);
+    const referenceId = ++referenceRequestId.current;
+    setTrustedReferences([]);
     tier2RequestId.current += 1;
     setPublishedMedicalKnowledge([]);
     setTier2Loading(false);
@@ -321,6 +330,19 @@ export default function ParentPortal() {
       setAiResult(weatherRows);
       setLocalRisks(risks);
       setRecommendations(rec?.recommendations ?? []);
+
+      const referenceSelectors = buildTrustedReferenceSelectors(weatherRows);
+      if (referenceSelectors.length > 0 && referenceRequestId.current === referenceId) {
+        void api.getPublicTrustedReferences(referenceSelectors)
+          .then((response) => {
+            if (referenceRequestId.current === referenceId) {
+              setTrustedReferences(matchTrustedReferenceItems(response.items, referenceSelectors));
+            }
+          })
+          .catch(() => {
+            if (referenceRequestId.current === referenceId) setTrustedReferences([]);
+          });
+      }
 
       const selectors = buildPublishedMedicalKnowledgeSelectors(weatherRows);
       if (selectors.length > 0) {
@@ -371,9 +393,12 @@ export default function ParentPortal() {
         publishedMedicalKnowledge: publishedMedicalKnowledge.filter(
           (item) => item.disease_group_id === row.disease_group_id,
         ),
+        trustedReferences: matchTrustedReferenceItems(trustedReferences, buildTrustedReferenceSelectors({
+          ...aiResult!, predictions: [row], top_risks: [row],
+        })),
       };
     });
-  }, [aiResult, localRisks, knowledge, publishedMedicalKnowledge, t]);
+  }, [aiResult, localRisks, knowledge, publishedMedicalKnowledge, trustedReferences, t]);
 
   const mainRisk = combinedRisks[0] ?? null;
   const otherRisks = combinedRisks.slice(1);

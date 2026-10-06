@@ -912,6 +912,99 @@ export async function getPublicPublishedMedicalKnowledge(
   return safePublishedMedicalKnowledgeResponse(response);
 }
 
+export type TrustedReferenceSelector = Pick<PublishedMedicalKnowledgeSelector,
+  'disease_group_id' | 'factor_type' | 'factor_key' | 'factor_value'>;
+
+export interface TrustedReference {
+  source_id: number;
+  provider_id: string | null;
+  external_id: string | null;
+  source_type: string;
+  source_kind: string | null;
+  title: string;
+  journal: string | null;
+  publication_year: number | null;
+  original_url: string;
+}
+
+export interface TrustedReferenceItem {
+  selector: TrustedReferenceSelector;
+  references: TrustedReference[];
+}
+
+export interface TrustedReferenceResponse {
+  items: TrustedReferenceItem[];
+}
+
+function safeTrustedReferenceResponse(value: unknown): TrustedReferenceResponse {
+  const object = (value: unknown): Record<string, unknown> | null =>
+    value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  const nullableText = (value: unknown) => value === null || typeof value === 'string';
+  const payload = object(value);
+  if (!Array.isArray(payload?.items)) return { items: [] };
+  const items: TrustedReferenceItem[] = [];
+  for (const item of payload.items) {
+    const row = object(item);
+    const selected = object(row?.selector);
+    if (!selected || !Array.isArray(row?.references)
+      || typeof selected.disease_group_id !== 'string' || !/^[0-9]{1,6}$/.test(selected.disease_group_id)) continue;
+    const { factor_type, factor_key, factor_value } = selected;
+    const factorValid = (factor_type === 'WEATHER' && PUBLISHED_WEATHER_FACTORS.has(factor_key as PublishedMedicalWeatherFactor) && factor_value === null)
+      || (factor_type === 'SEASONALITY' && factor_key === 'time_of_year' && factor_value === null)
+      || (factor_type === 'AGE' && factor_key === 'age_group' && typeof factor_value === 'string' && factor_value.trim().length > 0)
+      || (factor_type === 'SEX' && factor_key === 'gender' && typeof factor_value === 'string' && factor_value.trim().length > 0);
+    if (!factorValid) continue;
+    const references: TrustedReference[] = [];
+    for (const source of row.references) {
+      const metadata = object(source);
+      if (!metadata || !Number.isInteger(metadata.source_id) || (metadata.source_id as number) <= 0
+        || typeof metadata.title !== 'string' || !metadata.title.trim()
+        || typeof metadata.source_type !== 'string' || !metadata.source_type.trim()
+        || typeof metadata.original_url !== 'string' || !metadata.original_url.trim()
+        || !['provider_id', 'external_id', 'source_kind', 'journal'].every((key) => nullableText(metadata[key]))
+        || !(metadata.publication_year === null || (Number.isInteger(metadata.publication_year)
+          && (metadata.publication_year as number) >= 1800 && (metadata.publication_year as number) <= 2100))) continue;
+      references.push({
+        source_id: metadata.source_id as number,
+        provider_id: metadata.provider_id as string | null,
+        external_id: metadata.external_id as string | null,
+        source_type: metadata.source_type,
+        source_kind: metadata.source_kind as string | null,
+        title: metadata.title,
+        journal: metadata.journal as string | null,
+        publication_year: metadata.publication_year as number | null,
+        original_url: metadata.original_url,
+      });
+    }
+    items.push({
+      selector: {
+        disease_group_id: selected.disease_group_id,
+        factor_type: factor_type as TrustedReferenceSelector['factor_type'],
+        factor_key: factor_key as string,
+        factor_value: factor_value as string | null,
+      },
+      references,
+    });
+  }
+  return { items };
+}
+
+export async function getPublicTrustedReferences(
+  items: TrustedReferenceSelector[],
+): Promise<TrustedReferenceResponse> {
+  // The backend accepts at most 100 selectors per batch, including at larger top_k.
+  const batches: Promise<TrustedReferenceResponse>[] = [];
+  for (let offset = 0; offset < items.length; offset += 100) {
+    batches.push(request<unknown>('/api/public/trusted-references', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: items.slice(offset, offset + 100) }),
+      skipAuth: true,
+    }).then(safeTrustedReferenceResponse));
+  }
+  return { items: (await Promise.all(batches)).flatMap((batch) => batch.items) };
+}
+
 // ===== Dashboard advanced filters / analysis =====
 
 export interface DashboardPeriodOption {

@@ -16,6 +16,7 @@ import {
   WeatherAIExplanationSections,
 } from '../weather-ai/WeatherAIResults';
 import { buildTier1Summary } from '../weather-ai/tier1Presentation';
+import { TrustedReferenceSection } from './TrustedReferenceSection';
 
 const RISK_STYLE: Record<string, string> = {
   Cao: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -43,6 +44,7 @@ export type ParentDiseaseCardRow = api.WeatherAIDiseaseRanking & {
     source: string;
   };
   publishedMedicalKnowledge: api.PublishedMedicalKnowledgeItem[];
+  trustedReferences: api.TrustedReferenceItem[];
 };
 
 function useVietnameseT(): TFunction {
@@ -249,6 +251,7 @@ export function ParentDiseaseCard({
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(280px,0.75fr)] xl:items-start">
           <div className="min-w-0 space-y-3">
             <WeatherAIExplanationSections prediction={row} variant="parent" showLegacyTier2={false} anchorDate={anchorDate} />
+            <TrustedReferenceSection items={row.trustedReferences} />
             {row.publishedMedicalKnowledge.length > 0 ? (
               <ExpandableExplanation>
                 <PublishedMedicalKnowledgeSections items={row.publishedMedicalKnowledge} />

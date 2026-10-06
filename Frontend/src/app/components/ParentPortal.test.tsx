@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   PublishedMedicalKnowledgeItem,
+  TrustedReferenceItem,
   WeatherAIDiseaseRanking,
   WeatherAIPredictResponse,
 } from '@/lib/api';
@@ -16,6 +17,7 @@ const apiMocks = vi.hoisted(() => ({
   getAreaLocalRisks: vi.fn(),
   getAreaRecommendations: vi.fn(),
   getPublicPublishedMedicalKnowledge: vi.fn(),
+  getPublicTrustedReferences: vi.fn(),
 }));
 
 vi.mock('@/lib/api', async (importOriginal) => ({
@@ -163,6 +165,7 @@ beforeEach(() => {
     recommendations: [],
   });
   apiMocks.getPublicPublishedMedicalKnowledge.mockResolvedValue({ items: [] });
+  apiMocks.getPublicTrustedReferences.mockResolvedValue({ items: [] });
 });
 
 describe('Parent Published Medical Knowledge integration', () => {
@@ -261,5 +264,113 @@ describe('Parent Published Medical Knowledge integration', () => {
     await waitFor(() => expect(screen.queryByText('PUBLISHED V1 TIER 2 CONTENT')).not.toBeInTheDocument());
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
     expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
+  });
+});
+
+const referenceSelector = {
+  disease_group_id: '17', factor_type: 'WEATHER' as const, factor_key: 'precipitation', factor_value: null,
+};
+const referenceItem: TrustedReferenceItem = {
+  selector: referenceSelector,
+  references: [{ source_id: 10, title: 'TRUSTED REFERENCE TITLE', provider_id: 'WHO', external_id: 'stored-id',
+    source_type: 'WHO', source_kind: 'HEALTH_GUIDANCE', journal: 'Stored journal', publication_year: 2025,
+    original_url: 'https://example.org/original-source' }],
+};
+
+describe('Parent Trusted References optional integration', () => {
+  it('renders the prediction before references and keeps deterministic SHAP text unchanged', async () => {
+    const pending = deferred<{ items: TrustedReferenceItem[] }>();
+    apiMocks.getPublicTrustedReferences.mockReturnValue(pending.promise);
+    await renderAndPredict();
+    expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledWith([referenceSelector]);
+    expect(apiMocks.getPublicPublishedMedicalKnowledge).toHaveBeenCalled(); // Legacy remains independent.
+    expect(screen.queryByRole('region', { name: 'Tài liệu tham khảo' })).not.toBeInTheDocument();
+    const explanationBefore = screen.getByLabelText('Giải thích đóng góp của mô hình').textContent;
+    expect(explanationBefore).toContain('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledWith({
+      age_group: '1-5 tuổi', gender: 'Nam', top_k: 5, latitude: 10.78, longitude: 106.69, timezone: 'Asia/Ho_Chi_Minh',
+    });
+    await act(async () => pending.resolve({ items: [referenceItem] }));
+    expect(screen.getByText('TRUSTED REFERENCE TITLE')).toBeVisible();
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình').textContent).toBe(explanationBefore);
+    expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
+  });
+
+  it.each(['timeout', 'HTTP 422', 'HTTP 500'])('isolates a reference %s failure without changing Model Explanation', async (reason) => {
+    apiMocks.getPublicTrustedReferences.mockRejectedValue(new Error(reason));
+    await renderAndPredict();
+    expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('so với mức nền của model');
+    expect(screen.queryByRole('region', { name: 'Tài liệu tham khảo' })).not.toBeInTheDocument();
+    expect(screen.queryByText(reason)).not.toBeInTheDocument();
+  });
+
+  it('isolates malformed reference payloads', async () => {
+    apiMocks.getPublicTrustedReferences.mockResolvedValue({ items: null });
+    await renderAndPredict();
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('42 mm');
+    expect(screen.queryByRole('region', { name: 'Tài liệu tham khảo' })).not.toBeInTheDocument();
+  });
+
+  it('maps only exact AGE, SEX and WEATHER selectors to the disease card', async () => {
+    const response = weatherResponse();
+    response.predictions[0].tier1.positive_factors.push(
+      { feature: 'age_group', label_vi: 'Nhóm tuổi', category: 'DEMOGRAPHIC', window: 'NONE', input_value: '1-5 tuổi', shap_value: 0.5, direction: 'UP' },
+      { feature: 'gender', label_vi: 'Giới tính', category: 'DEMOGRAPHIC', window: 'NONE', input_value: 'Nam', shap_value: 0.4, direction: 'UP' },
+    );
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    const age = { ...referenceSelector, factor_type: 'AGE' as const, factor_key: 'age_group', factor_value: '1-5 tuổi' };
+    const sex = { ...referenceSelector, factor_type: 'SEX' as const, factor_key: 'gender', factor_value: 'Nam' };
+    const item = (selector: TrustedReferenceItem['selector'], title: string, source_id: number): TrustedReferenceItem => ({
+      selector, references: [{ ...referenceItem.references[0], source_id, title }],
+    });
+    apiMocks.getPublicTrustedReferences.mockResolvedValue({ items: [
+      item(age, 'EXACT AGE SOURCE', 1), item({ ...age, factor_value: '6-10 tuổi' }, 'WRONG AGE SOURCE', 2),
+      item(sex, 'EXACT SEX SOURCE', 3), item({ ...sex, factor_value: 'Nữ' }, 'WRONG SEX SOURCE', 4),
+      item(referenceSelector, 'EXACT WEATHER SOURCE', 5), item({ ...referenceSelector, factor_value: '42' }, 'WRONG WEATHER VALUE', 6),
+      item({ ...referenceSelector, disease_group_id: '99' }, 'WRONG DISEASE SOURCE', 7),
+      item({ ...referenceSelector, factor_key: 'humidity' }, 'WRONG WEATHER KEY', 8),
+    ] });
+    await renderAndPredict();
+    expect(await screen.findByText('EXACT AGE SOURCE')).toBeVisible();
+    expect(screen.getByText('EXACT SEX SOURCE')).toBeVisible();
+    expect(screen.getByText('EXACT WEATHER SOURCE')).toBeVisible();
+    expect(screen.queryByText(/WRONG AGE|WRONG SEX|WRONG WEATHER|WRONG DISEASE SOURCE/)).not.toBeInTheDocument();
+  });
+
+  it('never attaches an old reference response after a newer prediction starts', async () => {
+    const oldReferences = deferred<{ items: TrustedReferenceItem[] }>();
+    const newerPrediction = deferred<WeatherAIPredictResponse>();
+    apiMocks.getPublicTrustedReferences.mockReturnValueOnce(oldReferences.promise).mockResolvedValueOnce({
+      items: [{ ...referenceItem, references: [{ ...referenceItem.references[0], title: 'NEW REFERENCE' }] }],
+    });
+    await renderAndPredict();
+    await waitFor(() => expect(screen.getByTestId('parent-predict-submit')).toBeEnabled());
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(newerPrediction.promise);
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await act(async () => oldReferences.resolve({ items: [referenceItem] }));
+    expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
+    await act(async () => newerPrediction.resolve(weatherResponse()));
+    expect(await screen.findByText('NEW REFERENCE')).toBeVisible();
+    expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
+  });
+
+  it('ignores references that finish after result clearing', async () => {
+    const pending = deferred<{ items: TrustedReferenceItem[] }>();
+    apiMocks.getPublicTrustedReferences.mockReturnValue(pending.promise);
+    await renderAndPredict();
+    fireEvent.click(screen.getByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    await act(async () => pending.resolve({ items: [referenceItem] }));
+    expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
+  });
+
+  it('does not fetch references when no positive canonical selector exists', async () => {
+    const response = weatherResponse();
+    response.predictions[0].tier1.positive_factors = [];
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    await renderAndPredict();
+    expect(apiMocks.getPublicTrustedReferences).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
   });
 });
