@@ -69,6 +69,9 @@ from migrations.v016_who_evidence_content import (
 from migrations.v017_medical_evidence_provider_settings import (
     upgrade as upgrade_medical_evidence_provider_settings,
 )
+from migrations.v018_parent_trusted_reference_curation import (
+    upgrade as upgrade_parent_trusted_reference_curation,
+)
 
 
 @asynccontextmanager
@@ -91,6 +94,7 @@ async def lifespan(_: FastAPI):
     upgrade_medical_evidence_providers(engine)
     upgrade_who_evidence_content(engine)
     upgrade_medical_evidence_provider_settings(engine)
+    upgrade_parent_trusted_reference_curation(engine)
     ensure_area_schema(engine)
     with SessionLocal() as db:
         seed_default_areas(db)
