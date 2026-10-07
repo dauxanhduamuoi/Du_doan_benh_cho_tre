@@ -20,6 +20,7 @@ from app.routers import (
     medical_evidence_reviewed,
     medical_knowledge_pubmed,
     medical_knowledge_service_status,
+    parent_trusted_references,
     public,
     reports,
     weather_ai,
@@ -162,3 +163,4 @@ app.include_router(medical_knowledge_service_status.router)
 app.include_router(auto_medical_knowledge.router)
 app.include_router(medical_evidence_provider_settings.router)
 app.include_router(medical_evidence_reviewed.router)
+app.include_router(parent_trusted_references.router)
