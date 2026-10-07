@@ -41,6 +41,7 @@ import ServiceConfigurationPanel from './ServiceConfigurationPanel';
 import MedicalTopicSourceLibrary from './MedicalTopicSourceLibrary';
 import AutoMedicalKnowledgePanel from './AutoMedicalKnowledgePanel';
 import MedicalTopicSelector from './MedicalTopicSelector';
+import ParentReferenceCurationPanel from './ParentReferenceCurationPanel';
 
 export const KNOWLEDGE_VIEW_QUERY_KEY = 'knowledgeView';
 export type KnowledgeView = 'reviewed' | 'auto';
@@ -804,7 +805,10 @@ export default function MedicalKnowledgeResearchPage() {
                 </div>
                 <div id="source-panel-library" role="tabpanel" aria-labelledby="source-tab-library" className={sourceView === 'library' ? '' : 'pointer-events-none absolute inset-x-0 top-0 max-h-0 overflow-hidden opacity-0'}>
                 {diseaseGroupId && factorIsComplete(factor) && (
+                  <>
                   <MedicalTopicSourceLibrary diseaseName={options.disease_groups.find((group) => group.id === diseaseGroupId)?.name ?? diseaseGroupId} factorLabel={factorLabel(factor)} library={topicLibrary} loading={libraryLoading} selectedSourceIds={selectedDraftSourceIds} onToggle={toggleDraftSource} onSelectAllUsable={selectAllUsableDraftSources} selectionNotice={selectionNotice} />
+                  {sourceView === 'library' && <ParentReferenceCurationPanel diseaseGroupId={diseaseGroupId} factor={factor} library={topicLibrary} loading={libraryLoading} />}
+                  </>
                 )}
                 {(!diseaseGroupId || !factorIsComplete(factor)) && (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center text-sm text-slate-500">Chọn đầy đủ nhóm bệnh và yếu tố để mở không gian nguồn.</div>

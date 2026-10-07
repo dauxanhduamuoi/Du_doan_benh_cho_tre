@@ -34,10 +34,17 @@ const mocks = vi.hoisted(() => ({
   getProviderSettings: vi.fn(),
   searchProviders: vi.fn(),
   importProviderSources: vi.fn(),
+  curationList: vi.fn(), curationCreate: vi.fn(), curationCurrent: vi.fn(), curationProofs: vi.fn(),
 }));
 
 vi.mock('@/app/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 1, username: 'tester', role: mocks.role, permissions: [] } }),
+}));
+
+vi.mock('@/lib/parentTrustedReferencesApi', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/parentTrustedReferencesApi')>(),
+  listParentReferenceCurations: mocks.curationList, createParentReferenceDraft: mocks.curationCreate,
+  getParentReferenceCuration: mocks.curationCurrent, getParentReferenceProofCandidates: mocks.curationProofs,
 }));
 
 vi.mock('@/lib/medicalKnowledgeApi', async (importOriginal) => {
@@ -220,6 +227,9 @@ const mixedTopicLibrary: TopicSourceLibrary = {
 const populatedTopicLibrary = {
   topic_id: 7,
   disease_group_id: '5',
+  factor_type: 'WEATHER' as const,
+  factor_key: 'precipitation',
+  factor_value: null,
   weather_factor: 'precipitation',
   sources: [
     {
@@ -494,6 +504,10 @@ describe('MedicalKnowledgeResearchPage', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/?section=medical-knowledge');
     mocks.role = 'admin';
+    mocks.curationList.mockReset().mockImplementation(async (selector) => ({ selector,
+      topic_id: (await mocks.getTopicSources.mock.results.at(-1)?.value)?.topic_id ?? 7, items: [],
+    }));
+    mocks.curationCreate.mockReset(); mocks.curationCurrent.mockReset(); mocks.curationProofs.mockReset();
     mocks.getOptions.mockReset().mockResolvedValue(options);
     mocks.getServiceStatus.mockReset().mockResolvedValue({
       pubmed: { configured: true, email_configured: true, api_key_configured: false },
@@ -2397,6 +2411,60 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
     await waitFor(async () => expect(await providerResultCheckbox('WHO influenza metadata record')).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Thêm 0 nguồn vào kho' })).toBeDisabled();
+  });
+
+  it('staff curation works with LLM unavailable and keeps AI selection independent', async () => {
+    mocks.getOptions.mockResolvedValue({ ...options, llm_draft_generation_available: false });
+    mocks.getTopicSources.mockResolvedValue({ ...populatedTopicLibrary, sources: [populatedTopicLibrary.sources[0], {
+      ...populatedTopicLibrary.sources[1], source_id: 12, provider_id: 'WHO', title: 'WHO reference-only guidance',
+      content_kind: null, usable_for_draft: false,
+    }] });
+    const selector = { disease_group_id: '5', factor_type: 'WEATHER' as const, factor_key: 'precipitation', factor_value: null };
+    const current = { approval_id: 80, topic_id: 7, source_id: 12, selector, status: 'DRAFT', version: 1,
+      source_in_library: true, policy_decision: 'UNCERTAIN', policy_reason_code: 'MISSING_TRUST_METADATA',
+      approved_at: null, source: { original_url: null } };
+    mocks.curationCurrent.mockResolvedValue(current);
+    mocks.curationCreate.mockImplementation(async () => {
+      mocks.curationList.mockResolvedValue({ selector, topic_id: 7, items: [current] });
+      return { approval_id: 80, status: 'DRAFT', version: 1, evidence_content_id: null, changed: true };
+    });
+    mocks.curationProofs.mockResolvedValue({ selector, topic_id: 7, source_id: 12, next_offset: null, candidates: [{
+      evidence_content_id: 500, source_id: 12, content_kind: 'OFFICIAL_SUMMARY_EXCERPT', content_origin: 'WHO_PUBLICATIONS_API',
+      external_identifier: '1', retrieved_at: '2026-01-01T00:00:00', content_sha256: 'a'.repeat(64),
+      policy_decision: 'ALLOW_PARENT_REFERENCE', policy_reason_code: 'WHO_OFFICIAL_GUIDANCE',
+    }] });
+    await renderReadyPage('staff'); await chooseContext(); fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    const checkbox = screen.getByRole('checkbox', { name: /Rainfall and pediatric gastroenteritis.*cho bản nháp/ });
+    fireEvent.click(checkbox); expect(checkbox).toBeChecked();
+    const panel = screen.getByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' });
+    const card = await within(panel).findByRole('article', { name: 'Duyệt nguồn 12' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Bắt đầu duyệt cho phụ huynh' }));
+    await within(panel).findByText('Phụ huynh: Đang xem xét');
+    expect(mocks.curationCreate).toHaveBeenCalledWith(selector, 12, '', expect.any(AbortSignal));
+    fireEvent.click(within(panel).getByRole('button', { name: 'Chọn bằng chứng xác minh' }));
+    fireEvent.click(await within(panel).findByRole('radio', { name: 'Chọn bằng chứng #500' }));
+    expect(within(panel).getByRole('button', { name: 'Duyệt và hiển thị cho phụ huynh' })).toBeEnabled();
+    expect(checkbox).toBeChecked(); expect(mocks.generateDraft).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: /WHO reference-only guidance.*cho bản nháp/ })).not.toBeChecked();
+  });
+
+  it('curation mutation errors leave library and legacy Draft generation working', async () => {
+    mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
+    mocks.curationCreate.mockRejectedValue(new ApiError(422, 'private curation error'));
+    await renderReadyPage('staff'); await chooseContext(); fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
+    const checkbox = screen.getByRole('checkbox', { name: /Rainfall and pediatric gastroenteritis.*cho bản nháp/ });
+    fireEvent.click(checkbox);
+    const panel = screen.getByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' });
+    fireEvent.click((await within(panel).findAllByRole('button', { name: 'Bắt đầu duyệt cho phụ huynh' }))[0]);
+    await within(panel).findByRole('alert'); expect(checkbox).toBeChecked();
+    expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
+    expect(mocks.generateDraft).not.toHaveBeenCalled(); expect(screen.queryByText('private curation error')).not.toBeInTheDocument();
+  });
+
+  it('unauthorized roles never mount Staff Curation', async () => {
+    mocks.role = 'parent'; render(<MedicalKnowledgeResearchPage />);
+    expect(screen.queryByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' })).not.toBeInTheDocument();
+    expect(mocks.curationList).not.toHaveBeenCalled();
   });
 
   it('keeps Draft selection count limited to actually usable library sources', async () => {
