@@ -17,6 +17,7 @@ from app.parent_trusted_reference_schemas import (
     ApproveStaffReferenceRequest, CreateStaffReferenceRequest, StaffReferenceHistory,
     StaffReferenceHistoryEvent, StaffReferenceSelector, StaffReferenceSource,
     StaffReferenceState, StaffReferenceStateList, StaffReferenceVersionRequest,
+    StaffReferenceProofCandidate, StaffReferenceProofCandidates, StaffReferenceProofQuery,
 )
 from app.services.parent_trusted_reference_curation_service import (
     CurationValidationError, ParentTrustedReferenceCurationService,
@@ -155,3 +156,50 @@ class ParentTrustedReferenceStaffService:
             ]).where(Event.approval_id == approval_id).order_by(Event.resulting_version, Event.id)).mappings().all()
         return StaffReferenceHistory(approval_id=approval_id,
                                     events=[StaffReferenceHistoryEvent(**dict(row)) for row in rows])
+
+    def proof_candidates(self, query: StaffReferenceProofQuery) -> StaffReferenceProofCandidates:
+        """Bounded metadata pages, ordered by ID; no preferred/selected proof.
+
+        Ownership is enforced in the SELECT. Provenance is loaded only for the
+        same pure policy preview used by approve and never returned. Preview is
+        not a capability: subsequent approve reloads and validates current data.
+        """
+        with self.db.no_autoflush:
+            topic_id = self._topic_id(query)
+            source = self._source(query.source_id)
+            if self.db.execute(select(Membership.source_id).where(
+                Membership.topic_id == topic_id, Membership.source_id == query.source_id,
+            )).first() is None:
+                raise CurationValidationError("Source is not in this topic library")
+            rows = self.db.execute(select(
+                Content.id, Content.source_id, Content.content_kind, Content.content_origin,
+                Content.external_identifier, Content.retrieved_at, Content.content_sha256,
+                Content.provenance_json,
+            ).where(Content.source_id == query.source_id).order_by(Content.id).offset(
+                query.offset,
+            ).limit(query.limit + 1)).mappings().all()
+
+        candidates = []
+        for row in rows[:query.limit]:
+            policy = self.curation._policy(source, dict(row))
+            candidates.append(StaffReferenceProofCandidate(
+                evidence_content_id=row["id"], source_id=row["source_id"],
+                content_kind=row["content_kind"], content_origin=row["content_origin"],
+                external_identifier=row["external_identifier"], retrieved_at=row["retrieved_at"],
+                content_sha256=row["content_sha256"], policy_decision=policy.decision,
+                policy_reason_code=policy.reason_code,
+            ))
+        display_url = _https_identity(source["url"])
+        if display_url is not None and (len(display_url) > 2048 or urlsplit(display_url).query):
+            display_url = None
+        metadata = {key: source[key] for key in StaffReferenceSource.model_fields if key in source}
+        metadata["title"] = metadata["title"][:1000]
+        if metadata["journal"] is not None:
+            metadata["journal"] = metadata["journal"][:1000]
+        return StaffReferenceProofCandidates(
+            selector=StaffReferenceSelector(**query.service_selector().canonical()),
+            topic_id=topic_id, source_id=query.source_id,
+            source=StaffReferenceSource(source_id=source["id"], original_url=display_url, **metadata),
+            candidates=candidates,
+            next_offset=query.offset + query.limit if len(rows) > query.limit else None,
+        )

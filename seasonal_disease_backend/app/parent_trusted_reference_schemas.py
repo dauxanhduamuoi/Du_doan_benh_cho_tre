@@ -111,3 +111,30 @@ class StaffReferenceHistoryEvent(StaffReferenceDTO):
 class StaffReferenceHistory(StaffReferenceDTO):
     approval_id: int
     events: list[StaffReferenceHistoryEvent]
+
+
+class StaffReferenceProofQuery(StaffReferenceSelector):
+    source_id: int = Field(gt=0)
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=100, ge=1, le=100)
+
+
+class StaffReferenceProofCandidate(StaffReferenceDTO):
+    evidence_content_id: int
+    source_id: int
+    content_kind: str
+    content_origin: str
+    external_identifier: str | None
+    retrieved_at: datetime
+    content_sha256: str
+    policy_decision: TrustedReferenceDecision
+    policy_reason_code: str
+
+
+class StaffReferenceProofCandidates(StaffReferenceDTO):
+    selector: StaffReferenceSelector
+    topic_id: int
+    source_id: int
+    source: StaffReferenceSource
+    candidates: list[StaffReferenceProofCandidate] = Field(max_length=100)
+    next_offset: int | None

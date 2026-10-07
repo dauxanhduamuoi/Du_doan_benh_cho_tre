@@ -19,7 +19,7 @@ from app.parent_trusted_reference_models import (
     ParentTrustedReferenceApproval as Approval, ParentTrustedReferenceApprovalEvent as AuditEvent,
 )
 from app.routers import parent_trusted_references as routes
-from app.security import create_access_token, require_staff_or_admin
+from app.security import create_access_token, require_staff_or_admin, require_staff_or_admin_read_only
 from app.services.parent_trusted_reference_curation_service import ParentTrustedReferenceCurationService
 from app.services.published_medical_knowledge_read_service import PublishedMedicalKnowledgeReadService
 
@@ -398,9 +398,11 @@ def test_actual_registration_once_no_collision_and_no_public_exposure():
     expected = {(path.replace("/1", "/{approval_id}"), method) for method, path in ENDPOINTS}
     counts = Counter(signatures)
     assert all(counts[item] == 1 for item in expected)
-    assert len([item for item in signatures if item[0].startswith(BASE)]) == 7
+    assert counts[(BASE + "/proof-candidates", "GET")] == 1
+    assert len([item for item in signatures if item[0].startswith(BASE)]) == 8
     for route in routes.router.routes:
         assert not route.path.startswith("/api/public")
-        assert any(dependency.call is require_staff_or_admin for dependency in route.dependant.dependencies)
+        authority = require_staff_or_admin_read_only if route.path == BASE + "/proof-candidates" else require_staff_or_admin
+        assert any(dependency.call is authority for dependency in route.dependant.dependencies)
         assert all("generator" not in str(dependency.call) and "provider" not in str(dependency.call)
                    for dependency in route.dependant.dependencies)

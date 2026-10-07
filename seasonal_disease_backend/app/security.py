@@ -51,9 +51,11 @@ def _decode_token(token: str) -> dict:
         raise _credentials_exception()
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
+def _authenticate_current_user(
+    token: str,
+    db: Session,
+    *,
+    touch_session: bool,
 ) -> User:
     payload = _decode_token(token)
     username = payload.get("sub")
@@ -74,10 +76,27 @@ def get_current_user(
         if not session or session.user_id != user.id or session.revoked_at is not None:
             raise _credentials_exception()
 
-        session.last_seen_at = datetime.utcnow()
-        db.commit()
+        if touch_session:
+            session.last_seen_at = datetime.utcnow()
+            db.commit()
 
     return user
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    return _authenticate_current_user(token, db, touch_session=True)
+
+
+def get_current_user_read_only(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    """Same JWT/user/session checks without session touch or implicit autoflush."""
+    with db.no_autoflush:
+        return _authenticate_current_user(token, db, touch_session=False)
 
 
 def get_current_session_id(token: str = Depends(oauth2_scheme)) -> int | None:
@@ -111,6 +130,10 @@ def require_staff_or_admin(current_user: User = Depends(get_current_user)) -> Us
             detail="Chỉ admin hoặc nhân viên được thực hiện chức năng này.",
         )
     return current_user
+
+
+def require_staff_or_admin_read_only(current_user: User = Depends(get_current_user_read_only)) -> User:
+    return require_staff_or_admin(current_user)
 
 
 def get_user_permissions(db: Session, user: User) -> list[str]:

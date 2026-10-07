@@ -12,8 +12,9 @@ from app.parent_trusted_reference_schemas import (
     ApproveStaffReferenceRequest, CreateStaffReferenceRequest, StaffReferenceHistory,
     StaffReferenceMutationResponse, StaffReferenceSelector, StaffReferenceState,
     StaffReferenceStateList, StaffReferenceVersionRequest,
+    StaffReferenceProofCandidates, StaffReferenceProofQuery,
 )
-from app.security import require_staff_or_admin
+from app.security import require_staff_or_admin, require_staff_or_admin_read_only
 from app.services.parent_trusted_reference_curation_service import CurationConflictError, CurationValidationError
 from app.services.parent_trusted_reference_staff_service import (
     ParentTrustedReferenceStaffService, StaffReferenceNotFoundError,
@@ -29,6 +30,7 @@ def get_staff_reference_service(db: Session = Depends(get_db)) -> ParentTrustedR
 
 
 Actor = Annotated[User, Depends(require_staff_or_admin)]
+ReadOnlyActor = Annotated[User, Depends(require_staff_or_admin_read_only)]
 Service = Annotated[ParentTrustedReferenceStaffService, Depends(get_staff_reference_service)]
 ApprovalID = Annotated[int, Path(gt=0)]
 
@@ -63,6 +65,15 @@ def create_reference(payload: CreateStaffReferenceRequest, actor: Actor, service
 def list_references(selector: Annotated[StaffReferenceSelector, Query()], _actor: Actor, service: Service):
     try:
         return service.list_current(selector)
+    except Exception as exc:
+        raise _map_error(exc) from exc
+
+
+@router.get("/proof-candidates", response_model=StaffReferenceProofCandidates)
+def proof_candidates(query: Annotated[StaffReferenceProofQuery, Query()], _actor: ReadOnlyActor, service: Service):
+    """Persisted proof metadata/policy preview; approve always revalidates independently."""
+    try:
+        return service.proof_candidates(query)
     except Exception as exc:
         raise _map_error(exc) from exc
 
