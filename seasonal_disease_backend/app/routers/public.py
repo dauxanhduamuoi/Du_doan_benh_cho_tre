@@ -100,7 +100,7 @@ def trusted_references(
     payload: TrustedReferenceBatchRequest,
     service: TrustedReferenceReadService = Depends(get_trusted_reference_read_service),
 ):
-    """Return persisted metadata for current published Reviewed references only."""
+    """Return metadata for eligible APPROVED Parent reference curation only."""
     return service.read_batch(payload)
 
 

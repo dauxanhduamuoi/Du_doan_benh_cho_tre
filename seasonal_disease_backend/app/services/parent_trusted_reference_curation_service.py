@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import wraps
@@ -19,14 +17,11 @@ from app.medical_knowledge_models import (
 )
 from app.models import User
 from app.repositories.parent_trusted_reference_repository import ParentTrustedReferenceRepository
+from app.services.parent_trusted_reference_identity import CURATION_POLICY_VERSION, build_parent_reference_identity
 from app.services.trusted_reference_source_policy import (
     TrustedReferenceDecision, TrustedReferenceSourceMetadata,
-    _https_identity, evaluate_trusted_reference_source,
+    evaluate_trusted_reference_source,
 )
-
-
-# Bump when the policy or identity contract changes; never accept a client hash.
-CURATION_POLICY_VERSION = "parent-source-policy-v1"
 
 
 class CurationValidationError(ValueError):
@@ -169,26 +164,7 @@ class ParentTrustedReferenceCurationService:
         policy = self._policy(source, proof)
         if policy.decision != TrustedReferenceDecision.ALLOW_PARENT_REFERENCE:
             raise CurationValidationError(f"Source Policy: {policy.decision.value}/{policy.reason_code}")
-        # Only identity/proof fields; never copy arbitrary provenance or evidence body.
-        provenance = proof["provenance_json"]
-        assert isinstance(provenance, Mapping)  # Guaranteed by the ALLOW decision.
-        snapshot = dict(
-            selector=selected, source_id=source["id"], provider_id=source["provider_id"],
-            source_type=source["source_type"], external_id=source["external_id"],
-            original_url=_https_identity(source["url"]), source_kind=source["source_kind"],
-            display=dict(title=source["title"], publisher=source["journal"], year=source["publication_year"]),
-            proof=dict(evidence_content_id=proof["id"], source_id=proof["source_id"],
-                       content_kind=proof["content_kind"], content_origin=proof["content_origin"],
-                       external_identifier=proof["external_identifier"], content_sha256=proof["content_sha256"],
-                       provider_id=provenance["provider_id"], external_id=provenance["external_id"],
-                       canonical_url=_https_identity(provenance["canonical_url"]),
-                       retrieval_surface=provenance["retrieval_surface"],
-                       metadata_storage_allowed=provenance["metadata_storage_allowed"],
-                       full_text_stored=provenance["full_text_stored"]),
-            policy_version=CURATION_POLICY_VERSION,
-        )
-        encoded = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
-        return snapshot, hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        return build_parent_reference_identity(selected, source, proof)
 
     @staticmethod
     def _result(row: dict, changed: bool, policy_decision: str | None = None) -> CurationResult:

@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.parent_trusted_reference_models import (
     ParentTrustedReferenceApproval,
     ParentTrustedReferenceApprovalEvent,
+)
+from app.medical_knowledge_models import (
+    MedicalKnowledgeTopic as Topic, MedicalEvidenceSource as Source,
+    MedicalEvidenceContent as Content, MedicalKnowledgeTopicSource as Membership,
 )
 
 
@@ -25,6 +29,37 @@ class ParentTrustedReferenceRepository:
     def get_by_id(self, approval_id: int) -> ParentTrustedReferenceApproval | None:
         with self.db.no_autoflush:
             return self.db.get(ParentTrustedReferenceApproval, approval_id)
+
+    def get_approved_reference_metadata(self, selectors: list[tuple[str, str, str, str | None]]):
+        """One batch SELECT rooted in curation, with exact membership/selected proof.
+
+        No publication pointers, revisions, prose, evidence body or write path.
+        Snapshot/hash/policy validation remains in the response service.
+        """
+        if not selectors:
+            return []
+        approval = ParentTrustedReferenceApproval
+        matches = [and_(
+            Topic.disease_group_id == disease, Topic.factor_type == factor_type,
+            Topic.factor_key == key, Topic.factor_value.is_(None) if value is None else Topic.factor_value == value,
+        ) for disease, factor_type, key, value in selectors]
+        statement = select(
+            Topic.disease_group_id, Topic.factor_type, Topic.factor_key, Topic.factor_value,
+            approval.identity_snapshot_json, approval.identity_sha256, approval.policy_version,
+            Source.id.label("source_id"), Source.provider_id, Source.external_id, Source.source_type,
+            Source.source_kind, Source.title, Source.journal, Source.publication_year, Source.url.label("original_url"),
+            Content.id.label("proof_id"), Content.source_id.label("proof_source_id"), Content.content_kind,
+            Content.content_origin, Content.external_identifier.label("content_external_id"),
+            Content.provenance_json.label("provenance"), Content.content_sha256,
+        ).select_from(approval).join(Topic, Topic.id == approval.topic_id).join(
+            Source, Source.id == approval.source_id,
+        ).join(Membership, and_(Membership.topic_id == approval.topic_id, Membership.source_id == approval.source_id)).join(
+            Content, and_(Content.id == approval.evidence_content_id, Content.source_id == approval.source_id),
+        ).where(
+            approval.status == "APPROVED", approval.revoked_at.is_(None), approval.revoked_by.is_(None), or_(*matches),
+        ).order_by(Topic.id, approval.sort_order, Source.id)
+        with self.db.no_autoflush:
+            return list(self.db.execute(statement).mappings())
 
     def get_persisted_state(self, approval_id: int) -> dict | None:
         """Read database columns, independently of cached ORM instances."""

@@ -24,6 +24,10 @@ from app.medical_knowledge_models import (
 )
 from app.repositories.auto_medical_knowledge_repository import AutoMedicalKnowledgeRepository
 from app.repositories.medical_knowledge_repository import MedicalKnowledgeRepository
+from app.repositories.parent_trusted_reference_repository import ParentTrustedReferenceRepository
+from app.parent_trusted_reference_models import ParentTrustedReferenceApproval
+from app.models import User
+from app.services.parent_trusted_reference_curation_service import CurationSelector, ParentTrustedReferenceCurationService
 from app.routers.public import router
 from app.services.auto_medical_knowledge_service import AutoMedicalKnowledgeQueueService
 from app.services.medical_evidence_provider_settings_service import MedicalEvidenceProviderSettingsService
@@ -62,6 +66,7 @@ def isolate_external_and_legacy_paths(monkeypatch):
         (httpx.HTTPTransport, "handle_request"),
         (httpx.AsyncHTTPTransport, "handle_async_request"),
         (PublishedMedicalKnowledgeReadService, "__init__"),
+        (MedicalKnowledgeRepository, "get_published_reference_metadata"),
         (AutoMedicalKnowledgeQueueService, "__init__"),
         (AutoMedicalKnowledgeQueueService, "enqueue_selectors"),
         (AutoMedicalKnowledgeRepository, "get_settings"),
@@ -173,6 +178,29 @@ def revision(db, selected_topic, sources=(), *, number=1, status="APPROVED", pub
     return result
 
 
+def curate(db, selected_topic, sources, *, approved=True):
+    """Explicit test-only curation, independent of the legacy revision fixture."""
+    if db.get(User, 9990) is None:
+        db.add(User(id=9990, username="reference-curator", role="staff", password_hash="fixture"))
+        db.commit()
+    selected = CurationSelector(selected_topic.disease_group_id, selected_topic.factor_type,
+                                selected_topic.factor_key, selected_topic.factor_value)
+    rows = []
+    for stored_source, order in sources:
+        if db.get(MedicalKnowledgeTopicSource, (selected_topic.id, stored_source.id)) is None:
+            db.add(MedicalKnowledgeTopicSource(topic_id=selected_topic.id, source_id=stored_source.id))
+            db.commit()
+        service = ParentTrustedReferenceCurationService(db)
+        row = service.create_draft(topic_id=selected_topic.id, source_id=stored_source.id,
+                                   selector=selected, actor_id=9990, sort_order=order)
+        if approved:
+            content = db.query(MedicalEvidenceContent).filter_by(source_id=stored_source.id).first()
+            row = service.approve(row.approval_id, expected_version=1, selector=selected,
+                                  evidence_content_id=content.id, actor_id=9990)
+        rows.append(row)
+    return rows
+
+
 def read(db, *selectors):
     request = TrustedReferenceBatchRequest(items=list(selectors) or [selector()])
     with read_guard(db):
@@ -193,9 +221,9 @@ def client(db):
         yield test_client
 
 
-def test_published_reviewed_metadata_without_generated_prose_or_evidence(db):
+def test_approved_curation_metadata_without_revision_prose_or_evidence_body(db):
     stored = source(db)
-    revision(db, topic(db), [(stored, 0)])
+    curate(db, topic(db), [(stored, 0)])
     with read_guard(db) as statements:
         result = TrustedReferenceReadService(db).read_batch(TrustedReferenceBatchRequest(items=[selector()]))
     assert result.items[0].references[0].model_dump(mode="json") == {
@@ -204,16 +232,17 @@ def test_published_reviewed_metadata_without_generated_prose_or_evidence(db):
         "publication_year": 2025, "original_url": "https://www.who.int/publications/b/10",
     }
     assert len(statements) == 1
-    for private in ("explanation", "limitations", "abstract_text", "evidence_text", "raw_metadata", "llm_model", "prompt_version", "auto_medical", "provider_settings", "medical_knowledge_topic_sources"):
+    for private in ("explanation", "limitations", "abstract_text", "evidence_text", "raw_metadata", "llm_model", "prompt_version", "auto_medical", "provider_settings", "medical_knowledge_revisions", "medical_revision_sources"):
         assert private not in statements[0]
         assert private not in result.model_dump_json()
     assert "provenance" in statements[0]
     assert "provenance" not in result.model_dump_json()
+    assert "medical_knowledge_topic_sources" in statements[0]
 
 
 def test_multiple_sources_order_by_sort_order_then_source_id_and_selector_order(db):
     a, b, c = source(db, 30), source(db, 20), source(db, 10)
-    revision(db, topic(db), [(a, 2), (b, 0), (c, 0)])
+    curate(db, topic(db), [(a, 2), (b, 0), (c, 0)])
     result = read(db, selector("99"), selector(), selector())
     assert [item.selector.disease_group_id for item in result.items] == ["99", "5"]
     assert result.items[0].references == []
@@ -222,9 +251,9 @@ def test_multiple_sources_order_by_sort_order_then_source_id_and_selector_order(
 
 def test_duplicate_source_identity_retains_first_repository_occurrence(db, monkeypatch):
     stored = source(db)
-    revision(db, topic(db), [(stored, 0)])
-    rows = MedicalKnowledgeRepository(db).get_published_reference_metadata([("5", "WEATHER", "humidity", None)])
-    monkeypatch.setattr(MedicalKnowledgeRepository, "get_published_reference_metadata", lambda _self, _selectors: rows * 3)
+    curate(db, topic(db), [(stored, 0)])
+    rows = ParentTrustedReferenceRepository(db).get_approved_reference_metadata([("5", "WEATHER", "humidity", None)])
+    monkeypatch.setattr(ParentTrustedReferenceRepository, "get_approved_reference_metadata", lambda _self, _selectors: rows * 3)
     assert [reference.source_id for reference in read(db).items[0].references] == [10]
 
 
@@ -246,7 +275,7 @@ def test_missing_reference_states_are_empty(db, state):
     ("DRAFT", False, False), ("APPROVED", False, False), ("DRAFT", True, True),
     ("REJECTED", True, True), ("APPROVED", True, False), ("APPROVED", False, True),
 ])
-def test_only_current_approved_parent_published_revision(db, status, pointer, flag):
+def test_legacy_publication_states_without_curation_are_empty(db, status, pointer, flag):
     selected_topic = topic(db)
     stored = source(db)
     current = revision(db, selected_topic, [(stored, 0)], status=status, published=False)
@@ -265,15 +294,16 @@ def test_wrong_topic_pointer_does_not_leak_source(db):
     assert read(db).items[0].references == []
 
 
-def test_replacement_and_withdrawal_read_only_current_pointer(db):
+def test_legacy_replacement_and_withdrawal_do_not_control_curated_visibility(db):
     selected_topic = topic(db)
-    revision(db, selected_topic, [(source(db, 10), 0)])
+    stored = source(db, 10)
+    revision(db, selected_topic, [(stored, 0)])
+    curate(db, selected_topic, [(stored, 0)])
     revision(db, selected_topic, [(source(db, 20), 0)], number=2)
-    # Even a stale old visibility flag cannot expose the old revision.
-    assert [reference.source_id for reference in read(db).items[0].references] == [20]
+    assert [reference.source_id for reference in read(db).items[0].references] == [10]
     selected_topic.published_revision_id = None
     db.commit()
-    assert read(db).items[0].references == []
+    assert [reference.source_id for reference in read(db).items[0].references] == [10]
 
 
 @pytest.mark.parametrize("selected,wrong", [
@@ -285,7 +315,7 @@ def test_replacement_and_withdrawal_read_only_current_pointer(db):
     (selector(factor_type="SEASONALITY", key="time_of_year"), selector()),
 ])
 def test_full_canonical_selector_matching_does_not_leak_sources(db, selected, wrong):
-    revision(db, topic(db, selected), [(source(db), 0)])
+    curate(db, topic(db, selected), [(source(db), 0)])
     result = read(db, selected, wrong)
     assert [reference.source_id for reference in result.items[0].references] == [10]
     assert result.items[1].references == []
@@ -305,7 +335,11 @@ def test_null_selector_does_not_match_malformed_empty_value(db):
     {"url": "https://user:password@example.org/source"}, {"publication_year": 9999},
 ])
 def test_invalid_metadata_skips_source_without_failure_or_generated_fallback(db, metadata):
-    revision(db, topic(db), [(source(db, **metadata), 0)])
+    stored = source(db)
+    curate(db, topic(db), [(stored, 0)])
+    for key, value in metadata.items():
+        setattr(stored, key, value)
+    db.commit()
     assert read(db).items[0].references == []
 
 
@@ -320,7 +354,7 @@ def test_legacy_who_label_without_identity_is_hidden_without_inventing_provenanc
 
 def test_reader_does_not_autoflush_pending_unrelated_changes(db, monkeypatch):
     selected_topic = topic(db)
-    revision(db, selected_topic, [(source(db), 0)])
+    curate(db, selected_topic, [(source(db), 0)])
     selected_topic.disease_group_id = "6"  # Unflushed pending ORM write.
     monkeypatch.setattr(db, "flush", forbidden)
     with read_guard(db):
@@ -331,7 +365,7 @@ def test_reader_does_not_autoflush_pending_unrelated_changes(db, monkeypatch):
 
 
 def test_public_endpoint_is_anonymous_metadata_only_and_read_only(db, client):
-    revision(db, topic(db), [(source(db), 0)])
+    curate(db, topic(db), [(source(db), 0)])
     with read_guard(db):
         response = client.post("/api/public/trusted-references", json={"items": [selector()]})
     assert response.status_code == 200
@@ -399,7 +433,13 @@ def test_published_research_with_valid_https_is_not_parent_visible(db, client, p
     {"source_kind": "OTHER"}, {"source_kind": "SYSTEMATIC_REVIEW"},
 ])
 def test_untrusted_published_metadata_is_filtered_without_side_effects(db, client, changes):
-    revision(db, topic(db), [(source(db, **changes), 0)])
+    stored = source(db)
+    selected_topic = topic(db)
+    revision(db, selected_topic, [(stored, 0)])
+    curate(db, selected_topic, [(stored, 0)])
+    for key, value in changes.items():
+        setattr(stored, key, value)
+    db.commit()
     with read_guard(db):
         response = client.post("/api/public/trusted-references", json={"items": [selector()]})
     assert response.status_code == 200
@@ -413,10 +453,10 @@ def test_untrusted_published_metadata_is_filtered_without_side_effects(db, clien
 ])
 def test_persisted_provenance_mismatch_or_unverified_import_is_hidden(db, proof_changes):
     stored = source(db)
+    curate(db, topic(db), [(stored, 0)])
     content = db.query(MedicalEvidenceContent).filter_by(source_id=stored.id).one()
     content.provenance_json = {**content.provenance_json, **proof_changes}
     db.commit()
-    revision(db, topic(db), [(stored, 0)])
     assert read(db).items[0].references == []
 
 
@@ -426,7 +466,10 @@ def test_mixed_sources_keep_only_allowed_in_existing_deterministic_order(db, cli
                    url="https://pubmed.ncbi.nlm.nih.gov/10/")
     allowed_b = source(db, 20, source_kind="HEALTH_GUIDANCE")
     rejected = source(db, 40, url="https://example.org/WHO")
-    revision(db, topic(db), [(allowed_a, 1), (staff, 0), (allowed_b, 1), (rejected, 0)])
+    selected_topic = topic(db)
+    revision(db, selected_topic, [(allowed_a, 1), (staff, 0), (allowed_b, 1), (rejected, 0)])
+    curate(db, selected_topic, [(allowed_a, 1), (allowed_b, 1)])
+    curate(db, selected_topic, [(staff, 0), (rejected, 0)], approved=False)
     with read_guard(db) as statements:
         response = client.post("/api/public/trusted-references", json={"items": [selector()]})
     assert response.status_code == 200
@@ -436,11 +479,11 @@ def test_mixed_sources_keep_only_allowed_in_existing_deterministic_order(db, cli
 
 
 @pytest.mark.parametrize("mode", ["unlinked", "other_source", "missing_provenance"])
-def test_only_revision_linked_snapshot_of_same_source_can_supply_proof(db, mode):
+def test_only_curation_selected_snapshot_of_same_source_can_supply_proof(db, mode):
     stored = source(db, 10)
     other = source(db, 20)
-    current = revision(db, topic(db), [(stored, 0)])
-    link = db.get(MedicalRevisionSource, (current.id, stored.id))
+    row = curate(db, topic(db), [(stored, 0)])[0]
+    link = db.get(ParentTrustedReferenceApproval, row.approval_id)
     if mode == "unlinked":
         link.evidence_content_id = None
     elif mode == "other_source":
@@ -456,7 +499,7 @@ def test_policy_uses_provenance_without_loading_or_requiring_evidence_body(db):
     content = db.query(MedicalEvidenceContent).filter_by(source_id=stored.id).one()
     content.evidence_text = ""
     db.commit()
-    revision(db, topic(db), [(stored, 0)])
+    curate(db, topic(db), [(stored, 0)])
     with read_guard(db) as statements:
         result = TrustedReferenceReadService(db).read_batch(TrustedReferenceBatchRequest(items=[selector()]))
     assert [item.source_id for item in result.items[0].references] == [10]
