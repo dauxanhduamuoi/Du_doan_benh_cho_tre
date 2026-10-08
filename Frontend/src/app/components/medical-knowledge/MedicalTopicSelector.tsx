@@ -15,6 +15,7 @@ interface Props {
   onDiseaseGroupChange: (value: string) => void;
   onFactorChange: (value: MedicalFactorSelector | null) => void;
   compact?: boolean;
+  referenceMode?: boolean;
 }
 
 export default function MedicalTopicSelector({
@@ -25,6 +26,7 @@ export default function MedicalTopicSelector({
   onDiseaseGroupChange,
   onFactorChange,
   compact = false,
+  referenceMode = false,
 }: Props) {
   const selectedOption = factorOptions.find(
     (item) => item.type === factor?.factor_type && item.key === factor?.factor_key,
@@ -33,14 +35,14 @@ export default function MedicalTopicSelector({
   return (
     <section
       aria-labelledby="medical-topic-selector-heading"
-      className={compact ? '' : 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5'}
+      className={compact ? '' : 'rounded-lg border border-slate-200 bg-white p-4 sm:p-5'}
     >
       {!compact && (
         <div className="mb-4 flex items-start gap-3">
-          <span className="rounded-xl bg-blue-50 p-2 text-blue-700"><SlidersHorizontal size={18} /></span>
+          {!referenceMode && <span className="rounded-xl bg-blue-50 p-2 text-blue-700"><SlidersHorizontal size={18} /></span>}
           <div>
-            <h2 id="medical-topic-selector-heading" className="font-bold text-slate-950">Chủ đề đang làm việc</h2>
-            <p className="mt-1 text-sm text-slate-600">Chọn nhóm bệnh và yếu tố một lần; toàn bộ kho nguồn và revision bên dưới sẽ theo chủ đề này.</p>
+            <h2 id="medical-topic-selector-heading" className="font-bold text-slate-950">{referenceMode ? 'Ngữ cảnh tham khảo' : 'Chủ đề đang làm việc'}</h2>
+            <p className="mt-1 text-sm text-slate-600">{referenceMode ? 'Chọn nhóm bệnh và yếu tố để quản lý tài liệu đọc thêm cho đúng ngữ cảnh.' : 'Chọn nhóm bệnh và yếu tố một lần; toàn bộ kho nguồn và revision bên dưới sẽ theo chủ đề này.'}</p>
           </div>
         </div>
       )}
@@ -58,7 +60,7 @@ export default function MedicalTopicSelector({
           </select>
         </div>
         <div>
-          <label htmlFor="medical-explanation-factor" className="mb-1.5 block text-sm font-semibold text-slate-800">2. Yếu tố cần giải thích</label>
+          <label htmlFor="medical-explanation-factor" className="mb-1.5 block text-sm font-semibold text-slate-800">{referenceMode ? '2. Yếu tố' : '2. Yếu tố cần giải thích'}</label>
           <select
             id="medical-explanation-factor"
             value={factor ? `${factor.factor_type}:${factor.factor_key}` : ''}
@@ -68,7 +70,7 @@ export default function MedicalTopicSelector({
             }}
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           >
-            <option value="">Chọn yếu tố cần giải thích</option>
+            <option value="">{referenceMode ? 'Chọn yếu tố' : 'Chọn yếu tố cần giải thích'}</option>
             <optgroup label="Đặc điểm trẻ">
               {factorOptions.filter((item) => item.type === 'AGE' || item.type === 'SEX').map((item) => <option key={factorOptionId(item)} value={factorOptionId(item)}>{item.label_vi}</option>)}
             </optgroup>
@@ -82,7 +84,7 @@ export default function MedicalTopicSelector({
           {selectedOption && (selectedOption.type === 'AGE' || selectedOption.type === 'SEX') && (
             <div className="mt-3">
               <label htmlFor="medical-factor-value" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                {selectedOption.type === 'AGE' ? 'Nhóm tuổi cần giải thích' : 'Giới tính cần giải thích'}
+                {referenceMode ? (selectedOption.type === 'AGE' ? 'Nhóm tuổi' : 'Giới tính') : (selectedOption.type === 'AGE' ? 'Nhóm tuổi cần giải thích' : 'Giới tính cần giải thích')}
               </label>
               <select
                 id="medical-factor-value"

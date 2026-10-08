@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   PublishedMedicalKnowledgeItem,
@@ -72,7 +72,7 @@ function weatherResponse(): WeatherAIPredictResponse {
       ranking_universe: 221,
     },
     input: { age_group: '1-5 tuổi', gender: 'Nam', top_k: 5 },
-    weather: { features: { temp_mean_today: 30, humidity_mean_today: 80 } },
+    weather: { features: { temperature_mean_current: 30, humidity_mean_current: 80 } },
     predictions: [row],
     top_risks: [row],
     model: {
@@ -122,15 +122,34 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-async function renderAndPredict() {
+async function renderAndPredict(count = 5) {
   render(<I18nProvider><ParentPortal /></I18nProvider>);
   const province = await screen.findByTestId('province-combobox-trigger');
   fireEvent.click(province);
   fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
   const submit = screen.getByTestId('parent-predict-submit');
   await waitFor(() => expect(submit).toBeEnabled());
+  if (count !== 5) fireEvent.change(screen.getByLabelText('Hiển thị số lượng nhóm bệnh'), { target: { value: String(count) } });
   fireEvent.click(submit);
   await screen.findByText('Viêm dạ dày ruột');
+}
+
+async function openReferences() {
+  const summary = await screen.findByText(/^Xem tài liệu tham khảo \(\d+\)$/);
+  if (!summary.closest('details')?.open) fireEvent.click(summary);
+}
+
+function multipleGroups(count: number): WeatherAIPredictResponse {
+  const response = weatherResponse();
+  response.context.top_k = count;
+  response.input.top_k = count;
+  response.predictions = Array.from({ length: count }, (_, index) => ({
+    ...ranking(), rank: index + 1, disease_id: String(17 + index), disease_group_id: String(17 + index),
+    disease_name: index === 0 ? ranking().disease_name : `Nhóm bệnh thử ${index + 1}`,
+    disease_group_name: index === 0 ? ranking().disease_name : `Nhóm bệnh thử ${index + 1}`,
+  }));
+  response.top_risks = response.predictions;
+  return response;
 }
 
 beforeEach(() => {
@@ -202,6 +221,7 @@ describe('Parent legacy generated Medical Knowledge disconnect', () => {
 
   it('keeps deterministic explanation and care guidance without any publication request', async () => {
     await renderAndPredict();
+    fireEvent.click(screen.getByText('Xem chi tiết giải thích mô hình'));
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
     expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
     expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');
@@ -244,7 +264,8 @@ describe('Parent legacy generated Medical Knowledge disconnect', () => {
     fireEvent.click(await screen.findByTestId('province-combobox-trigger'));
     fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
     fireEvent.click(screen.getByTestId('parent-predict-submit'));
-    expect(await screen.findByText(/Không thể kết nối hệ thống dự đoán/)).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Không thể kết nối hệ thống dự đoán/);
+    expect(screen.getByRole('alert').querySelector('span')).toHaveClass('min-w-0', '[overflow-wrap:anywhere]');
     expect(apiMocks.getPublicPublishedMedicalKnowledge).not.toHaveBeenCalled();
   });
 
@@ -259,7 +280,430 @@ describe('Parent legacy generated Medical Knowledge disconnect', () => {
     await waitFor(() => expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('PUBLISHED V1 TIER 2 CONTENT')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
+    fireEvent.click(screen.getByText('Xem chi tiết giải thích mô hình'));
     expect(screen.getByText('Mưa / giáng thủy trong 7 ngày kết thúc ngày 23/08/2026')).toBeVisible();
+  });
+});
+
+describe('Parent summary and form accessibility', () => {
+  it('renders current runtime weather fields and Unicode units despite conflicting old aliases', async () => {
+    const response = weatherResponse();
+    response.weather.features = {
+      temperature_mean_current: 31.5, humidity_mean_current: 82,
+      temp_mean_today: 99, humidity_mean_today: 12,
+    };
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    await renderAndPredict();
+    expect(screen.getByText('31.5°C')).toBeVisible();
+    expect(screen.getByText('82%')).toBeVisible();
+    expect(screen.queryByText('99°C')).not.toBeInTheDocument();
+    expect(screen.queryByText('12%')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\?C/)).not.toBeInTheDocument();
+  });
+
+  it('does not fall back to unsupported old weather keys', async () => {
+    const response = weatherResponse();
+    response.weather.features = { temp_mean_today: 99, humidity_mean_today: 12 };
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    await renderAndPredict();
+    expect(screen.getByText('-°C')).toBeVisible();
+    expect(screen.getByText('-%')).toBeVisible();
+    expect(screen.queryByText('99°C')).not.toBeInTheDocument();
+    expect(screen.queryByText('12%')).not.toBeInTheDocument();
+  });
+
+  it('uses Parent-facing empty guidance without import instructions', async () => {
+    apiMocks.getPublicDiseaseKnowledge.mockResolvedValue([]);
+    await renderAndPredict();
+    expect(screen.getByText('Hiện chưa có hướng dẫn bổ sung cho mục này.')).toBeVisible();
+    expect(screen.getByText('Hiện chưa có thông tin triệu chứng cho nhóm bệnh này.')).toBeVisible();
+    expect(screen.getByLabelText('Hướng dẫn dành cho phụ huynh')).not.toHaveTextContent(/import|upload|admin/i);
+    expect(screen.getByTestId('parent-disease-card')).not.toHaveTextContent(/import|upload|admin/i);
+  });
+
+  it('labels controls and exposes province disclosure, search and selection state', async () => {
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    const trigger = await screen.findByTestId('province-combobox-trigger');
+    expect(screen.getByLabelText('Tỉnh/thành phố')).toBe(trigger);
+    for (const label of ['Độ tuổi', 'Giới tính', 'Hiển thị số lượng nhóm bệnh']) {
+      expect(screen.getByRole('combobox', { name: label })).toBe(screen.getByLabelText(label));
+    }
+    expect(screen.getByRole('group', { name: 'Chọn khu vực' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Tự chọn' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Dùng định vị' })).toHaveAttribute('aria-pressed', 'false');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    const panel = document.getElementById(trigger.getAttribute('aria-controls')!);
+    expect(panel).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Tìm tỉnh/thành phố...' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(trigger);
+    expect(screen.getByRole('button', { name: 'TP.HCM' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Dùng định vị' }));
+    expect(screen.getByRole('button', { name: 'Dùng định vị' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Tự chọn' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('keeps full long disease and disclaimer text with local wrapping', async () => {
+    const longName = 'TênNhómBệnh'.repeat(40);
+    const disclaimer = 'LưuÝDài'.repeat(50);
+    const response = weatherResponse();
+    response.predictions[0].disease_name = longName;
+    response.disclaimer = disclaimer;
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    fireEvent.click(await screen.findByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    expect(await screen.findByRole('heading', { name: longName })).toHaveClass('[overflow-wrap:anywhere]');
+    expect(screen.getByText(disclaimer)).toHaveClass('min-w-0', '[overflow-wrap:anywhere]');
+    expect(screen.getByLabelText('Tóm tắt nhanh')).toHaveTextContent(longName);
+  });
+});
+
+describe('Parent compact result navigation', () => {
+  it('groups child controls on the left and location/weather on the right with neutral branding', async () => {
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    await screen.findByTestId('province-combobox-trigger');
+    const child = screen.getByRole('region', { name: 'Thông tin của trẻ' });
+    const location = screen.getByRole('region', { name: 'Khu vực / vị trí' });
+    expect(within(child).getByLabelText('Độ tuổi')).toBeVisible();
+    expect(within(child).getByLabelText('Giới tính')).toBeVisible();
+    const count = within(child).getByLabelText('Hiển thị số lượng nhóm bệnh');
+    expect(within(count).getAllByRole('option').map((option) => option.textContent)).toEqual(['5 nhóm', '10 nhóm', '20 nhóm']);
+    expect(within(location).getByLabelText('Tỉnh/thành phố')).toBeVisible();
+    expect(within(location).getByText('Nhiệt độ')).toBeVisible();
+    expect(child.compareDocumentPosition(location) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(document.body).not.toHaveTextContent(/Lightning\s*Fox\s*SD|Top (5|10|20)/i);
+  });
+
+  it.each([5, 10, 20])('navigates exactly %i groups in backend order without extra API requests', async (count) => {
+    apiMocks.predictPublicParentRisk.mockResolvedValue(multipleGroups(count));
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    fireEvent.click(await screen.findByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    fireEvent.change(screen.getByLabelText('Hiển thị số lượng nhóm bệnh'), { target: { value: String(count) } });
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await screen.findByText(`Nhóm 1 / ${count}`);
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledWith(expect.objectContaining({ top_k: count }));
+    expect(screen.getByRole('button', { name: 'Nhóm trước' })).toBeDisabled();
+    for (let index = 0; index < count; index += 1) {
+      expect(screen.getAllByTestId('parent-disease-card')).toHaveLength(1);
+      expect(screen.getByLabelText(`Xếp hạng ${index + 1}`)).toBeVisible();
+      if (index < count - 1) fireEvent.click(screen.getByRole('button', { name: 'Nhóm tiếp theo' }));
+    }
+    expect(screen.getByText(`Nhóm ${count} / ${count}`)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Nhóm tiếp theo' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Nhóm trước' }));
+    expect(screen.getByText(`Nhóm ${count - 1} / ${count}`)).toBeVisible();
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts collapsed, opens model details, and resets details on changing the displayed group', async () => {
+    apiMocks.predictPublicParentRisk.mockResolvedValue(multipleGroups(5));
+    await renderAndPredict();
+    const summary = screen.getByText('Xem chi tiết giải thích mô hình');
+    const explanation = screen.getByLabelText('Giải thích đóng góp của mô hình');
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+    expect(explanation).not.toBeVisible();
+    expect(screen.getByText('Đau bụng')).toBeVisible();
+    expect(screen.getByLabelText('Khi nào cần đưa trẻ đi khám')).toBeVisible();
+    fireEvent.click(summary);
+    expect(summary.closest('details')).toHaveAttribute('open');
+    expect(explanation).toBeVisible();
+    expect(explanation).toHaveTextContent('Tổng lượng mưa trong 7 ngày kết thúc ngày 23/08/2026 là 42 mm.');
+    fireEvent.click(summary);
+    expect(explanation).not.toBeVisible();
+    fireEvent.click(summary);
+    fireEvent.click(screen.getByRole('button', { name: 'Nhóm tiếp theo' }));
+    expect(screen.getByText('Xem chi tiết giải thích mô hình').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).not.toBeVisible();
+  });
+
+  it('resets navigation for a new prediction with fewer groups', async () => {
+    apiMocks.predictPublicParentRisk.mockResolvedValue(multipleGroups(20));
+    await renderAndPredict(20);
+    for (let index = 1; index < 20; index += 1) fireEvent.click(screen.getByRole('button', { name: 'Nhóm tiếp theo' }));
+    apiMocks.predictPublicParentRisk.mockResolvedValue(multipleGroups(5));
+    fireEvent.change(screen.getByLabelText('Hiển thị số lượng nhóm bệnh'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    expect(await screen.findByText('Nhóm 1 / 5')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Nhóm trước' })).toBeDisabled();
+    expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
+  });
+
+  it('retains the selected group when references arrive late and matches only its references', async () => {
+    const pending = deferred<{ items: TrustedReferenceItem[] }>();
+    apiMocks.predictPublicParentRisk.mockResolvedValue(multipleGroups(5));
+    apiMocks.getPublicTrustedReferences.mockReturnValue(pending.promise);
+    await renderAndPredict();
+    fireEvent.click(screen.getByRole('button', { name: 'Nhóm tiếp theo' }));
+    await act(async () => pending.resolve({ items: [{ ...referenceItem, selector: { ...referenceSelector, disease_group_id: '18' } }] }));
+    expect(screen.getByText('Nhóm 2 / 5')).toBeVisible();
+    expect(screen.getByLabelText('Xếp hạng 2')).toBeVisible();
+    const title = screen.getByText('TRUSTED REFERENCE TITLE');
+    expect(title).not.toBeVisible();
+    await openReferences();
+    expect(title).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Nhóm trước' }));
+    expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
+    expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows all symptoms for bilingual disease names through the compact preview and expansion', async () => {
+    const response = weatherResponse();
+    response.predictions[0].disease_name = 'Viêm dạ dày ruột - Gastroenteritis';
+    apiMocks.predictPublicParentRisk.mockResolvedValue(response);
+    apiMocks.getPublicDiseaseKnowledge.mockResolvedValue([{
+      id: 1, disease_group: 'Viêm dạ dày ruột', title: 'Kiến thức chăm sóc',
+      symptoms: 'Đau bụng; Tiêu chảy; Nôn; Sốt; Mệt mỏi; Chán ăn', prevention: null,
+    }]);
+    await renderAndPredict();
+    expect(screen.getByText('Đau bụng')).toBeVisible();
+    expect(screen.getByText('Tiêu chảy')).toBeVisible();
+    expect(screen.getByText('Chán ăn')).not.toBeVisible();
+    fireEvent.click(screen.getByText(/^Xem thêm: triệu chứng/));
+    for (const symptom of ['Nôn', 'Sốt', 'Mệt mỏi', 'Chán ăn']) expect(screen.getByText(symptom)).toBeVisible();
+    expect(screen.queryByText('Hiện chưa có thông tin triệu chứng cho nhóm bệnh này.')).not.toBeInTheDocument();
+  });
+
+  it.each([null, undefined, '   '])('shows a clear symptom fallback for missing content: %s', async (symptoms) => {
+    apiMocks.getPublicDiseaseKnowledge.mockResolvedValue([{
+      id: 1, disease_group: 'Viêm dạ dày ruột', title: 'Kiến thức chăm sóc', symptoms,
+    }]);
+    await renderAndPredict();
+    expect(screen.getByText('Hiện chưa có thông tin triệu chứng cho nhóm bệnh này.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Nhóm tiếp theo' })).toBeDisabled();
+  });
+});
+
+describe('Parent prediction request races', () => {
+  const oldRisks = [{ disease_group: 'Cúm', recent_cases: 777, risk_level: 'Cao' }];
+  const currentRisks = [{ disease_group: 'Cúm', recent_cases: 25, risk_level: 'Cao' }];
+  const oldAdvice = { recommendations: ['STALE RECOMMENDATION A'] };
+  const currentAdvice = { recommendations: ['CURRENT RECOMMENDATION B'] };
+
+  function currentResponse() {
+    const response = weatherResponse();
+    response.predictions = [{ ...ranking(), disease_id: '168', disease_group_id: '168', disease_name: 'Cúm', disease_group_name: 'Cúm' }];
+    response.predictions[0].tier1.positive_factors = [{ ...ranking().tier1.positive_factors[0], input_value: 81 }];
+    response.top_risks = response.predictions;
+    response.weather.features = { temperature_mean_current: 31, humidity_mean_current: 82 };
+    return response;
+  }
+
+  beforeEach(() => {
+    apiMocks.listAreaProvinces.mockResolvedValue([
+      { code: 'HCM', name: 'TP.HCM', latitude: 10.78, longitude: 106.69, is_active: true },
+      { code: 'HAN', name: 'Hà Nội', latitude: 21.028, longitude: 105.834, is_active: true },
+    ]);
+    apiMocks.getPublicWeatherAIOptions.mockResolvedValue({ age_groups: ['1-5 tuổi', '6-10 tuổi'], genders: ['Nam', 'Nữ'], disease_catalog: [], ranking_universe: 221 });
+    apiMocks.getPublicDiseaseKnowledge.mockResolvedValue([
+      { id: 1, disease_group: 'Viêm dạ dày ruột', title: 'A', symptoms: 'STALE SYMPTOM A', prevention: 'STALE CARE A', warning_signs: 'STALE WARNING A' },
+      { id: 2, disease_group: 'Cúm', title: 'B', symptoms: 'CURRENT SYMPTOM B', prevention: 'CURRENT CARE B', warning_signs: 'CURRENT WARNING B' },
+    ]);
+  });
+
+  async function startOldRequest() {
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    fireEvent.click(await screen.findByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1));
+  }
+
+  function changeProvince() {
+    fireEvent.click(screen.getByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'Hà Nội' }));
+  }
+
+  function assertCurrentResult() {
+    const card = screen.getByTestId('parent-disease-card');
+    expect(within(card).getByRole('heading', { name: 'Cúm' })).toBeVisible();
+    expect(card).toHaveTextContent('25 ca');
+    expect(card).toHaveTextContent('CURRENT SYMPTOM B');
+    expect(card).toHaveTextContent('CURRENT CARE B');
+    expect(card).toHaveTextContent('CURRENT WARNING B');
+    expect(screen.getByLabelText('Giải thích đóng góp của mô hình')).toHaveTextContent('81 mm');
+    expect(screen.getByText('CURRENT RECOMMENDATION B')).toBeVisible();
+    expect(screen.getByText('31°C')).toBeVisible();
+    expect(screen.queryByText('STALE RECOMMENDATION A')).not.toBeInTheDocument();
+    expect(card).not.toHaveTextContent('777');
+    expect(card).not.toHaveTextContent('STALE SYMPTOM A');
+  }
+
+  it.each(['prediction', 'area'] as const)('does not restore any cleared state after location changes during the %s stage', async stage => {
+    const prediction = deferred<WeatherAIPredictResponse>();
+    const risks = deferred<typeof oldRisks>();
+    const advice = deferred<typeof oldAdvice>();
+    if (stage === 'prediction') apiMocks.predictPublicParentRisk.mockReturnValueOnce(prediction.promise);
+    else {
+      apiMocks.getAreaLocalRisks.mockReturnValueOnce(risks.promise);
+      apiMocks.getAreaRecommendations.mockReturnValueOnce(advice.promise);
+    }
+    await startOldRequest();
+    if (stage === 'area') await waitFor(() => expect(apiMocks.getAreaLocalRisks).toHaveBeenCalledTimes(1));
+    changeProvince();
+    await act(async () => { prediction.resolve(weatherResponse()); risks.resolve(oldRisks); advice.resolve(oldAdvice); });
+    expect(screen.getByTestId('province-combobox-trigger')).toHaveTextContent('Hà Nội');
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    expect(screen.queryByText('STALE RECOMMENDATION A')).not.toBeInTheDocument();
+    expect(apiMocks.getPublicTrustedReferences).not.toHaveBeenCalled();
+    expect(screen.getByTestId('parent-predict-submit')).toBeEnabled();
+    if (stage === 'prediction') {
+      expect(apiMocks.getAreaLocalRisks).not.toHaveBeenCalled();
+      expect(apiMocks.getAreaRecommendations).not.toHaveBeenCalled();
+    }
+  });
+
+  it.each(['prediction', 'area'] as const)('keeps B prediction, area data, advice and guidance when A finishes last in its %s stage', async stage => {
+    const old = deferred<WeatherAIPredictResponse>();
+    const current = deferred<WeatherAIPredictResponse>();
+    const risks = deferred<typeof oldRisks>();
+    const advice = deferred<typeof oldAdvice>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(stage === 'prediction' ? old.promise : Promise.resolve(weatherResponse())).mockReturnValueOnce(current.promise);
+    if (stage === 'area') {
+      apiMocks.getAreaLocalRisks.mockReturnValueOnce(risks.promise);
+      apiMocks.getAreaRecommendations.mockReturnValueOnce(advice.promise);
+    }
+    apiMocks.getAreaLocalRisks.mockResolvedValue(currentRisks);
+    apiMocks.getAreaRecommendations.mockResolvedValue(currentAdvice);
+    await startOldRequest();
+    if (stage === 'area') await waitFor(() => expect(apiMocks.getAreaLocalRisks).toHaveBeenCalledTimes(1));
+    changeProvince();
+    expect(screen.getByTestId('parent-predict-submit')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await act(async () => current.resolve(currentResponse()));
+    await screen.findByRole('heading', { name: 'Cúm' });
+    assertCurrentResult();
+    await act(async () => { old.resolve(weatherResponse()); risks.resolve(oldRisks); advice.resolve(oldAdvice); });
+    assertCurrentResult();
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenNthCalledWith(2, expect.objectContaining({ latitude: 21.028, longitude: 105.834, top_k: 5 }));
+    expect(apiMocks.getPublicTrustedReferences).toHaveBeenCalledTimes(1);
+    expect(apiMocks.getPublicTrustedReferences.mock.calls[0][0]).toEqual([expect.objectContaining({ disease_group_id: '168' })]);
+    if (stage === 'prediction') expect(apiMocks.getAreaLocalRisks).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a stale prediction error after context invalidation', async () => {
+    const old = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise);
+    await startOldRequest(); changeProvince();
+    await act(async () => old.reject(new Error('STALE ERROR A')));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    expect(screen.getByTestId('parent-predict-submit')).toBeEnabled();
+  });
+
+  it.each(['resolve', 'reject'] as const)('does not stop B loading or show A error when stale A %s runs finally', async outcome => {
+    const old = deferred<WeatherAIPredictResponse>();
+    const current = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    await startOldRequest(); changeProvince();
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(2));
+    await act(async () => outcome === 'resolve' ? old.resolve(weatherResponse()) : old.reject(new Error('STALE ERROR A')));
+    expect(screen.getByTestId('parent-predict-submit')).toBeDisabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    await act(async () => current.resolve(currentResponse()));
+    expect(await screen.findByRole('heading', { name: 'Cúm' })).toBeVisible();
+    expect(screen.getByTestId('parent-predict-submit')).toBeEnabled();
+  });
+
+  it('does not overwrite the current error with an older rejection', async () => {
+    const old = deferred<WeatherAIPredictResponse>();
+    const current = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    await startOldRequest(); changeProvince(); fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(2));
+    await act(async () => current.reject(new Error('CURRENT ERROR B')));
+    expect(await screen.findByRole('alert')).toHaveTextContent('CURRENT ERROR B');
+    await act(async () => old.reject(new Error('STALE ERROR A')));
+    expect(screen.getByRole('alert')).toHaveTextContent('CURRENT ERROR B');
+  });
+
+  it.each([['Độ tuổi', '6-10 tuổi'], ['Giới tính', 'Nữ'], ['Hiển thị số lượng nhóm bệnh', '20']])('invalidates pending prediction when %s changes', async (label, value) => {
+    const old = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise);
+    await startOldRequest();
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    await act(async () => old.resolve(weatherResponse()));
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    expect(apiMocks.getAreaLocalRisks).not.toHaveBeenCalled();
+    expect(apiMocks.getPublicTrustedReferences).not.toHaveBeenCalled();
+    expect(screen.getByTestId('parent-predict-submit')).toBeEnabled();
+  });
+
+  it('invalidates pending prediction when leaving geolocation mode', async () => {
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: vi.fn(success => success({ coords: { latitude: 10.78, longitude: 106.69 } })) } });
+    const old = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise);
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Dùng định vị' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Tự chọn' }));
+    await act(async () => old.resolve(weatherResponse()));
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    expect(apiMocks.getAreaLocalRisks).not.toHaveBeenCalled();
+  });
+
+  it('invalidates a pending GPS prediction when refreshed coordinates arrive', async () => {
+    const positions: PositionCallback[] = [];
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: vi.fn((success: PositionCallback) => positions.push(success)) } });
+    const old = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise).mockResolvedValueOnce(currentResponse());
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    await waitFor(() => expect(screen.getByTestId('parent-predict-submit')).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Dùng định vị' }));
+    act(() => positions[0]({ coords: { latitude: 10.78, longitude: 106.69 } } as GeolocationPosition));
+    fireEvent.click(screen.getByRole('button', { name: 'Lấy lại định vị' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1));
+    act(() => positions[1]({ coords: { latitude: 21.028, longitude: 105.834 } } as GeolocationPosition));
+    await act(async () => old.resolve(weatherResponse()));
+    expect(screen.queryByTestId('parent-disease-card')).not.toBeInTheDocument();
+    expect(apiMocks.getAreaLocalRisks).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    expect(await screen.findByRole('heading', { name: 'Cúm' })).toBeVisible();
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenNthCalledWith(2, expect.objectContaining({ latitude: 21.028, longitude: 105.834 }));
+  });
+
+  it('does not invalidate a current manual prediction when an earlier GPS lookup finishes', async () => {
+    const positions: PositionCallback[] = [];
+    vi.stubGlobal('navigator', { geolocation: { getCurrentPosition: vi.fn((success: PositionCallback) => positions.push(success)) } });
+    const current = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(current.promise);
+    render(<I18nProvider><ParentPortal /></I18nProvider>);
+    await waitFor(() => expect(screen.getByTestId('parent-predict-submit')).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Dùng định vị' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tự chọn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hà Nội' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1));
+    act(() => positions[0]({ coords: { latitude: 10.78, longitude: 106.69 } } as GeolocationPosition));
+    expect(screen.getByTestId('parent-predict-submit')).toBeDisabled();
+    await act(async () => current.resolve(currentResponse()));
+    expect(await screen.findByRole('heading', { name: 'Cúm' })).toBeVisible();
+    expect(screen.getByTestId('province-combobox-trigger')).toHaveTextContent('Hà Nội');
+    expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledWith(expect.objectContaining({ latitude: 21.028, longitude: 105.834 }));
+  });
+
+  it('ignores prediction completion after unmount', async () => {
+    const old = deferred<WeatherAIPredictResponse>();
+    apiMocks.predictPublicParentRisk.mockReturnValueOnce(old.promise);
+    const view = render(<I18nProvider><ParentPortal /></I18nProvider>);
+    fireEvent.click(await screen.findByTestId('province-combobox-trigger'));
+    fireEvent.click(screen.getByRole('button', { name: 'TP.HCM' }));
+    fireEvent.click(screen.getByTestId('parent-predict-submit'));
+    await waitFor(() => expect(apiMocks.predictPublicParentRisk).toHaveBeenCalledTimes(1));
+    view.unmount();
+    await act(async () => old.resolve(weatherResponse()));
+    expect(apiMocks.getAreaLocalRisks).not.toHaveBeenCalled();
+    expect(apiMocks.getPublicTrustedReferences).not.toHaveBeenCalled();
   });
 });
 
@@ -280,6 +724,7 @@ describe('Parent Trusted References optional integration', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ items: [referenceItem] }) });
     vi.stubGlobal('fetch', fetchMock);
     await renderAndPredict();
+    await openReferences();
     expect(await screen.findByText('TRUSTED REFERENCE TITLE')).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/public/trusted-references', expect.objectContaining({ method: 'POST' }));
@@ -300,6 +745,7 @@ describe('Parent Trusted References optional integration', () => {
       age_group: '1-5 tuổi', gender: 'Nam', top_k: 5, latitude: 10.78, longitude: 106.69, timezone: 'Asia/Ho_Chi_Minh',
     });
     await act(async () => pending.resolve({ items: [referenceItem] }));
+    await openReferences();
     expect(screen.getByText('TRUSTED REFERENCE TITLE')).toBeVisible();
     expect(screen.getByLabelText('Giải thích đóng góp của mô hình').textContent).toBe(explanationBefore);
     expect(screen.getByLabelText('Xếp hạng 1')).toBeVisible();
@@ -341,6 +787,7 @@ describe('Parent Trusted References optional integration', () => {
       item({ ...referenceSelector, factor_key: 'humidity' }, 'WRONG WEATHER KEY', 8),
     ] });
     await renderAndPredict();
+    await openReferences();
     expect(await screen.findByText('EXACT AGE SOURCE')).toBeVisible();
     expect(screen.getByText('EXACT SEX SOURCE')).toBeVisible();
     expect(screen.getByText('EXACT WEATHER SOURCE')).toBeVisible();
@@ -360,6 +807,7 @@ describe('Parent Trusted References optional integration', () => {
     await act(async () => oldReferences.resolve({ items: [referenceItem] }));
     expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
     await act(async () => newerPrediction.resolve(weatherResponse()));
+    await openReferences();
     expect(await screen.findByText('NEW REFERENCE')).toBeVisible();
     expect(screen.queryByText('TRUSTED REFERENCE TITLE')).not.toBeInTheDocument();
   });

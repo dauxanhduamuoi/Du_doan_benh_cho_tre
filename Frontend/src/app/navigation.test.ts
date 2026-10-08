@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CurrentUser } from '@/lib/api';
 import { canAccessTab, getMainNavItems } from './navigation';
+import viMessages from '@/i18n/locales/vi';
+import enMessages from '@/i18n/locales/en';
 
 function user(role: string): CurrentUser {
   return {
@@ -14,6 +16,11 @@ function user(role: string): CurrentUser {
 }
 
 describe('medical knowledge navigation authorization', () => {
+  it.each([[viMessages, 'Nguồn tham khảo tin cậy'], [enMessages, 'Trusted references']] as const)('renames the menu without changing its route or authorization', (messages, label) => {
+    const item = getMainNavItems(key => messages[key] ?? key).find(entry => entry.id === 'medical-knowledge');
+    expect(item?.label).toBe(label);
+    expect(item?.id).toBe('medical-knowledge');
+  });
   it('adds a Medical Knowledge tab to the internal navigation', () => {
     const items = getMainNavItems((key) => key);
     expect(items.find((item) => item.id === 'medical-knowledge')?.label).toBe('sidebar.medicalKnowledge');

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, Database, ExternalLink } from 'lucide-react';
 import {
-  evidenceContentLabel,
   type PubMedPaper,
 } from '@/lib/medicalKnowledgeApi';
 
@@ -19,7 +18,7 @@ export default function PubMedResultCard({ paper, selected, onToggle }: Props) {
     : paper.abstract_text;
 
   return (
-    <article className={`rounded-2xl border bg-white p-4 shadow-sm transition sm:p-5 ${selected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'}`}>
+    <article className={`rounded-lg border bg-white p-4  transition sm:p-5 ${selected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'}`}>
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -33,7 +32,7 @@ export default function PubMedResultCard({ paper, selected, onToggle }: Props) {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <h3 className="break-words text-base font-bold leading-6 text-slate-900">{paper.title}</h3>
             {paper.in_topic_library ? (
-              <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                 <CheckCircle2 size={13} /> Đã có trong kho chủ đề
               </span>
             ) : paper.stored_globally ? (
@@ -54,8 +53,8 @@ export default function PubMedResultCard({ paper, selected, onToggle }: Props) {
 
           {paper.content_kind && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-800">
-                {evidenceContentLabel(paper.content_kind)}
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">
+                {({ PMC_FULL_TEXT: 'Toàn văn PMC', PMC_FULL_TEXT_EXCERPT: 'Trích đoạn toàn văn PMC', ABSTRACT: 'Tóm tắt PubMed', OFFICIAL_SUMMARY_EXCERPT: 'Trích đoạn chính thức WHO' }[paper.content_kind])}
               </span>
               {paper.pmcid && (
                 <span className="font-medium text-slate-600">{paper.pmcid}</span>

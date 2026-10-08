@@ -15,7 +15,7 @@ interface Props {
 export default function PubMedResults(props: Props) {
   if (props.response.results.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center ">
         <h2 className="font-bold text-slate-800">
           {props.mode === 'pmid' ? 'Không tìm thấy bài PubMed với PMID này' : 'Không tìm thấy tài liệu phù hợp'}
         </h2>
@@ -34,15 +34,15 @@ export default function PubMedResults(props: Props) {
 
   return (
     <section aria-labelledby="pubmed-results-title">
-      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 rounded-lg border border-slate-200 bg-white p-4  sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 id="pubmed-results-title" className="text-lg font-bold text-slate-900">
               {props.mode === 'pmid' ? 'Kết quả theo PMID' : `Tìm thấy ${props.response.count} tài liệu`}
             </h2>
-            {props.mode === 'pmid' && <p className="mt-2 text-sm text-slate-600">Tài liệu chính xác theo PMID, không lọc theo mức phù hợp chủ đề. Thêm vào kho tham khảo không đồng nghĩa đủ điều kiện tạo bản nháp AI.</p>}
+            {props.mode === 'pmid' && <p className="mt-2 text-sm text-slate-600">Tài liệu chính xác theo PMID, không lọc theo mức phù hợp chủ đề. Thêm vào kho tham khảo không đồng nghĩa được phép hiển thị cho phụ huynh.</p>}
             <p className="mt-1 text-sm text-slate-500">Đã chọn {selectedCount} tài liệu</p>
-            <p className="mt-1 text-xs text-slate-500">Checkbox ở kết quả chỉ dùng để thêm tài liệu vào kho chủ đề, không chọn cho AI.</p>
+            <p className="mt-1 text-xs text-slate-500">Chọn tài liệu để thêm vào danh sách xem xét. PubMed / PMC mặc định chỉ dành cho Staff.</p>
           </div>
           <button
             type="button"
@@ -71,13 +71,13 @@ export default function PubMedResults(props: Props) {
         ))}
       </div>
 
-      <div className="sticky bottom-3 z-10 mt-5 rounded-2xl border border-blue-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex sm:items-center sm:justify-between sm:p-4">
+      <div className="sticky bottom-3 z-10 mt-5 rounded-lg border border-blue-200 bg-white p-3   sm:flex sm:items-center sm:justify-between sm:p-4">
         <p className="mb-3 text-sm font-semibold text-slate-700 sm:mb-0">Đã chọn {selectedCount} tài liệu</p>
         <button
           type="button"
           onClick={props.onImport}
           disabled={selectedCount === 0 || props.importing}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
         >
           {props.importing ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
           {props.importing

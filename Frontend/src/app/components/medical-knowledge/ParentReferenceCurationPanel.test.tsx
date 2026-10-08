@@ -68,10 +68,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('staff Parent Reference Curation', () => {
-  it.each(['staff', 'admin'])('renders for %s with library/AI/curation boundaries', async role => {
+  it.each(['staff', 'admin'])('renders for %s with source/curation boundaries', async role => {
     mocks.role = role; await ready();
     expect(screen.getByText(/Trong kho nguồn của chủ đề/)).toBeInTheDocument();
-    expect(screen.getByText(/AI Draft: Chỉ lưu để tham khảo/)).toBeInTheDocument();
+    expect(screen.queryByText(/AI Draft/)).not.toBeInTheDocument();
     expect(screen.getByText(/Phụ huynh: Chưa duyệt/)).toBeInTheDocument();
     expect(mocks.list).toHaveBeenCalledWith(selector, expect.any(AbortSignal));
     expect(mocks.proofs).not.toHaveBeenCalled(); expect(mocks.history).not.toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe('staff Parent Reference Curation', () => {
     await ready(state()); expect(screen.queryByText(/Phụ huynh: Đang hiển thị/)).not.toBeInTheDocument();
     expect(mocks.proofs).not.toHaveBeenCalled(); await openProofs();
     expect(mocks.proofs).toHaveBeenCalledWith(selector, 42, 0, expect.any(AbortSignal));
-    expect(screen.getByText(/WHO_PUBLICATIONS_API/)).toBeInTheDocument(); expect(screen.getByText('WHO_OFFICIAL_GUIDANCE')).toBeInTheDocument();
+    expect(screen.getByText(/WHO_PUBLICATIONS_API/)).toBeInTheDocument(); expect(screen.getByText(/WHO_OFFICIAL_GUIDANCE/)).toBeInTheDocument();
   });
   it('zero candidates disables approve', async () => {
     mocks.proofs.mockResolvedValue(page([])); await ready(state()); await openProofs();
@@ -263,4 +263,44 @@ describe('staff Parent Reference Curation', () => {
     persisted = [state()]; await act(async () => pending.resolve(result(state())));
     await screen.findByText('Phụ huynh: Đang xem xét');
   });
+  it('keeps complete proof metadata collapsed and opening details never selects a proof', async () => {
+    await ready(state()); await openProofs();
+    const summary = screen.getByText('Xem chi tiết xác minh');
+    const details = summary.closest('details')!;
+    expect(details).not.toHaveAttribute('open');
+    expect(screen.getByText(/content_sha256:/)).not.toBeVisible();
+    expect(details).toHaveTextContent('a'.repeat(64));
+    for (const field of ['evidence_content_id', 'source_id', 'content_kind', 'content_origin', 'external_identifier', 'retrieved_at', 'content_sha256']) {
+      expect(details).toHaveTextContent(field + ':');
+    }
+    fireEvent.click(summary);
+    expect(details).toHaveAttribute('open');
+    expect(screen.getByText(/content_sha256:/)).toBeVisible();
+    expect(screen.getByRole('radio')).not.toBeChecked(); expect(approveButton()).toBeDisabled();
+    expect(mocks.approve).not.toHaveBeenCalled();
+  });
+  it('shows compact approved bibliography before search and keeps revoke/history actions', async () => {
+    persisted = [state('APPROVED', 2)];
+    render(<ParentReferenceCurationPanel {...props}><section aria-label="Tìm và thêm nguồn">Tìm và thêm nguồn</section></ParentReferenceCurationPanel>);
+    const approved = screen.getByRole('region', { name: 'Nguồn đang hiển thị cho phụ huynh' });
+    const card = await within(approved).findByRole('article', { name: 'Duyệt nguồn 42' });
+    expect(card).toHaveTextContent('WHO · WHO · 2025');
+    expect(within(card).getByRole('link', { name: /Xem nguồn/ })).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(within(card).getByRole('button', { name: 'Thu hồi khỏi phụ huynh' })).toBeEnabled();
+    expect(within(card).getByRole('button', { name: 'Lịch sử duyệt' })).toBeEnabled();
+    expect(within(card).getByLabelText(/Ghi chú duyệt nguồn/)).not.toBeVisible();
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(approved.compareDocumentPosition(screen.getByRole('region', { name: 'Tìm và thêm nguồn' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+  it.each(['STAFF_ONLY', 'REJECT_PARENT_REFERENCE', 'UNCERTAIN'] as const)('does not present APPROVED %s as currently Parent-visible', async policy_decision => {
+    await ready({ ...state('APPROVED', 2), policy_decision });
+    expect(within(screen.getByRole('region', { name: 'Nguồn đang hiển thị cho phụ huynh' })).queryByRole('article')).not.toBeInTheDocument();
+    expect(screen.getByRole('article')).toHaveTextContent('Đã duyệt, hiện chưa đủ điều kiện hiển thị');
+    expect(screen.queryByText('Phụ huynh: Đang hiển thị cho phụ huynh')).not.toBeInTheDocument();
+  });
+  it.each([{ source_in_library: false }, { evidence_content_id: null }])('does not present missing membership/proof as Parent-visible: %j', async fields => {
+    await ready({ ...state('APPROVED', 2), ...fields });
+    expect(within(screen.getByRole('region', { name: 'Nguồn đang hiển thị cho phụ huynh' })).queryByRole('article')).not.toBeInTheDocument();
+  });
+
 });

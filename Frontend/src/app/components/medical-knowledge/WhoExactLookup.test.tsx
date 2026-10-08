@@ -35,9 +35,9 @@ describe('WHO exact GUID workflow', () => {
     render(<WhoExactLookup {...props} />);
     submit();
     expect(await screen.findByText('Unrelated WHO policy')).toBeInTheDocument();
-    expect(screen.getByText(/không đồng nghĩa đủ điều kiện/)).toBeInTheDocument();
+    expect(screen.getByText(/không đồng nghĩa được phép hiển thị cho phụ huynh/)).toBeInTheDocument();
     expect(mocks.lookup).toHaveBeenCalledWith('WHO', id, '9', weatherSelector('humidity'));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào kho chủ đề' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào danh sách xem xét' }));
     await waitFor(() => expect(props.onImported).toHaveBeenCalledTimes(1));
     expect(mocks.importSources.mock.calls[0][2]).toEqual([{
       provider_id: 'WHO', external_id: id, canonical_url: source.url, title: source.title, source_kind: 'GUIDELINE',
@@ -76,9 +76,9 @@ describe('WHO exact GUID workflow', () => {
     render(<WhoExactLookup {...makeProps()} />);
     submit();
     await screen.findByText(source.title);
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào kho chủ đề' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào danh sách xem xét' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Chưa thêm được');
-    expect(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào kho chủ đề' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Thêm ấn phẩm WHO vào danh sách xem xét' })).toBeEnabled();
   });
 
   it('drops pending results when topic changes/remounts', async () => {

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api';
 import type {
   DraftRevision,
@@ -10,7 +10,6 @@ import type {
 } from '@/lib/medicalKnowledgeApi';
 import MedicalKnowledgeResearchPage, {
   getDefaultPubMedDiseaseKeyword,
-  resolveKnowledgeView,
 } from './MedicalKnowledgeResearchPage';
 
 const mocks = vi.hoisted(() => ({
@@ -257,34 +256,6 @@ const populatedTopicLibrary = {
   ],
 };
 
-function capacityTopicLibrary(
-  count: number,
-  unusableSourceIds: number[] = [],
-): TopicSourceLibrary {
-  return {
-    topic_id: 77,
-    disease_group_id: '5',
-    factor_type: 'WEATHER',
-    factor_key: 'precipitation',
-    factor_value: null,
-    weather_factor: 'precipitation',
-    sources: Array.from({ length: count }, (_, index) => {
-      const sourceId = index + 1;
-      return {
-        source_id: sourceId,
-        pmid: String(90000000 + sourceId),
-        title: `Capacity source ${sourceId}`,
-        journal: 'Capacity Journal',
-        publication_year: 2026,
-        doi: null,
-        pmcid: null,
-        content_kind: unusableSourceIds.includes(sourceId) ? null : 'ABSTRACT',
-        added_at: `2026-08-27T00:${String(index).padStart(2, '0')}:00`,
-      };
-    }),
-  };
-}
-
 const weatherSelector = (key: string) => ({
   factor_type: 'WEATHER' as const,
   factor_key: key,
@@ -369,8 +340,8 @@ async function renderReadyPage(role = 'admin') {
 
 async function chooseContext() {
   fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '5' } });
-  fireEvent.change(screen.getByLabelText('2. Yếu tố cần giải thích'), { target: { value: 'WEATHER:precipitation' } });
-  await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('5', {
+  fireEvent.change(screen.getByLabelText('2. Yếu tố'), { target: { value: 'WEATHER:precipitation' } });
+  await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('5', {
     factor_type: 'WEATHER',
     factor_key: 'precipitation',
     factor_value: null,
@@ -400,17 +371,6 @@ async function runSuccessfulSearch() {
   switchToFreeSearch();
   fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
   await screen.findByRole('heading', { name: /Tìm thấy \d+ tài liệu/ });
-}
-
-async function importAllSources() {
-  await runSuccessfulSearch();
-  mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
-  fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả kết quả' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Thêm 2 tài liệu vào kho chủ đề' }));
-  await screen.findByText('2 tài liệu đã lưu');
-  fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall.*cho bản nháp/ }));
-  fireEvent.click(screen.getByRole('checkbox', { name: /Record without abstract.*cho bản nháp/ }));
-  expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeEnabled();
 }
 
 function enableWhoReviewed() {
@@ -501,7 +461,9 @@ const pubmedAddedOutcome = {
 };
 
 describe('MedicalKnowledgeResearchPage', () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(() => { throw new Error('Unexpected network'); }));
     window.history.replaceState({}, '', '/?section=medical-knowledge');
     mocks.role = 'admin';
     mocks.curationList.mockReset().mockImplementation(async (selector) => ({ selector,
@@ -573,7 +535,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.getTopicSources.mockReset().mockResolvedValue({
       topic_id: null,
       disease_group_id: '5',
-      weather_factor: 'precipitation',
+      factor_type: 'WEATHER', factor_key: 'precipitation', factor_value: null, weather_factor: 'precipitation',
       sources: [],
     });
     mocks.getHistory.mockReset().mockResolvedValue({ topic: null, revisions: [] });
@@ -616,29 +578,6 @@ describe('MedicalKnowledgeResearchPage', () => {
       jobs: [],
       revisions: [],
     });
-  });
-
-  it('defaults invalid knowledgeView values to the reviewed workspace', () => {
-    expect(resolveKnowledgeView('?section=medical-knowledge&knowledgeView=invalid')).toBe('reviewed');
-    expect(resolveKnowledgeView('?section=medical-knowledge&knowledgeView=auto')).toBe('auto');
-  });
-
-  it('keeps the reviewed/auto workspace choice in the URL and restores it on popstate', async () => {
-    await renderReadyPage();
-    fireEvent.click(screen.getByRole('button', { name: /Kiến thức tự động/ }));
-    expect(new URLSearchParams(window.location.search).get('knowledgeView')).toBe('auto');
-    expect(await screen.findByRole('heading', { name: 'Auto Medical Knowledge' })).toBeVisible();
-
-    act(() => {
-      window.history.pushState({}, '', '/?section=medical-knowledge&knowledgeView=reviewed');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-    });
-    expect(await screen.findByRole('heading', { name: 'Chủ đề đang làm việc' })).toBeVisible();
-  });
-
-  it.each(['admin', 'staff'])('renders the research workspace for %s', async (role) => {
-    await renderReadyPage(role);
-    expect(screen.getByRole('heading', { name: 'Kho kiến thức y khoa' })).toBeInTheDocument();
   });
 
   it('blocks an unauthorized role and does not load options', () => {
@@ -687,7 +626,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '170' } });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('170', weatherSelector('precipitation')));
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('170', weatherSelector('precipitation')));
     expect(screen.queryByText('gastroenteritis')).not.toBeInTheDocument();
     expect(screen.getByText('Acute bronchitis and acute bronchiolitis')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
@@ -759,7 +698,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
     fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả kết quả' }));
     fireEvent.click(screen.getByRole('button', { name: 'Thêm 2 tài liệu vào kho chủ đề' }));
-    await screen.findByText('2 tài liệu đã lưu');
+    await screen.findByRole('article', { name: 'Duyệt nguồn 10' });
     fireEvent.click(screen.getByRole('button', { name: 'Tìm có hướng dẫn' }));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
     expect(screen.getByText('infectious diarrhea')).toBeInTheDocument();
@@ -769,8 +708,8 @@ describe('MedicalKnowledgeResearchPage', () => {
     await renderReadyPage();
     await chooseContext();
     addTerm('infectious diarrhea');
-    fireEvent.change(screen.getByLabelText('2. Yếu tố cần giải thích'), { target: { value: 'WEATHER:humidity' } });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('5', weatherSelector('humidity')));
+    fireEvent.change(screen.getByLabelText('2. Yếu tố'), { target: { value: 'WEATHER:humidity' } });
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('5', weatherSelector('humidity')));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
     expect(screen.getByText('infectious diarrhea')).toBeInTheDocument();
   });
@@ -954,7 +893,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tìm bài' }));
 
     expect(await screen.findByText('Đã có trong kho chủ đề')).toBeInTheDocument();
-    expect(screen.getByText('AI sử dụng: Toàn văn PMC')).toBeInTheDocument();
+    expect(screen.getByText('Toàn văn PMC')).toBeInTheDocument();
     expect(screen.getByText('PMC8228646')).toBeInTheDocument();
   });
 
@@ -1027,8 +966,8 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall and pediatric/ }));
     expect(screen.getAllByText('Đã chọn 1 tài liệu').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Thêm 1 tài liệu vào kho chủ đề' })).toBeEnabled();
-    expect(screen.getByText('0 tài liệu')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
+    expect(mocks.importSources).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Tạo bản nháp bằng AI' })).not.toBeInTheDocument();
   });
 
   it('does not offer an already-in-topic result for another import', async () => {
@@ -1076,177 +1015,20 @@ describe('MedicalKnowledgeResearchPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('1 tài liệu mới đã được lưu');
     expect(screen.getByRole('status')).toHaveTextContent('1 tài liệu đã có sẵn nên được sử dụng lại');
     expect(screen.getAllByText('Đã có trong kho chủ đề')).toHaveLength(2);
-    expect(screen.getAllByText('AI sử dụng: Trích đoạn toàn văn PMC').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('AI sử dụng: Tóm tắt PubMed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Trích đoạn toàn văn PMC').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Tóm tắt PubMed').length).toBeGreaterThan(0);
     expect(screen.getByText('PMC123456')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Thêm 0 tài liệu vào kho chủ đề' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Tạo bản nháp bằng AI' })).not.toBeInTheDocument();
   });
 
   it('loads the persistent topic library without requiring a new PubMed search', async () => {
     mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
     await renderReadyPage();
     await chooseContext();
-    expect(await screen.findByText('2 tài liệu đã lưu')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /Rainfall.*cho bản nháp/ })).toBeInTheDocument();
+    expect(await screen.findByRole('article', { name: 'Duyệt nguồn 10' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /cho bản nháp/ })).not.toBeInTheDocument();
     expect(mocks.search).not.toHaveBeenCalled();
-  });
-
-  it('selects all 10 AI-readable sources and sends exactly those 10 to Draft', async () => {
-    mocks.getTopicSources.mockResolvedValue(capacityTopicLibrary(10));
-    await renderReadyPage();
-    await chooseContext();
-    await screen.findByText('10 tài liệu đã lưu');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả nguồn AI đọc được' }));
-
-    expect(screen.getByText('10 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByText('Tạo bản nháp bằng AI từ 10 nguồn')).toBeInTheDocument();
-    for (let sourceId = 1; sourceId <= 10; sourceId += 1) {
-      expect(screen.getByRole('checkbox', { name: `Chọn nguồn Capacity source ${sourceId} cho bản nháp` })).toBeChecked();
-    }
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await waitFor(() => expect(mocks.generateDraft).toHaveBeenCalledWith({
-      disease_group_id: '5',
-      factor_type: 'WEATHER',
-      factor_key: 'precipitation',
-      factor_value: null,
-      weather_factor: 'precipitation',
-      source_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    }));
-  });
-
-  it('clearly applies the 10-source limit when more than 10 usable sources exist', async () => {
-    mocks.getTopicSources.mockResolvedValue(capacityTopicLibrary(11));
-    await renderReadyPage();
-    await chooseContext();
-    await screen.findByText('11 tài liệu đã lưu');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả nguồn AI đọc được' }));
-
-    expect(screen.getByText('10 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByText(/Có 11 nguồn AI đọc được.*tối đa 10 nguồn/)).toBeInTheDocument();
-    expect(screen.getByText(/Đã chọn 10 nguồn đầu tiên theo thứ tự trong kho/)).toBeInTheDocument();
-    const eleventh = screen.getByRole('checkbox', { name: 'Chọn nguồn Capacity source 11 cho bản nháp' });
-    expect(eleventh).not.toBeChecked();
-    expect(eleventh).toBeDisabled();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Chọn nguồn Capacity source 1 cho bản nháp' }));
-    expect(eleventh).toBeEnabled();
-    fireEvent.click(eleventh);
-    expect(eleventh).toBeChecked();
-    expect(screen.getByText('10 / 10 nguồn đã chọn')).toBeInTheDocument();
-  });
-
-  it('keeps unreadable sources in the library but disables and excludes them from Draft', async () => {
-    mocks.getTopicSources.mockResolvedValue(capacityTopicLibrary(3, [2]));
-    await renderReadyPage();
-    await chooseContext();
-    await screen.findByText('3 tài liệu đã lưu');
-
-    const unreadable = screen.getByRole('checkbox', { name: 'Chọn nguồn Capacity source 2 cho bản nháp' });
-    expect(unreadable).toBeDisabled();
-    expect(screen.getByText('AI chưa có nội dung để đọc')).toBeInTheDocument();
-    expect(screen.getByText('Nguồn vẫn được lưu trong kho để tham khảo.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Chọn tất cả nguồn AI đọc được' }));
-
-    expect(screen.getByText('2 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByText('Tạo bản nháp bằng AI từ 2 nguồn')).toBeInTheDocument();
-    const basket = screen.getByRole('heading', { name: 'Nguồn sẽ dùng cho bản nháp' }).closest('section')!;
-    expect(within(basket).queryByText('Capacity source 2')).not.toBeInTheDocument();
-    expect(within(basket).getByText('Capacity source 1')).toBeInTheDocument();
-    expect(within(basket).getByText('Capacity source 3')).toBeInTheDocument();
-  });
-
-  it('removes a stale selected source when refreshed evidence is no longer readable', async () => {
-    mocks.getTopicSources
-      .mockResolvedValueOnce(capacityTopicLibrary(1))
-      .mockResolvedValue(capacityTopicLibrary(1, [1]));
-    await renderReadyPage();
-    await chooseContext();
-    const sourceCheckbox = await screen.findByRole('checkbox', {
-      name: 'Chọn nguồn Capacity source 1 cho bản nháp',
-    });
-    fireEvent.click(sourceCheckbox);
-    expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
-
-    switchToFreeSearch();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
-    await screen.findByRole('heading', { name: /Tìm thấy 2 tài liệu/ });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall and pediatric/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 tài liệu vào kho chủ đề' }));
-
-    expect(await screen.findByText(/1 nguồn đã được bỏ khỏi bản nháp/)).toBeInTheDocument();
-    expect(screen.getByText('0 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Chọn nguồn Capacity source 1 cho bản nháp' })).toBeDisabled();
-  });
-
-  it('makes a re-enriched source selectable without auto-selecting it for Draft', async () => {
-    mocks.getTopicSources
-      .mockResolvedValueOnce(capacityTopicLibrary(1, [1]))
-      .mockResolvedValue(capacityTopicLibrary(1));
-    await renderReadyPage();
-    await chooseContext();
-    expect(await screen.findByRole('checkbox', {
-      name: 'Chọn nguồn Capacity source 1 cho bản nháp',
-    })).toBeDisabled();
-
-    switchToFreeSearch();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
-    await screen.findByRole('heading', { name: /Tìm thấy 2 tài liệu/ });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Rainfall and pediatric/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 tài liệu vào kho chủ đề' }));
-
-    const refreshed = await screen.findByRole('checkbox', {
-      name: 'Chọn nguồn Capacity source 1 cho bản nháp',
-    });
-    expect(refreshed).toBeEnabled();
-    expect(refreshed).not.toBeChecked();
-    expect(screen.getByText('0 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
-  });
-
-  it('keeps Draft selection stable while another keyword search runs', async () => {
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu PubMed' }));
-    await waitFor(() => expect(mocks.search).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole('checkbox', { name: /Rainfall.*cho bản nháp/ })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /Record without abstract.*cho bản nháp/ })).toBeChecked();
-    expect(screen.getByText('Tạo bản nháp bằng AI từ 2 nguồn')).toBeInTheDocument();
-  });
-
-  it('previews exact Draft sources, removes one, and sends only the remaining ID', async () => {
-    await importAllSources();
-    expect(screen.getByRole('heading', { name: 'Nguồn sẽ dùng cho bản nháp' })).toBeInTheDocument();
-    expect(screen.getAllByText('PMID: 12345678').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('PMID: 87654321').length).toBeGreaterThan(0);
-    expect(screen.getByText('Tạo bản nháp bằng AI từ 2 nguồn')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bỏ nguồn 87654321' }));
-    expect(screen.getByText('Tạo bản nháp bằng AI từ 1 nguồn')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await waitFor(() => expect(mocks.generateDraft).toHaveBeenCalledWith({
-      disease_group_id: '5',
-      factor_type: 'WEATHER',
-      factor_key: 'precipitation',
-      factor_value: null,
-      weather_factor: 'precipitation',
-      source_ids: [10],
-    }));
-  });
-
-  it('clears Pneumonia-topic Draft selection when switching to Influenza', async () => {
-    await importAllSources();
-    mocks.getTopicSources.mockResolvedValue({
-      topic_id: null,
-      disease_group_id: '168',
-      weather_factor: 'precipitation',
-      sources: [],
-    });
-    fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '168' } });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('168', weatherSelector('precipitation')));
-    expect(screen.getByText('0 tài liệu')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
-    expect(screen.queryByText('PMID: 12345678')).not.toBeInTheDocument();
   });
 
   it('ignores a stale keyword response after the topic changes', async () => {
@@ -1258,22 +1040,22 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tìm tài liệu' }));
     fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '168' } });
     resolveSearch(singleProviderResponse(multiProviderSearchResponse.providers[0]));
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('168', weatherSelector('precipitation')));
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('168', weatherSelector('precipitation')));
     expect(screen.queryByText('Rainfall and pediatric gastroenteritis')).not.toBeInTheDocument();
   });
 
   it('clears stale results and disease terms when disease group changes', async () => {
     await runSuccessfulSearch();
     fireEvent.change(screen.getByLabelText('1. Nhóm bệnh'), { target: { value: '1' } });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('1', weatherSelector('precipitation')));
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('1', weatherSelector('precipitation')));
     expect(screen.queryByText('Tìm thấy 2 tài liệu')).not.toBeInTheDocument();
     expect(screen.queryByText('gastroenteritis')).not.toBeInTheDocument();
   });
 
   it('clears stale results but keeps disease terms when weather factor changes', async () => {
     await runSuccessfulSearch();
-    fireEvent.change(screen.getByLabelText('2. Yếu tố cần giải thích'), { target: { value: 'WEATHER:humidity' } });
-    await waitFor(() => expect(mocks.getHistory).toHaveBeenCalledWith('5', weatherSelector('humidity')));
+    fireEvent.change(screen.getByLabelText('2. Yếu tố'), { target: { value: 'WEATHER:humidity' } });
+    await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledWith('5', weatherSelector('humidity')));
     expect(screen.queryByText('Tìm thấy 2 tài liệu')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Tìm có hướng dẫn' }));
     expect(screen.getByText('gastroenteritis')).toBeInTheDocument();
@@ -1283,631 +1065,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await runSuccessfulSearch();
     const details = screen.getByText('Chi tiết tìm kiếm').closest('details');
     expect(details).not.toHaveAttribute('open');
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
-  });
-
-  it('shows the AI draft action only after imported DB source IDs exist', async () => {
-    await importAllSources();
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeEnabled();
-  });
-
-  it('shows a server configuration message while PubMed remains usable', async () => {
-    mocks.getOptions.mockResolvedValue({ ...options, llm_draft_generation_available: false });
-    await renderReadyPage();
-    await chooseContext();
-    expect(await screen.findByText('Tạo bản nháp bằng AI chưa được cấu hình trên máy chủ.')).toBeInTheDocument();
-    addTerm();
-    expect(screen.getByRole('button', { name: 'Tìm tài liệu' })).toBeEnabled();
-  });
-
-  it('shows generation loading wording and prevents double submit', async () => {
-    mocks.generateDraft.mockReturnValue(new Promise(() => undefined));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' })).toBeDisabled();
-    expect(screen.getByText('Đang tạo bản nháp…')).toBeInTheDocument();
-    expect(screen.getByText(/AI đang đọc evidence content đã lưu/)).toBeInTheDocument();
-    expect(mocks.generateDraft).toHaveBeenCalledTimes(1);
-  });
-
-  it('maps generation provider errors without exposing raw details', async () => {
-    mocks.generateDraft.mockRejectedValue(new ApiError(502, 'raw provider payload'));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('AI chưa thể tạo bản nháp hợp lệ');
-    expect(screen.queryByText('raw provider payload')).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ['DRAFT_NO_SOURCES_SELECTED', 'Bạn chưa chọn tài liệu nào cho bản nháp.'],
-    ['DRAFT_TOO_MANY_SOURCES', 'Một bản nháp hiện hỗ trợ tối đa 10 nguồn.'],
-    ['DRAFT_SOURCE_NO_USABLE_EVIDENCE', 'Một hoặc nhiều tài liệu đã chọn chưa có nội dung mà AI có thể đọc.'],
-    ['DRAFT_SCOPE_WHOLE_GROUP_REQUIRES_DIRECT', 'AI đề xuất phạm vi áp dụng cho toàn nhóm bệnh, nhưng các nguồn hiện tại chưa có ít nhất một nguồn trực tiếp phù hợp. Bản nháp chưa được lưu.'],
-    ['DRAFT_SUPPORTED_REQUIRES_PEDIATRIC_SOURCE', 'AI đề xuất SUPPORTED nhưng chưa có cùng một nguồn vừa hỗ trợ trực tiếp quan hệ bệnh–thời tiết vừa nghiên cứu trực tiếp trên trẻ em. Bản nháp chưa được lưu.'],
-    ['DRAFT_PROPOSAL_INVALID', 'AI trả về bản đề xuất chưa đáp ứng quy tắc kiểm tra. Vui lòng xem lại nguồn hoặc thử tạo lại.'],
-  ])('shows the specific %s Draft error', async (code, message) => {
-    mocks.generateDraft.mockRejectedValue(new ApiError(422, 'safe domain detail', code));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(screen.queryByText('Nguồn hoặc phạm vi tạo bản nháp chưa hợp lệ.')).not.toBeInTheDocument();
-  });
-
-  it('clears the selected basket on a cross-topic backend rejection', async () => {
-    mocks.generateDraft.mockRejectedValue(new ApiError(
-      422,
-      'source belongs to another topic',
-      'DRAFT_SOURCE_NOT_IN_TOPIC',
-    ));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Một hoặc nhiều tài liệu đã chọn không thuộc kho nguồn của chủ đề hiện tại. Danh sách chọn đã được làm mới.',
-    );
-    expect(screen.getByText('0 tài liệu')).toBeInTheDocument();
-  });
-
-  it('uses the safe generic Draft error only for an unknown 422 code', async () => {
-    mocks.generateDraft.mockRejectedValue(new ApiError(422, 'private detail', 'UNKNOWN_VALIDATION'));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Yêu cầu tạo bản nháp chưa hợp lệ. Vui lòng tải lại kho nguồn và kiểm tra lựa chọn.',
-    );
-    expect(screen.queryByText('private detail')).not.toBeInTheDocument();
-  });
-
-  it('renders the generated DRAFT review form, source, and AI relevance note', async () => {
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    expect(await screen.findByRole('heading', { name: 'Revision 2' })).toBeInTheDocument();
-    expect(screen.getByText('DRAFT — Chưa xuất bản')).toBeInTheDocument();
-    expect(screen.getByLabelText('Mức bằng chứng AI đề xuất')).toHaveValue('LIMITED_OR_INDIRECT');
-    expect(screen.getByLabelText('Phạm vi bằng chứng AI đề xuất')).toHaveValue('PARTIAL_GROUP');
-    expect(screen.getByLabelText('Giải thích ngắn')).toHaveValue(draftRevision.short_explanation_vi);
-    expect(screen.getByLabelText('Giải thích chi tiết')).toHaveValue(draftRevision.detailed_explanation_vi);
-    expect(screen.getByLabelText('Giới hạn')).toHaveValue(draftRevision.limitations_vi);
-    expect(screen.getByText('DIRECT: Nghiên cứu trực tiếp yếu tố mưa.')).toBeInTheDocument();
-    expect(screen.getByText('Đúng đối tượng trẻ em')).toBeInTheDocument();
-    expect(screen.getByText('Abstract mô tả trực tiếp trẻ em.')).toBeInTheDocument();
-    expect(screen.getByText('Đủ điều kiện nội dung Tier 2 cho phụ huynh')).toBeInTheDocument();
-    expect(screen.queryByText(/chưa có nguồn PEDIATRIC_DIRECT/)).not.toBeInTheDocument();
-    expect(screen.getAllByText('AI sử dụng: Trích đoạn toàn văn PMC').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('PMC123456').length).toBeGreaterThan(0);
-  });
-
-  it.each([
-    ['MIXED_AGE', 'Nghiên cứu nhiều độ tuổi'],
-    ['ADULT_ONLY', 'Chỉ người lớn'],
-    ['ELDERLY_ONLY', 'Chỉ người cao tuổi'],
-    ['UNKNOWN', 'Chưa xác định đối tượng'],
-  ] as const)('renders %s and warns staff when pediatric-direct support is absent', async (
-    populationRelevance,
-    populationLabel,
-  ) => {
-    const nonPediatricRevision: DraftRevision = {
-      ...draftRevision,
-      sources: draftRevision.sources.map((source) => ({
-        ...source,
-        population_relevance: populationRelevance,
-        population_note: `Assessment nhóm tuổi: ${populationRelevance}.`,
-      })),
-      parent_tier2_eligible: false,
-      parent_tier2_ineligibility_reasons: ['PARENT_TIER2_PEDIATRIC_SUPPORT_REQUIRED'],
-    };
-    mocks.generateDraft.mockResolvedValue(nonPediatricRevision);
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-
-    expect(await screen.findByText(populationLabel)).toBeInTheDocument();
-    expect(screen.getByText(`Assessment nhóm tuổi: ${populationRelevance}.`)).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('chưa có nguồn PEDIATRIC_DIRECT');
-    expect(screen.getByText('Chưa đủ điều kiện nội dung Tier 2 cho phụ huynh')).toBeInTheDocument();
-    expect(screen.getByText(/Thiếu nguồn vừa hỗ trợ trực tiếp/)).toBeInTheDocument();
-  });
-
-  it('loads a historical source with missing population fields as UNKNOWN without crashing', async () => {
-    const legacyRevision: DraftRevision = {
-      ...draftRevision,
-      sources: draftRevision.sources.map((source) => {
-        const { population_relevance: _population, population_note: _note, ...legacySource } = source;
-        return legacySource;
-      }),
-      parent_tier2_eligible: false,
-      parent_tier2_ineligibility_reasons: ['PARENT_TIER2_PEDIATRIC_SUPPORT_REQUIRED'],
-    };
-    mocks.generateDraft.mockResolvedValue(legacyRevision);
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-
-    expect(await screen.findByText('Chưa xác định đối tượng')).toBeInTheDocument();
-    expect(screen.getByText(/chưa lưu đánh giá nhóm tuổi \(UNKNOWN\)/)).toBeInTheDocument();
-  });
-
-  it('sends only editable fields when saving and confirms parents cannot see it', async () => {
-    const edited = { ...draftRevision, short_explanation_vi: 'Nội dung nhân viên đã sửa.' };
-    mocks.updateDraft.mockResolvedValue(edited);
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.change(screen.getByLabelText('Giải thích ngắn'), { target: { value: edited.short_explanation_vi } });
-    fireEvent.click(screen.getByRole('button', { name: 'Lưu bản nháp' }));
-    await waitFor(() => expect(mocks.updateDraft).toHaveBeenCalledTimes(1));
-    expect(mocks.updateDraft).toHaveBeenCalledWith(21, {
-      evidence_level: 'LIMITED_OR_INDIRECT',
-      evidence_scope: 'PARTIAL_GROUP',
-      short_explanation_vi: edited.short_explanation_vi,
-      detailed_explanation_vi: draftRevision.detailed_explanation_vi,
-      limitations_vi: draftRevision.limitations_vi,
-    });
-    expect(await screen.findByText(/Nội dung này chưa hiển thị cho phụ huynh/)).toBeInTheDocument();
-  });
-
-  it('shows Save and Approve actions for an authorized DRAFT', async () => {
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    expect(screen.getByRole('button', { name: 'Lưu bản nháp' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Duyệt bản này' })).toBeInTheDocument();
-  });
-
-  it('requires approval confirmation and explicitly warns that Parent cannot see it', async () => {
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.click(screen.getByRole('button', { name: 'Duyệt bản này' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Xác nhận duyệt phiên bản' });
-    expect(within(dialog).getByText(/đã kiểm tra nội dung và nguồn/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/CHƯA được xuất bản cho phụ huynh/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(mocks.approveRevision).not.toHaveBeenCalled();
-  });
-
-  it('shows approval loading and prevents another approval action', async () => {
-    mocks.approveRevision.mockReturnValue(new Promise(() => undefined));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.click(screen.getByRole('button', { name: 'Duyệt bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận duyệt' }));
-
-    expect(screen.getByRole('button', { name: 'Đang duyệt…' })).toBeDisabled();
-    expect(mocks.approveRevision).toHaveBeenCalledTimes(1);
-  });
-
-  it('updates to immutable APPROVED UI with reviewer and time after approval', async () => {
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.click(screen.getByRole('button', { name: 'Duyệt bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận duyệt' }));
-
-    expect(await screen.findByText('APPROVED — Đã duyệt')).toBeInTheDocument();
-    expect(screen.getByText('Bác sĩ kiểm duyệt')).toBeInTheDocument();
-    expect(screen.getByText(/23\/8\/26/)).toBeInTheDocument();
-    expect(screen.getByText(/đã được duyệt và đang được khóa/)).toBeInTheDocument();
-    expect(screen.getByText(/vẫn chưa được xuất bản cho phụ huynh/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Giải thích ngắn')).toHaveAttribute('readonly');
-    expect(screen.queryByRole('button', { name: 'Lưu bản nháp' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Duyệt bản này' })).not.toBeInTheDocument();
-    expect(mocks.approveRevision).toHaveBeenCalledWith(21);
-  });
-
-  it('maps approval authorization failures without exposing backend detail', async () => {
-    mocks.approveRevision.mockRejectedValue(new ApiError(403, 'private authorization detail'));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.click(screen.getByRole('button', { name: 'Duyệt bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận duyệt' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Bạn không có quyền duyệt phiên bản này.');
-    expect(screen.queryByText('private authorization detail')).not.toBeInTheDocument();
-  });
-
-  it('shows the actionable pediatric-support approval error', async () => {
-    mocks.approveRevision.mockRejectedValue(new ApiError(
-      422,
-      'safe pediatric domain detail',
-      'APPROVAL_PEDIATRIC_SUPPORT_REQUIRED',
-    ));
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    fireEvent.click(screen.getByRole('button', { name: 'Duyệt bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận duyệt' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Không thể duyệt mức SUPPORTED: cần ít nhất một nguồn vừa hỗ trợ trực tiếp quan hệ bệnh–thời tiết vừa nghiên cứu trực tiếp trên trẻ em.',
-    );
-  });
-
-  it('loads history for each selected disease/weather context and reopens a DRAFT', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [draftRevision],
-    });
-    await renderReadyPage();
-    await chooseContext();
-    expect(await screen.findByRole('button', { name: 'Revision 2 — DRAFT' })).toBeInTheDocument();
-    expect(mocks.getHistory).toHaveBeenCalledWith('5', weatherSelector('precipitation'));
-    fireEvent.click(screen.getByRole('button', { name: 'Revision 2 — DRAFT' }));
-    expect(await screen.findByRole('heading', { name: 'Revision 2' })).toBeInTheDocument();
-    expect(mocks.getRevision).toHaveBeenCalledWith(21);
-  });
-
-  it.each(['APPROVED', 'REJECTED'] as const)('opens %s revisions read-only', async (status) => {
-    const readOnlyRevision = { ...draftRevision, status };
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: status === 'APPROVED' ? 21 : null,
-      },
-      revisions: [readOnlyRevision],
-    });
-    mocks.getRevision.mockResolvedValue(readOnlyRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: `Revision 2 — ${status}` }));
-    expect(
-      await screen.findByText(status === 'APPROVED' ? 'APPROVED — Đã duyệt' : 'REJECTED — Chỉ đọc'),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText('Giải thích ngắn')).toHaveAttribute('readonly');
-    expect(screen.queryByRole('button', { name: 'Lưu bản nháp' })).not.toBeInTheDocument();
-  });
-
-  it('does not expose any Publish action', async () => {
-    await importAllSources();
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo bản nháp bằng AI' }));
-    await screen.findByRole('heading', { name: 'Revision 2' });
-    expect(screen.queryByRole('button', { name: /publish|xuất bản/i })).not.toBeInTheDocument();
-  });
-
-  it.each(['admin', 'staff'])('shows Publish only for an authorized APPROVED revision (%s)', async (role) => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    await renderReadyPage(role);
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    expect(await screen.findByRole('button', { name: 'Xuất bản bản này' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Giải thích ngắn')).toHaveAttribute('readonly');
-  });
-
-  it('requires publication confirmation and cancel has no side effect', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Xuất bản bản này' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Xác nhận xuất bản phiên bản' });
-    expect(within(dialog).getByText(/bản kiến thức chính thức/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/Nội dung đã duyệt sẽ không bị thay đổi/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }));
-    expect(screen.queryByRole('dialog', { name: 'Xác nhận xuất bản phiên bản' })).not.toBeInTheDocument();
-    expect(mocks.publishRevision).not.toHaveBeenCalled();
-  });
-
-  it('warns before replacing an existing current publication', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 20,
-      },
-      revisions: [approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Xuất bản bản này' }));
-    expect(screen.getByText(/Phiên bản đang xuất bản hiện tại sẽ được thay thế/)).toBeInTheDocument();
-    expect(screen.getByText(/Phiên bản cũ vẫn được giữ trong lịch sử/)).toBeInTheDocument();
-  });
-
-  it('shows publication loading state and prevents another action', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    mocks.publishRevision.mockReturnValue(new Promise(() => undefined));
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Xuất bản bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xuất bản' }));
-    expect(screen.getByRole('button', { name: 'Đang xuất bản…' })).toBeDisabled();
-    expect(mocks.publishRevision).toHaveBeenCalledTimes(1);
-  });
-
-  it('reloads revision and topic then renders current publication audit', async () => {
-    mocks.getHistory
-      .mockResolvedValueOnce({
-        topic: {
-          id: 7,
-          disease_group_id: '5',
-          disease_group_name: draftRevision.disease_group_name,
-          weather_factor: 'precipitation',
-          published_revision_id: null,
-        },
-        revisions: [approvedRevision],
-      })
-      .mockResolvedValue({
-        topic: {
-          id: 7,
-          disease_group_id: '5',
-          disease_group_name: draftRevision.disease_group_name,
-          weather_factor: 'precipitation',
-          published_revision_id: 21,
-        },
-        revisions: [publishedRevision],
-      });
-    mocks.getRevision
-      .mockResolvedValueOnce(approvedRevision)
-      .mockResolvedValueOnce(publishedRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Xuất bản bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xuất bản' }));
-
-    expect(await screen.findByText('ĐANG XUẤT BẢN')).toBeInTheDocument();
-    expect(screen.getByText('Điều phối xuất bản')).toBeInTheDocument();
-    expect(screen.getByText(/Xuất bản bởi/)).toHaveTextContent('10:00 23/8/26');
-    expect(screen.queryByRole('button', { name: 'Xuất bản bản này' })).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Giải thích ngắn')).toHaveAttribute('readonly');
-    expect(mocks.publishRevision).toHaveBeenCalledWith(21);
-    expect(mocks.getRevision).toHaveBeenCalledTimes(2);
-    expect(mocks.getHistory.mock.calls.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('shows a safe publication authorization error', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(approvedRevision);
-    mocks.publishRevision.mockRejectedValue(new ApiError(403, 'private publication detail'));
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Xuất bản bản này' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận xuất bản' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Bạn không có quyền xuất bản phiên bản này.');
-    expect(screen.queryByText('private publication detail')).not.toBeInTheDocument();
-  });
-
-  it('marks only the current pointer as published after replacement', async () => {
-    const oldApproved = { ...approvedRevision, id: 20, revision_number: 1, is_published: false };
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 21,
-      },
-      revisions: [publishedRevision, oldApproved],
-    });
-    mocks.getRevision.mockResolvedValue(oldApproved);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 1 — APPROVED' }));
-    expect(await screen.findByText('APPROVED — Đã duyệt')).toBeInTheDocument();
-    expect(screen.queryByText('ĐANG XUẤT BẢN')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Xuất bản bản này' })).toBeInTheDocument();
-  });
-
-  it('does not show Unpublish for DRAFT or APPROVED-but-unpublished revisions', async () => {
-    const firstDraftRevision = {
-      ...draftRevision,
-      id: 20,
-      revision_number: 1,
-    };
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: null,
-      },
-      revisions: [firstDraftRevision, approvedRevision],
-    });
-    mocks.getRevision.mockResolvedValueOnce(firstDraftRevision).mockResolvedValueOnce(approvedRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 1 — DRAFT' }));
-    expect(await screen.findByText('DRAFT — Chưa xuất bản')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Ngừng xuất bản' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Revision 2 — APPROVED' }));
-    expect(await screen.findByRole('button', { name: 'Xuất bản bản này' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Ngừng xuất bản' })).not.toBeInTheDocument();
-  });
-
-  it.each(['admin', 'staff'])('shows Unpublish only for an authorized current publication (%s)', async (role) => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 21,
-      },
-      revisions: [publishedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(publishedRevision);
-    await renderReadyPage(role);
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    expect(await screen.findByRole('button', { name: 'Ngừng xuất bản' })).toBeInTheDocument();
-    expect(screen.getByText('ĐANG XUẤT BẢN')).toBeInTheDocument();
-  });
-
-  it('requires clear Unpublish confirmation and cancel has no side effect', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 21,
-      },
-      revisions: [publishedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(publishedRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ngừng xuất bản' }));
-
-    const dialog = screen.getByRole('dialog', { name: 'Xác nhận ngừng xuất bản phiên bản' });
-    expect(within(dialog).getByText('Phụ huynh sẽ không còn thấy phần giải thích y khoa này.')).toBeInTheDocument();
-    expect(within(dialog).getByText(/vẫn được giữ ở trạng thái Đã duyệt và không bị xóa/)).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }));
-    expect(screen.queryByRole('dialog', { name: 'Xác nhận ngừng xuất bản phiên bản' })).not.toBeInTheDocument();
-    expect(mocks.unpublishRevision).not.toHaveBeenCalled();
-  });
-
-  it('shows Unpublish loading state and prevents another action', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 21,
-      },
-      revisions: [publishedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(publishedRevision);
-    mocks.unpublishRevision.mockReturnValue(new Promise(() => undefined));
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ngừng xuất bản' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận ngừng xuất bản' }));
-    expect(screen.getByRole('button', { name: 'Đang ngừng xuất bản…' })).toBeDisabled();
-    expect(mocks.unpublishRevision).toHaveBeenCalledTimes(1);
-  });
-
-  it('removes the current badge but keeps APPROVED read-only content and enables Publish again', async () => {
-    const withdrawnRevision = {
-      ...approvedRevision,
-      is_published: false,
-      parent_display_allowed: false,
-      published_by: null,
-      published_by_name: null,
-      published_at: null,
-    };
-    mocks.getHistory
-      .mockResolvedValueOnce({
-        topic: {
-          id: 7,
-          disease_group_id: '5',
-          disease_group_name: draftRevision.disease_group_name,
-          weather_factor: 'precipitation',
-          published_revision_id: 21,
-        },
-        revisions: [publishedRevision],
-      })
-      .mockResolvedValue({
-        topic: {
-          id: 7,
-          disease_group_id: '5',
-          disease_group_name: draftRevision.disease_group_name,
-          weather_factor: 'precipitation',
-          published_revision_id: null,
-        },
-        revisions: [withdrawnRevision],
-      });
-    mocks.getRevision
-      .mockResolvedValueOnce(publishedRevision)
-      .mockResolvedValueOnce(withdrawnRevision);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    const originalShort = (await screen.findByLabelText('Giải thích ngắn') as HTMLTextAreaElement).value;
-    fireEvent.click(screen.getByRole('button', { name: 'Ngừng xuất bản' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận ngừng xuất bản' }));
-
-    expect(await screen.findByText(/Đã ngừng xuất bản phiên bản/)).toBeInTheDocument();
-    expect(screen.queryByText('ĐANG XUẤT BẢN')).not.toBeInTheDocument();
-    expect(screen.getByText('APPROVED — Đã duyệt')).toBeInTheDocument();
-    const withdrawnShortExplanation = await screen.findByLabelText('Giải thích ngắn');
-    expect(withdrawnShortExplanation).toHaveAttribute('readonly');
-    expect(withdrawnShortExplanation).toHaveValue(originalShort);
-    expect(screen.getByRole('button', { name: 'Xuất bản bản này' })).toBeInTheDocument();
-    expect(mocks.unpublishRevision).toHaveBeenCalledWith(21);
-  });
-
-  it('shows a safe Unpublish authorization error without leaking backend details', async () => {
-    mocks.getHistory.mockResolvedValue({
-      topic: {
-        id: 7,
-        disease_group_id: '5',
-        disease_group_name: draftRevision.disease_group_name,
-        weather_factor: 'precipitation',
-        published_revision_id: 21,
-      },
-      revisions: [publishedRevision],
-    });
-    mocks.getRevision.mockResolvedValue(publishedRevision);
-    mocks.unpublishRevision.mockRejectedValue(new ApiError(403, 'private unpublish detail'));
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(await screen.findByRole('button', { name: 'Revision 2 — APPROVED' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ngừng xuất bản' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận ngừng xuất bản' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Bạn không có quyền ngừng xuất bản phiên bản này.');
-    expect(screen.queryByText('private unpublish detail')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tạo bản nháp bằng AI' })).not.toBeInTheDocument();
   });
 
   it('Reviewed provider selector exposes only globally enabled providers', async () => {
@@ -2306,7 +1464,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     const who = await providerResultCheckbox('WHO influenza metadata record');
     fireEvent.click(who);
     expect(who).toBeChecked();
-    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' })).toBeEnabled();
   });
 
   it('adds one WHO metadata result and refreshes the topic library', async () => {
@@ -2316,7 +1474,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     }).mockResolvedValue(mixedTopicLibrary);
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' }));
     await waitFor(() => expect(mocks.getTopicSources).toHaveBeenCalledTimes(2));
     expect(await screen.findByText(/1 nguồn được lưu để tham khảo/)).toBeInTheDocument();
   });
@@ -2325,25 +1483,8 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
     await renderReadyPage();
     await chooseContext();
-    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    expect(await screen.findByText('WHO influenza metadata record')).toBeInTheDocument();
-    expect(screen.getByText('WHO')).toBeInTheDocument();
-  });
-
-  it('labels WHO metadata-only library content as reference-only', async () => {
-    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    expect(await screen.findByText('Đã lưu để tham khảo · không thể chọn cho AI Draft.')).toBeInTheDocument();
-  });
-
-  it('does not allow WHO metadata-only content to be selected for Draft', async () => {
-    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    expect(await screen.findByRole('checkbox', { name: /WHO influenza metadata record.*cho bản nháp/ })).toBeDisabled();
+    expect(await screen.findByRole('article', { name: 'Duyệt nguồn 30' })).toHaveTextContent('WHO influenza metadata record');
+    expect(screen.getByRole('article', { name: 'Duyệt nguồn 30' })).toHaveTextContent('WHO');
   });
 
   it('adds a mixed PubMed and WHO selection in one strict request', async () => {
@@ -2352,7 +1493,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('PubMed mixed evidence'));
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào kho' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào danh sách xem xét' }));
     await waitFor(() => expect(mocks.importProviderSources).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Đã thêm 2 tài liệu/)).toBeInTheDocument();
   });
@@ -2364,9 +1505,9 @@ describe('MedicalKnowledgeResearchPage', () => {
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('PubMed mixed evidence'));
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào kho' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 2 nguồn vào danh sách xem xét' }));
     expect(await screen.findByText('Đã thêm 1/2 tài liệu. 1 tài liệu không thể thêm.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' })).toBeEnabled();
   });
 
   it('renders an already-added provider result clearly', async () => {
@@ -2375,7 +1516,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' }));
     expect(await screen.findByText('Đã lưu để tham khảo')).toBeInTheDocument();
     expect(await providerResultCheckbox('WHO influenza metadata record')).toBeDisabled();
   });
@@ -2383,7 +1524,7 @@ describe('MedicalKnowledgeResearchPage', () => {
   it('sends only the explicit provider-neutral import DTO fields', async () => {
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' }));
     await waitFor(() => expect(mocks.importProviderSources).toHaveBeenCalledTimes(1));
     const sent = mocks.importProviderSources.mock.calls[0][2][0];
     expect(Object.keys(sent).sort()).toEqual([
@@ -2399,7 +1540,7 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.importProviderSources.mockRejectedValue(new ApiError(502, 'private provider stack'));
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Không thể xác minh nguồn với nhà cung cấp');
     expect(screen.queryByText('private provider stack')).not.toBeInTheDocument();
   });
@@ -2408,12 +1549,12 @@ describe('MedicalKnowledgeResearchPage', () => {
     mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
     await runMultiProviderSearch();
     fireEvent.click(await providerResultCheckbox('WHO influenza metadata record'));
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào kho' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm 1 nguồn vào danh sách xem xét' }));
     await waitFor(async () => expect(await providerResultCheckbox('WHO influenza metadata record')).toBeDisabled());
-    expect(screen.getByRole('button', { name: 'Thêm 0 nguồn vào kho' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Thêm 0 nguồn vào danh sách xem xét' })).toBeDisabled();
   });
 
-  it('staff curation works with LLM unavailable and keeps AI selection independent', async () => {
+  it('staff curation works with LLM unavailable and no Draft selection UI', async () => {
     mocks.getOptions.mockResolvedValue({ ...options, llm_draft_generation_available: false });
     mocks.getTopicSources.mockResolvedValue({ ...populatedTopicLibrary, sources: [populatedTopicLibrary.sources[0], {
       ...populatedTopicLibrary.sources[1], source_id: 12, provider_id: 'WHO', title: 'WHO reference-only guidance',
@@ -2433,9 +1574,7 @@ describe('MedicalKnowledgeResearchPage', () => {
       external_identifier: '1', retrieved_at: '2026-01-01T00:00:00', content_sha256: 'a'.repeat(64),
       policy_decision: 'ALLOW_PARENT_REFERENCE', policy_reason_code: 'WHO_OFFICIAL_GUIDANCE',
     }] });
-    await renderReadyPage('staff'); await chooseContext(); fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    const checkbox = screen.getByRole('checkbox', { name: /Rainfall and pediatric gastroenteritis.*cho bản nháp/ });
-    fireEvent.click(checkbox); expect(checkbox).toBeChecked();
+    await renderReadyPage('staff'); await chooseContext();
     const panel = screen.getByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' });
     const card = await within(panel).findByRole('article', { name: 'Duyệt nguồn 12' });
     fireEvent.click(within(card).getByRole('button', { name: 'Bắt đầu duyệt cho phụ huynh' }));
@@ -2444,20 +1583,17 @@ describe('MedicalKnowledgeResearchPage', () => {
     fireEvent.click(within(panel).getByRole('button', { name: 'Chọn bằng chứng xác minh' }));
     fireEvent.click(await within(panel).findByRole('radio', { name: 'Chọn bằng chứng #500' }));
     expect(within(panel).getByRole('button', { name: 'Duyệt và hiển thị cho phụ huynh' })).toBeEnabled();
-    expect(checkbox).toBeChecked(); expect(mocks.generateDraft).not.toHaveBeenCalled();
-    expect(screen.getByRole('checkbox', { name: /WHO reference-only guidance.*cho bản nháp/ })).not.toBeChecked();
+    expect(mocks.generateDraft).not.toHaveBeenCalled();
+    expect(screen.queryByRole('checkbox', { name: /cho bản nháp/ })).not.toBeInTheDocument();
   });
 
-  it('curation mutation errors leave library and legacy Draft generation working', async () => {
+  it('curation mutation errors retain source management without legacy generation', async () => {
     mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
     mocks.curationCreate.mockRejectedValue(new ApiError(422, 'private curation error'));
-    await renderReadyPage('staff'); await chooseContext(); fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    const checkbox = screen.getByRole('checkbox', { name: /Rainfall and pediatric gastroenteritis.*cho bản nháp/ });
-    fireEvent.click(checkbox);
+    await renderReadyPage('staff'); await chooseContext();
     const panel = screen.getByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' });
     fireEvent.click((await within(panel).findAllByRole('button', { name: 'Bắt đầu duyệt cho phụ huynh' }))[0]);
-    await within(panel).findByRole('alert'); expect(checkbox).toBeChecked();
-    expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
+    await within(panel).findByRole('alert');
     expect(mocks.generateDraft).not.toHaveBeenCalled(); expect(screen.queryByText('private curation error')).not.toBeInTheDocument();
   });
 
@@ -2466,14 +1602,23 @@ describe('MedicalKnowledgeResearchPage', () => {
     expect(screen.queryByRole('region', { name: 'Duyệt nguồn tham khảo cho phụ huynh' })).not.toBeInTheDocument();
     expect(mocks.curationList).not.toHaveBeenCalled();
   });
-
-  it('keeps Draft selection count limited to actually usable library sources', async () => {
-    mocks.getTopicSources.mockResolvedValue(mixedTopicLibrary);
-    await renderReadyPage();
-    await chooseContext();
-    fireEvent.click(screen.getByRole('tab', { name: 'Kho nguồn' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Chọn tất cả nguồn AI đọc được' }));
-    expect(screen.getByText('1 / 10 nguồn đã chọn')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /WHO influenza metadata record.*cho bản nháp/ })).not.toBeChecked();
+  it.each(['auto', 'reviewed', 'invalid'])('disconnects generated workflows even for old knowledgeView=%s URLs', async view => {
+    window.history.replaceState({}, '', '/?section=medical-knowledge&knowledgeView=' + view);
+    await renderReadyPage(); await chooseContext();
+    for (const label of ['Kiến thức tự động', 'Kiến thức đã kiểm duyệt', 'Nguồn AI sẽ đọc', 'AI draft provider', 'Revision & kiểm duyệt']) {
+      expect(screen.queryByText(label, { exact: false })).not.toBeInTheDocument();
+    }
+    expect(mocks.getAutoOverview).not.toHaveBeenCalled(); expect(mocks.generateDraft).not.toHaveBeenCalled();
+    expect(mocks.getHistory).not.toHaveBeenCalled(); expect(mocks.getServiceStatus).not.toHaveBeenCalled();
   });
+  it('orders context, approved sources, search and curation without a dashboard hero', async () => {
+    mocks.getTopicSources.mockResolvedValue(populatedTopicLibrary);
+    await renderReadyPage(); await chooseContext();
+    await screen.findByRole('article', { name: 'Duyệt nguồn 10' });
+    const headings = screen.getAllByRole('heading').map(item => item.textContent);
+    expect(headings.slice(0, 5)).toEqual(['Nguồn tham khảo tin cậy', 'Ngữ cảnh tham khảo', 'Nguồn đang hiển thị cho phụ huynh', 'Tìm và thêm nguồn', 'Nguồn tìm kiếm']);
+    expect(headings.indexOf('Nguồn chờ duyệt / quản lý curation')).toBeGreaterThan(headings.indexOf('Tìm và thêm nguồn'));
+    expect(document.querySelector('[class*="gradient"]')).toBeNull();
+  });
+
 });

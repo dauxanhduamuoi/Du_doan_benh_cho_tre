@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { TrustedReferenceItem, TrustedReferenceSelector, WeatherAIPredictResponse, WeatherAITier1Factor } from '@/lib/api';
 import { buildTrustedReferenceSelectors, matchTrustedReferenceItems } from '../weather-ai/trustedReferences';
@@ -61,13 +61,26 @@ describe('Trusted References selectors', () => {
 });
 
 describe('Trusted Reference metadata cards', () => {
+  it('starts collapsed when requested and exposes the same safe sources after expansion', () => {
+    render(<TrustedReferenceSection items={[{ selector, references: [reference] }]} collapsible />);
+    const summary = screen.getByText('Xem tài liệu tham khảo (1)');
+    expect(summary.closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText(reference.title)).not.toBeVisible();
+    expect(screen.getByRole('link')).not.toBeVisible();
+    fireEvent.click(summary);
+    expect(summary.closest('details')).toHaveAttribute('open');
+    expect(screen.getByRole('link', { name: `Xem nguồn gốc: ${reference.title}` })).toHaveAttribute('href', reference.original_url);
+    fireEvent.click(summary);
+    expect(screen.getByText(reference.title)).not.toBeVisible();
+  });
+
   it('renders metadata, a safe original link and neutral reference wording', () => {
     render(<TrustedReferenceSection items={[{ selector, references: [reference] }]} />);
-    expect(screen.getByRole('region', { name: 'Tài liệu tham khảo' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Nguồn tham khảo' })).toBeVisible();
     expect(screen.getByText(reference.title)).toBeVisible();
     expect(screen.getByText('Tạp chí đã lưu · 2025 · WHO')).toBeVisible();
     expect(screen.getByText(/dùng để đọc thêm và không quyết định kết quả xếp hạng/)).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Đọc nguồn gốc' })).toHaveAttribute('href', reference.original_url);
+    expect(screen.getByRole('link', { name: `Xem nguồn gốc: ${reference.title}` })).toHaveAttribute('href', reference.original_url);
     expect(screen.getByRole('link')).toHaveAttribute('target', '_blank');
     expect(screen.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer');
   });
@@ -75,6 +88,17 @@ describe('Trusted Reference metadata cards', () => {
   it('preserves API source order and dedups by persisted source identity', () => {
     render(<TrustedReferenceSection items={[{ selector, references: [reference, { ...reference, source_id: 2, title: 'Nguồn thứ hai' }, reference] }]} />);
     expect(screen.getAllByRole('heading', { level: 5 }).map((node) => node.textContent)).toEqual(['Nguồn đã lưu', 'Nguồn thứ hai']);
+    expect(screen.getByRole('link', { name: 'Xem nguồn gốc: Nguồn đã lưu' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Xem nguồn gốc: Nguồn thứ hai' })).toBeVisible();
+  });
+
+  it('wraps long bibliography tokens without truncating content', () => {
+    const title = 'TiêuĐềDài'.repeat(50);
+    const journal = 'TênTạpChíDài'.repeat(40);
+    render(<TrustedReferenceSection items={[{ selector, references: [{ ...reference, title, journal }] }]} />);
+    expect(screen.getByRole('heading', { name: title })).toHaveClass('[overflow-wrap:anywhere]');
+    expect(screen.getByText(`${journal} · 2025 · WHO`)).toHaveClass('[overflow-wrap:anywhere]');
+    expect(screen.getByRole('link', { name: `Xem nguồn gốc: ${title}` })).toHaveAttribute('href', reference.original_url);
   });
 
   it.each([{ items: [] }, { items: [{ selector, references: [] }] }] as { items: TrustedReferenceItem[] }[])('hides an empty reference section', ({ items }) => {

@@ -8,6 +8,7 @@ import {
 } from '@/lib/api';
 import {
   WeatherAILoadingNotice,
+  WeatherAIExplanationSections,
   WeatherAIPredictionList,
   evidenceStatusLabel,
   isSafeSourceUrl,
@@ -112,6 +113,22 @@ function withTier1Factors(
 }
 
 describe('Weather AI V3 result rendering', () => {
+  it('wraps full long Parent factor text while keeping clinical styles unchanged', () => {
+    const label = 'NhãnĐặcTrưngDài'.repeat(40);
+    const prediction = withTier1Factors([makeFactor('unknown_feature', 'UP', { label_vi: label })]);
+    const { rerender } = render(<WeatherAIExplanationSections prediction={prediction} variant="parent" showLegacyTier2={false} />);
+    const group = screen.getByTestId('tier1-group-factor:unknown_feature');
+    expect(group.querySelector('p')).toHaveClass('[overflow-wrap:anywhere]');
+    expect(group.querySelector('ul')).toHaveClass('[overflow-wrap:anywhere]');
+    expect(group).toHaveTextContent(label);
+    expect(screen.getByText(/Nó không chứng minh nguyên nhân gây bệnh/)).toHaveClass('min-w-0', '[overflow-wrap:anywhere]');
+    rerender(<WeatherAIExplanationSections prediction={prediction} showLegacyTier2={false} />);
+    const clinical = screen.getByTestId('tier1-group-factor:unknown_feature');
+    expect(clinical).toHaveClass('shadow-sm', 'rounded-xl');
+    expect(clinical.querySelector('p')).not.toHaveClass('[overflow-wrap:anywhere]');
+    expect(clinical).toHaveTextContent(label);
+  });
+
   it('renders a Top-5 ranking in backend rank order', () => {
     render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[1, 2, 3, 4, 5].map((rank) => makePrediction(rank))} />);
     expect(screen.getAllByTestId('weather-ai-prediction-card')).toHaveLength(5);
@@ -308,7 +325,7 @@ describe('Weather AI V3 result rendering', () => {
   it('labels factors as a selected subset and displays one shared model disclaimer', () => {
     render(<WeatherAIPredictionList anchorDate="2026-10-05" predictions={[makePrediction(1)]} variant="parent" />);
     const section = screen.getByLabelText('Giải thích đóng góp của mô hình');
-    expect(within(section).getByText('Các đặc trưng đóng góp nổi bật')).toBeVisible();
+    expect(within(section).getByText('Vì sao mô hình đưa ra kết quả này?')).toBeVisible();
     expect(section).toHaveTextContent('tối đa 5 theo chiều tăng và 5 theo chiều giảm');
     expect(section).toHaveTextContent('không phải toàn bộ 45 đặc trưng');
     expect(within(section).getAllByText('Phần này giải thích cách các đặc trưng đóng góp vào kết quả của mô hình. Nó không chứng minh nguyên nhân gây bệnh và không phải xác suất mắc bệnh của trẻ.')).toHaveLength(1);

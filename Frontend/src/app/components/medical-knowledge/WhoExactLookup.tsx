@@ -101,11 +101,11 @@ export default function WhoExactLookup(props: Props) {
       {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
       {result && <div className="mt-4 space-y-2 border-t pt-4">
         <h3 className="font-bold">Tài liệu chính xác theo GUID WHO</h3>
-        <p className="text-xs text-slate-600">Không lọc theo mức phù hợp chủ đề. Thêm vào kho tham khảo không đồng nghĩa đủ điều kiện tạo bản nháp AI.</p>
+        <p className="text-xs text-slate-600">Không lọc theo mức phù hợp chủ đề. Thêm vào kho tham khảo không đồng nghĩa được phép hiển thị cho phụ huynh. Cần kiểm tra bằng chứng và chính sách nguồn.</p>
         <p className="font-semibold">{result.title}</p>
         <p className="break-all text-xs text-slate-500">GUID: {result.external_id}</p>
         {result.abstract_text && <p className="text-sm text-slate-600">{result.abstract_text}</p>}
-        <button type="button" disabled={busy || result.in_topic_library} onClick={addToLibrary} className="rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white disabled:opacity-50">{result.in_topic_library ? 'Đã có trong kho chủ đề' : 'Thêm ấn phẩm WHO vào kho chủ đề'}</button>
+        <button type="button" disabled={busy || result.in_topic_library} onClick={addToLibrary} className="rounded-lg bg-blue-700 px-3 py-2 text-sm text-white disabled:opacity-50">{result.in_topic_library ? 'Đã có trong kho chủ đề' : 'Thêm ấn phẩm WHO vào danh sách xem xét'}</button>
       </div>}
     </section>
   );

@@ -92,7 +92,7 @@ export default function PubMedSearchForm(props: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <form onSubmit={submit} className="rounded-lg border border-slate-200 bg-white p-4  sm:p-6">
       {props.showTopicSelector !== false && (
         <MedicalTopicSelector
           compact

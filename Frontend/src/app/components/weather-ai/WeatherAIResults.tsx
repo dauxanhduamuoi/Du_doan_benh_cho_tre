@@ -1,6 +1,4 @@
 import {
-  ArrowDown,
-  ArrowUp,
   Baby,
   BookOpen,
   CalendarDays,
@@ -39,10 +37,10 @@ const variantStyles: Record<ResultsVariant, { card: string; rank: string; tier1:
     tier2: 'border-teal-100 bg-teal-50/70',
   },
   parent: {
-    card: 'border-white bg-white/80',
-    rank: 'bg-gradient-to-br from-sky-500 to-teal-500 text-white',
-    tier1: 'border-sky-100 bg-gradient-to-br from-sky-50 to-white',
-    tier2: 'border-teal-100 bg-gradient-to-br from-teal-50 to-white',
+    card: 'border-slate-200 bg-white',
+    rank: 'bg-teal-50 text-teal-800',
+    tier1: 'border-t border-slate-200 pt-5',
+    tier2: 'border-t border-slate-200 pt-5',
   },
 };
 
@@ -83,17 +81,18 @@ function FactorList({
   title,
   groups,
   direction,
+  compact = false,
 }: {
   title: string;
   groups: Tier1DisplayGroup[];
   direction: 'UP' | 'DOWN';
+  compact?: boolean;
 }) {
   if (groups.length === 0) return null;
   const isUp = direction === 'UP';
-  const DirectionIcon = isUp ? ArrowUp : ArrowDown;
   return (
-    <div className={`rounded-2xl border p-3 ${isUp ? 'border-emerald-100 bg-emerald-50/60' : 'border-indigo-100 bg-indigo-50/60'}`}>
-      <p className={`mb-2 text-sm font-extrabold ${isUp ? 'text-emerald-800' : 'text-indigo-800'}`}>
+    <div className={compact ? 'min-w-0' : `rounded-2xl border p-3 ${isUp ? 'border-emerald-100 bg-emerald-50/60' : 'border-indigo-100 bg-indigo-50/60'}`}>
+      <p className={compact ? `mb-2 text-sm font-semibold ${isUp ? 'text-teal-800' : 'text-slate-700'}` : `mb-2 text-sm font-extrabold ${isUp ? 'text-emerald-800' : 'text-indigo-800'}`}>
         {isUp ? '↑' : '↓'} {title}
       </p>
       <ul className="space-y-2">
@@ -102,18 +101,18 @@ function FactorList({
           return (
           <li
             key={group.key}
-            className="flex items-start gap-2.5 rounded-xl border border-white bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm"
+            className={compact ? 'border-b border-slate-100 py-3 text-sm text-slate-700 last:border-b-0' : 'flex items-start gap-2.5 rounded-xl border border-white bg-white px-3 py-2.5 text-sm text-slate-700 shadow-sm'}
             data-testid={`tier1-group-${group.key}`}
           >
-            <ConceptIcon
+            {!compact && <ConceptIcon
               size={17}
               aria-hidden="true"
               className={`mt-0.5 shrink-0 ${isUp ? 'text-emerald-600' : 'text-indigo-600'}`}
-            />
+            />}
             <div className="min-w-0">
-              <p className="font-semibold text-slate-800">{group.title}</p>
+              <p className={compact ? '[overflow-wrap:anywhere] font-semibold text-slate-800' : 'font-semibold text-slate-800'}>{group.title}</p>
               {group.details.length > 0 ? (
-                <ul className="mt-0.5 space-y-0.5 leading-5 text-slate-600">
+                <ul className={compact ? 'mt-1 space-y-1 [overflow-wrap:anywhere] leading-6 text-slate-600' : 'mt-0.5 space-y-0.5 leading-5 text-slate-600'}>
                   {group.details.map((detail) => <li key={detail}>{detail}</li>)}
                 </ul>
               ) : (
@@ -128,32 +127,32 @@ function FactorList({
   );
 }
 
-function MixedFactorList({ groups }: { groups: Tier1DisplayGroup[] }) {
+function MixedFactorList({ groups, compact = false }: { groups: Tier1DisplayGroup[]; compact?: boolean }) {
   if (groups.length === 0) return null;
   return (
-    <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-3">
-      <p className="mb-2 text-sm font-semibold text-amber-900">↕ Các yếu tố có tác động theo nhiều chiều</p>
+    <div className={compact ? 'min-w-0 border-t border-slate-100 pt-4' : 'rounded-2xl border border-amber-100 bg-amber-50/60 p-3'}>
+      <p className={compact ? 'mb-2 text-sm font-semibold text-slate-700' : 'mb-2 text-sm font-semibold text-amber-900'}>↕ Các yếu tố có tác động theo nhiều chiều</p>
       <ul className="space-y-2">
         {groups.map((group) => {
           const ConceptIcon = tier1Icons[group.kind];
           return (
             <li
               key={group.key}
-              className="rounded-xl border border-amber-100 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+              className={compact ? 'border-b border-slate-100 py-3 text-sm text-slate-700 last:border-b-0' : 'rounded-xl border border-amber-100 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm'}
               data-testid={`tier1-group-${group.key}`}
             >
               <div className="flex items-start gap-2">
-                <ConceptIcon size={17} aria-hidden="true" className="mt-0.5 shrink-0 text-amber-700" />
+                {!compact && <ConceptIcon size={17} aria-hidden="true" className="mt-0.5 shrink-0 text-amber-700" />}
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-800">{group.title}</p>
-                  {group.details.map((detail) => <p key={detail} className="mt-0.5 leading-5 text-slate-600">{detail}</p>)}
-                  <p className="mt-1 leading-5 text-amber-900">
+                  <p className={compact ? '[overflow-wrap:anywhere] font-semibold text-slate-800' : 'font-semibold text-slate-800'}>{group.title}</p>
+                  {group.details.map((detail) => <p key={detail} className={compact ? 'mt-0.5 [overflow-wrap:anywhere] leading-5 text-slate-600' : 'mt-0.5 leading-5 text-slate-600'}>{detail}</p>)}
+                  <p className={compact ? 'mt-1 leading-6 text-slate-600' : 'mt-1 leading-5 text-amber-900'}>
                     Các đặc trưng trong nhóm này đóng góp vào điểm của mô hình theo các hướng khác nhau; dấu của từng đặc trưng được giữ riêng.
                   </p>
-                  <ul className="mt-1 space-y-0.5 text-xs leading-5 text-slate-600">
+                  <ul className={compact ? 'mt-2 space-y-2 [overflow-wrap:anywhere] text-sm leading-6 text-slate-600' : 'mt-1 space-y-0.5 text-xs leading-5 text-slate-600'}>
                     {group.mixedDetails.map((detail, index) => (
                       <li key={`${detail.direction}-${detail.label}-${index}`}>
-                        <span className={detail.direction === 'UP' ? 'text-emerald-700' : 'text-indigo-700'}>
+                        <span className={compact ? (detail.direction === 'UP' ? 'text-teal-800' : 'text-slate-700') : (detail.direction === 'UP' ? 'text-emerald-700' : 'text-indigo-700')}>
                           {detail.direction === 'UP' ? '↑' : '↓'}
                         </span>{' '}
                         {detail.label}
@@ -198,21 +197,21 @@ export function WeatherAIExplanationSections({
   return (
     <div className={variant === 'parent' ? 'space-y-3' : 'mt-4 space-y-3'}>
       {tier1.available && (
-        <section className={`rounded-2xl border p-4 ${styles.tier1}`} aria-label="Giải thích đóng góp của mô hình">
+        <section className={variant === 'parent' ? styles.tier1 : `rounded-2xl border p-4 ${styles.tier1}`} aria-label="Giải thích đóng góp của mô hình">
           <h4 className="text-sm font-bold text-slate-900">
-            Các đặc trưng đóng góp nổi bật
+            {variant === 'parent' ? 'Vì sao mô hình đưa ra kết quả này?' : 'Các đặc trưng đóng góp nổi bật'}
           </h4>
           <p className="mt-1 text-sm leading-6 text-slate-600">
             Hiển thị các đặc trưng được chọn: tối đa 5 theo chiều tăng và 5 theo chiều giảm điểm của mô hình, không phải toàn bộ 45 đặc trưng.
           </p>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
-            <FactorList title="Đóng góp theo chiều tăng điểm" groups={positiveGroups} direction="UP" />
-            <FactorList title="Đóng góp theo chiều giảm điểm" groups={negativeGroups} direction="DOWN" />
+            <FactorList title="Đóng góp theo chiều tăng điểm" groups={positiveGroups} direction="UP" compact={variant === 'parent'} />
+            <FactorList title="Đóng góp theo chiều giảm điểm" groups={negativeGroups} direction="DOWN" compact={variant === 'parent'} />
           </div>
-          {mixedGroups.length > 0 && <div className="mt-4"><MixedFactorList groups={mixedGroups} /></div>}
-          <div className="mt-4 flex items-start gap-2 border-t border-sky-100 pt-3 text-xs leading-5 text-slate-600">
-            <Info size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-sky-700" />
-            <p>
+          {mixedGroups.length > 0 && <div className="mt-4"><MixedFactorList groups={mixedGroups} compact={variant === 'parent'} /></div>}
+          <div className={variant === 'parent' ? 'mt-4 flex items-start gap-2 border-t border-slate-100 pt-3 text-sm leading-6 text-slate-500' : 'mt-4 flex items-start gap-2 border-t border-sky-100 pt-3 text-xs leading-5 text-slate-600'}>
+            <Info size={15} aria-hidden="true" className={variant === 'parent' ? 'mt-0.5 shrink-0 text-slate-400' : 'mt-0.5 shrink-0 text-sky-700'} />
+            <p className={variant === 'parent' ? 'min-w-0 [overflow-wrap:anywhere]' : undefined}>
               {MODEL_EXPLANATION_DISCLAIMER}
             </p>
           </div>
@@ -382,22 +381,22 @@ export function PublishedMedicalKnowledgeSections({
   );
 }
 
-export function WeatherAIDisclaimer({ disclaimer }: { disclaimer?: string | null }) {
+export function WeatherAIDisclaimer({ disclaimer, variant = 'clinical' }: { disclaimer?: string | null; variant?: ResultsVariant }) {
   return (
     <aside
-      className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950"
+      className={variant === 'parent' ? 'mt-6 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-100 p-4 text-sm leading-6 text-slate-700' : 'mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium leading-6 text-amber-950'}
       aria-label="Lưu ý quan trọng"
     >
       <Info size={19} aria-hidden="true" className="mt-0.5 shrink-0" />
-      <p>{disclaimer?.trim() || DEFAULT_DISCLAIMER}</p>
+      <p className={variant === 'parent' ? 'min-w-0 [overflow-wrap:anywhere]' : undefined}>{disclaimer?.trim() || DEFAULT_DISCLAIMER}</p>
     </aside>
   );
 }
 
-export function WeatherAILoadingNotice() {
+export function WeatherAILoadingNotice({ variant = 'clinical' }: { variant?: ResultsVariant }) {
   return (
-    <div role="status" aria-live="polite" className="mt-4 flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
-      <Loader2 size={18} aria-hidden="true" className="animate-spin" />
+    <div role="status" aria-live="polite" className={variant === 'parent' ? 'mt-4 text-sm leading-6 text-slate-600' : 'mt-4 flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800'}>
+      {variant !== 'parent' && <Loader2 size={18} aria-hidden="true" className="animate-spin" />}
       <span>Đang lấy thời tiết, xếp hạng nhóm bệnh và chuẩn bị giải thích…</span>
     </div>
   );
@@ -421,7 +420,7 @@ export function WeatherAIPredictionList({
         {predictions.map((prediction) => (
           <article
             key={prediction.disease_id}
-            className={`rounded-3xl border p-4 shadow-sm sm:p-5 ${styles.card}`}
+            className={variant === 'parent' ? `rounded-xl border p-4 sm:p-5 ${styles.card}` : `rounded-3xl border p-4 shadow-sm sm:p-5 ${styles.card}`}
             data-testid="weather-ai-prediction-card"
           >
             <div className="flex items-start gap-3">
@@ -441,7 +440,7 @@ export function WeatherAIPredictionList({
           </article>
         ))}
       </div>
-      <WeatherAIDisclaimer disclaimer={disclaimer} />
+      <WeatherAIDisclaimer disclaimer={disclaimer} variant={variant} />
     </div>
   );
 }
